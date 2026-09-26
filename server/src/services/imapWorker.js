@@ -33,7 +33,6 @@ const startImapWorker = (io) => {
 
           let parsed = await simpleParser(message.source);
           
-          // Type-safe header extraction
           let rawHeader = parsed.headers.get('x-original-to') || 
                           parsed.headers.get('delivered-to') || 
                           (parsed.to && parsed.to.text) || '';
@@ -43,7 +42,9 @@ const startImapWorker = (io) => {
           let match = originalToHeader.match(/([a-zA-Z0-9._%+-]+@rizzmail\.me)/i);
           let targetAlias = match ? match[1].toLowerCase() : '7007012049@rizzmail.me';
 
+          // Save to MongoDB database with both recipient and emailAddress fields
           const newEmail = new Email({
+            recipient: targetAlias,
             emailAddress: targetAlias,
             sender: parsed.from?.text || 'Unknown Sender',
             subject: parsed.subject || 'No Subject',
