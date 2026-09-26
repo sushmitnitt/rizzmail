@@ -5,6 +5,7 @@ const { Server } = require("socket.io");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const { startSmtpServer } = require("./smtp/smtpServer");
+const startImapWorker = require('./services/imapWorker');
 
 const app = express();
 const server = http.createServer(app);
@@ -19,11 +20,11 @@ const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/rizzmail";
 console.log("Attempting to connect with MONGO_URI:", MONGO_URI);
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log("✅ Connected to Local MongoDB successfully!"))
+  .then(() => console.log("✅ Connected to MongoDB successfully!"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// Register Auth Routes
-app.set("io",io)
+// Register Auth Routes & Socket instance
+app.set("io", io);
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/email", require("./routes/emailRoutes"));
 
@@ -34,8 +35,11 @@ io.on("connection", (socket) => {
   });
 });
 
-// Start SMTP Server on Port 2525
+// Start SMTP Server (if running locally/fallback)
 startSmtpServer(io);
+
+// Start IMAP Background Sync Worker for Gmail Forwarding
+startImapWorker(io);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
