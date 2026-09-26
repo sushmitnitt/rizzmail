@@ -9,7 +9,6 @@ const startImapWorker = (io) => {
   }
 
   const pollInbox = async () => {
-    // Create a fresh ImapFlow instance on every poll cycle to prevent reuse errors
     const client = new ImapFlow({
       host: 'imap.gmail.com',
       port: 993,
@@ -23,30 +22,27 @@ const startImapWorker = (io) => {
 
     try {
       await client.connect();
-      // Scan '[Gmail]/All Mail' to catch emails even if filtered into Spam or Archive
       let lock = await client.getMailboxLock('[Gmail]/All Mail');
       
       try {
-        // Search for unread messages
         let unseenUids = await client.search({ seen: false }, { uid: true });
         
         for (let uid of unseenUids) {
           let message = await client.fetchOne(uid, { source: true, envelope: true }, { uid: true });
           if (!message || !message.source) continue;
 
-          // Parse raw email content
           let parsed = await simpleParser(message.source);
           
-          // Extract original recipient from ImprovMX forwarded headers
-          let originalToHeader = parsed.headers.get('x-original-to') || 
-                                 parsed.headers.get('delivered-to') || 
-                                 parsed.to?.text || '';
+          // Type-safe header extraction
+          let rawHeader = parsed.headers.get('x-original-to') || 
+                          parsed.headers.get('delivered-to') || 
+                          (parsed.to && parsed.to.text) || '';
+          
+          let originalToHeader = typeof rawHeader === 'string' ? rawHeader : (rawHeader.text || String(rawHeader));
 
-          // Match any address ending with @rizzmail.me
           let match = originalToHeader.match(/([a-zA-Z0-9._%+-]+@rizzmail\.me)/i);
           let targetAlias = match ? match[1].toLowerCase() : '7007012049@rizzmail.me';
 
-          // Save to MongoDB database
           const newEmail = new Email({
             emailAddress: targetAlias,
             sender: parsed.from?.text || 'Unknown Sender',
@@ -57,12 +53,10 @@ const startImapWorker = (io) => {
           
           await newEmail.save();
 
-          // Broadcast live via Socket.io to the frontend
           if (io) {
             io.to(targetAlias).emit('new-email', newEmail);
           }
 
-          // Mark email as read in Gmail so it isn't processed twice
           await client.messageFlagsAdd(uid, ['\\Seen'], { uid: true });
         }
       } finally {
@@ -74,7 +68,6 @@ const startImapWorker = (io) => {
     }
   };
 
-  // Poll inbox every 15 seconds
   setInterval(pollInbox, 15000);
   console.log('🚀 IMAP background sync worker started.');
 };
