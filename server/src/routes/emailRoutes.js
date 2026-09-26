@@ -12,6 +12,37 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+const express = require('express');
+const router = express.Router();
+const Email = require('../models/Email');
+
+// GET all emails for a specific address (supports route param or query)
+router.get('/:emailAddress', async (req, res) => {
+  try {
+    const emailAddress = req.params.emailAddress.toLowerCase();
+    const emails = await Email.find({ emailAddress }).sort({ date: -1 });
+    res.json(emails);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error fetching emails' });
+  }
+});
+
+// Also support query param version just in case: /api/email?address=...
+router.get('/', async (req, res) => {
+  try {
+    const emailAddress = (req.query.address || '').toLowerCase();
+    if (!emailAddress) {
+      return res.status(400).json({ error: 'Email address is required' });
+    }
+    const emails = await Email.find({ emailAddress }).sort({ date: -1 });
+    res.json(emails);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error fetching emails' });
+  }
+});
+
+module.exports = router;
+
 // 1. Fetch all messages for a specific user phone number handle
 router.get('/messages/:phone', async (req, res) => {
   try {
