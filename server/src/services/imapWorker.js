@@ -9,6 +9,7 @@ const startImapWorker = (io) => {
   }
 
   const pollInbox = async () => {
+    // Create a fresh ImapFlow instance on every poll cycle to prevent reuse errors
     const client = new ImapFlow({
       host: 'imap.gmail.com',
       port: 993,
@@ -22,6 +23,7 @@ const startImapWorker = (io) => {
 
     try {
       await client.connect();
+      // Scan '[Gmail]/All Mail' to catch emails even if filtered into Spam or Archive
       let lock = await client.getMailboxLock('[Gmail]/All Mail');
       
       try {
@@ -33,6 +35,7 @@ const startImapWorker = (io) => {
 
           let parsed = await simpleParser(message.source);
           
+          // Type-safe header extraction to avoid .match errors
           let rawHeader = parsed.headers.get('x-original-to') || 
                           parsed.headers.get('delivered-to') || 
                           (parsed.to && parsed.to.text) || '';
@@ -42,7 +45,7 @@ const startImapWorker = (io) => {
           let match = originalToHeader.match(/([a-zA-Z0-9._%+-]+@rizzmail\.me)/i);
           let targetAlias = match ? match[1].toLowerCase() : '7007012049@rizzmail.me';
 
-          // Save to MongoDB database with both recipient and emailAddress fields
+          // Save to MongoDB database with both recipient and emailAddress fields to satisfy schema validation
           const newEmail = new Email({
             recipient: targetAlias,
             emailAddress: targetAlias,
@@ -54,10 +57,12 @@ const startImapWorker = (io) => {
           
           await newEmail.save();
 
+          // Broadcast live via Socket.io to the frontend
           if (io) {
             io.to(targetAlias).emit('new-email', newEmail);
           }
 
+          // Mark email as read in Gmail so it isn't processed twice
           await client.messageFlagsAdd(uid, ['\\Seen'], { uid: true });
         }
       } finally {
@@ -69,6 +74,7 @@ const startImapWorker = (io) => {
     }
   };
 
+  // Poll inbox every 15 seconds
   setInterval(pollInbox, 15000);
   console.log('🚀 IMAP background sync worker started.');
 };
