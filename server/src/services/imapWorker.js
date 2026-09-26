@@ -8,21 +8,22 @@ const startImapWorker = (io) => {
     return;
   }
 
-  const client = new ImapFlow({
-    host: 'imap.gmail.com',
-    port: 993,
-    secure: true,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    },
-    logger: false
-  });
-
   const pollInbox = async () => {
+    // Create a fresh ImapFlow instance on every poll cycle to prevent reuse errors
+    const client = new ImapFlow({
+      host: 'imap.gmail.com',
+      port: 993,
+      secure: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      logger: false
+    });
+
     try {
       await client.connect();
-      // Use '[Gmail]/All Mail' to catch emails even if filtered into Spam or Archive
+      // Scan '[Gmail]/All Mail' to catch emails even if filtered into Spam or Archive
       let lock = await client.getMailboxLock('[Gmail]/All Mail');
       
       try {
