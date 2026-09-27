@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -36,9 +36,7 @@ function App() {
     if (!saved) return null;
     try {
       const parsed = JSON.parse(saved);
-      if (parsed && parsed.phoneNumber) {
-        return parsed;
-      }
+      if (parsed && parsed.phoneNumber) return parsed;
     } catch (e) {
       console.error(e);
     }
@@ -87,10 +85,13 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState(null);
 
+  // Chat Navigation & Compose New Chat States
   const [activeChatSender, setActiveChatSender] = useState(null);
   const [showChatInfo, setShowChatInfo] = useState(false);
   const [chatMessageBody, setChatMessageBody] = useState('');
   const [activeTab, setActiveTab] = useState('chats');
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [newChatInput, setNewChatInput] = useState('');
 
   useEffect(() => {
     let timer;
@@ -114,7 +115,7 @@ function App() {
     return user?.phoneNumber || user?.phone || phoneNumber;
   };
 
-  // Canonical key normalizer so numbers and rizzmail aliases merge into ONE single chat
+  // Canonical key normalizer to unify phone numbers and aliases into one single thread
   const getCanonicalKey = (input) => {
     if (!input) return '';
     const str = input.toString().toLowerCase().trim();
@@ -122,6 +123,7 @@ function App() {
       const localPart = str.split('@')[0];
       const pure = localPart.replace(/[^0-9]/g, '');
       if (pure.length >= 10) return pure.slice(-10);
+      return localPart;
     }
     const pureDigits = str.replace(/[^0-9]/g, '');
     if (pureDigits.length >= 10) return pureDigits.slice(-10);
@@ -468,8 +470,8 @@ function App() {
         body: JSON.stringify({
           phone: activePhone,
           sender: "evaluator@rizzmail.me",
-          subject: "WhatsApp Chat Simulation",
-          body: "Hello! Testing profile picture visibility."
+          subject: "Test Message",
+          body: "Hello! Testing live profile picture and name display."
         })
       });
       loadInbox(getUserPhone());
@@ -478,7 +480,6 @@ function App() {
     }
   };
 
-  // Delete an entire chat thread
   const handleDeleteChatThread = async (canonicalKey) => {
     try {
       const backendBase = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -514,7 +515,7 @@ function App() {
     }, 2400);
   };
 
-  // UNIFIED CANONICAL CHAT THREADS
+  // STRICT UNIFIED THREAD MAPPING
   const chatThreadsMap = {};
   messages.forEach((msg) => {
     if (msg.isDeleted) return;
@@ -528,15 +529,16 @@ function App() {
       chatThreadsMap[canonicalKey] = {
         canonicalKey: canonicalKey,
         sender: otherParty,
-        name: isOutbound ? (msg.recipientName || otherParty.split('@')[0]) : (msg.senderName || otherParty.split('@')[0]),
-        avatar: isOutbound ? (msg.recipientPhoto || '') : (msg.senderPhoto || ''),
+        name: msg.counterpartyName || (isOutbound ? msg.recipient : msg.sender).split('@')[0],
+        avatar: msg.counterpartyPhoto || '',
         messages: []
       };
     }
-    // Always persist latest avatar if available in any message
-    const photo = isOutbound ? msg.recipientPhoto : msg.senderPhoto;
-    if (photo && !chatThreadsMap[canonicalKey].avatar) {
-      chatThreadsMap[canonicalKey].avatar = photo;
+    if (msg.counterpartyPhoto && !chatThreadsMap[canonicalKey].avatar) {
+      chatThreadsMap[canonicalKey].avatar = msg.counterpartyPhoto;
+    }
+    if (msg.counterpartyName && chatThreadsMap[canonicalKey].name.includes('@')) {
+      chatThreadsMap[canonicalKey].name = msg.counterpartyName;
     }
     chatThreadsMap[canonicalKey].messages.push(msg);
   });
@@ -759,7 +761,7 @@ function App() {
           </div>
         )}
 
-        {/* STEP 6: WHATSAPP-STYLE CHAT INTERFACE WITH UNIFIED THREADS & DELETE CHAT */}
+        {/* STEP 6: CHAT DASHBOARD */}
         {!isLoggingOut && step === 6 && user && (
           <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', justifyContent: 'center' }}>
             {isEditingProfile ? (
@@ -813,16 +815,42 @@ function App() {
                 
                 {/* CHAT LIST PANE */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0 }}>
-                  <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <div className="search-bar-container" style={{ margin: 0, flex: 1 }}>
-                      <Search size={16} className="search-icon" />
-                      <input type="text" placeholder="Search chats..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="search-input" />
+                  <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <div className="search-bar-container" style={{ margin: 0, flex: 1 }}>
+                        <Search size={16} className="search-icon" />
+                        <input type="text" placeholder="Search chats..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="search-input" />
+                      </div>
+
+                      <button onClick={handleSimulateIncomingEmail} className="refresh-btn" title="Simulate incoming chat">
+                        <Zap size={14} />
+                      </button>
+                      <button onClick={() => loadInbox(getUserPhone())} className="refresh-btn" title="Refresh inbox">
+                        <RefreshCw size={14} />
+                      </button>
                     </div>
-                    <button onClick={handleSimulateIncomingEmail} className="refresh-btn" title="Simulate incoming chat">
-                      <Zap size={14} />
-                    </button>
-                    <button onClick={() => loadInbox(getUserPhone())} className="refresh-btn" title="Refresh">
-                      <RefreshCw size={14} />
+
+                    {/* PROMINENT COMPOSE / NEW CHAT BUTTON */}
+                    <button 
+                      onClick={() => setShowNewChatModal(true)} 
+                      style={{
+                        width: '100%',
+                        background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '0.75rem',
+                        borderRadius: '0.75rem',
+                        fontWeight: '600',
+                        fontSize: '0.9rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                      }}
+                    >
+                      <Plus size={18} /> Compose New Chat
                     </button>
                   </div>
 
@@ -831,7 +859,7 @@ function App() {
                       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
                         <Mail size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
                         <p>No active chats</p>
-                        <small>Click <b>⚡ Test Mail</b> to simulate a chat message.</small>
+                        <small>Click <b>Compose New Chat</b> above to text someone new.</small>
                       </div>
                     ) : (
                       filteredThreads.map((thread) => {
@@ -878,9 +906,7 @@ function App() {
                 <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)' }}>
                   {activeThread ? (
                     <>
-                      <div 
-                        style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                      >
+                      <div style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => setShowChatInfo(true)}>
                           <button 
                             onClick={(e) => { e.stopPropagation(); setActiveChatSender(null); }}
@@ -953,14 +979,50 @@ function App() {
                   ) : (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', padding: '2rem', textAlign: 'center' }}>
                       <Mail size={56} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>RizzMail Web WhatsApp</h3>
-                      <p style={{ maxWidth: '320px', fontSize: '0.9rem' }}>Select a chat from the left panel to start messaging with secure burner endpoints.</p>
+                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Secure Chat Portal</h3>
+                      <p style={{ maxWidth: '320px', fontSize: '0.9rem' }}>Select a conversation from the left panel or click <b>Compose New Chat</b> to message someone new.</p>
                     </div>
                   )}
                 </div>
 
               </div>
             )}
+          </div>
+        )}
+
+        {/* COMPOSE NEW CHAT MODAL */}
+        {showNewChatModal && (
+          <div className="modal-overlay" onClick={() => setShowNewChatModal(false)}>
+            <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'left', padding: '1.75rem' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>Compose New Message</h3>
+                <button onClick={() => setShowNewChatModal(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Enter anyone's 10-digit phone number or full @rizzmail.me address to start chatting.</p>
+              
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (!newChatInput.trim()) return;
+                let target = newChatInput.trim().toLowerCase();
+                if (!target.includes('@')) {
+                  const pure = target.replace(/[^0-9]/g, '').slice(-10);
+                  target = `${pure}@rizzmail.me`;
+                }
+                setActiveChatSender(target);
+                setShowNewChatModal(false);
+                setNewChatInput('');
+              }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <input 
+                  type="text" 
+                  placeholder="e.g. 9876543210 or user@rizzmail.me" 
+                  value={newChatInput} 
+                  onChange={(e) => setNewChatInput(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                />
+                <button type="submit" className="primary-btn">Start Chat ➔</button>
+              </form>
+            </div>
           </div>
         )}
 
