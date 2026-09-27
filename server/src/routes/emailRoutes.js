@@ -321,8 +321,8 @@ router.delete('/thread/:identifier', async (req, res) => {
     await Email.updateMany(
       {
         $or: [
-          { sender: { $regex: pureDigits \vert{}\vert{} identifier,$options: 'i' } },
-          { recipient: { $regex: pureDigits \vert{}\vert{} identifier,$options: 'i' } }
+          { sender: { $regex: pureDigits || identifier,$options: 'i' } },
+          { recipient: { $regex: pureDigits || identifier,$options: 'i' } }
         ]
       },
       { $set: { isDeleted: true } }
