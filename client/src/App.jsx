@@ -412,30 +412,50 @@ function App() {
     setIsEditingProfile(false);
   };
 
-  const handleSendEmailSubmit = async (e) => {
+ const handleSendEmailSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSendSuccess('');
+
+    // Basic validation check before sending
+    const activePhone = getUserPhone();
+    if (!activePhone) {
+      setError('Sender phone number is missing. Please re-login.');
+      return;
+    }
+    if (!recipientEmail || !body) {
+      setError('Recipient email and message body are required.');
+      return;
+    }
+
     setLoading(true);
+    console.log('🚀 Attempting to send email...', { senderPhone: activePhone, recipientEmail, subject, body });
+
     try {
-      const activePhone = getUserPhone();
-      await sendEmailAPI({
+      const response = await sendEmailAPI({
         senderPhone: activePhone,
-        recipientEmail,
-        subject,
-        body
+        recipientEmail: recipientEmail.trim(),
+        subject: subject || 'No Subject',
+        body: body
       });
+
+      console.log('✅ Send email response:', response.data);
       setSendSuccess('Email sent successfully!');
       setRecipientEmail('');
       setSubject('');
       setBody('');
       
       loadInbox(activePhone);
-      setTimeout(() => setActiveTab('inbox'), 1500);
+      setTimeout(() => {
+        setSendSuccess('');
+        setActiveTab('inbox');
+      }, 1500);
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to send email');
+      console.error('❌ Send email submission error:', err);
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to send email';
+      setError(errorMsg);
     } finally {
-      setLoading(false);
+      setLoading(false); // Always unlocks the button, even if it fails
     }
   };
 
