@@ -14,8 +14,13 @@ const io = new Server(server, {
 });
 
 app.use(cors({
-  origin: true, // Dynamically allows the incoming request origin (e.g. localhost:5173)
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like Postman or mobile apps) or any localhost/render origin
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
