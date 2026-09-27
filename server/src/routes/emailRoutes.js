@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Email = require('../models/Email');
 const User = require('../models/User');
+const nodemailer = require('nodemailer');
 
 // Helper to normalize phone numbers into pure 10 digits and standard aliases
 const normalizePhone = (input) => {
@@ -14,6 +15,50 @@ const normalizePhone = (input) => {
     alias: `${tenDigits}@rizzmail.me`,
     raw: cleaned
   };
+};
+
+// Configure outbound SMTP transporter (SendGrid)
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.sendgrid.net',
+  port: process.env.SMTP_PORT || 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
+
+// Robust cleaner to strip raw email headers and extract only plain text
+const extractCleanBody = (rawText) => {
+  if (!rawText) return '';
+  
+  // If it doesn't look like a raw email source, return as is
+  if (!rawText.includes('Received:') && !rawText.includes('Content-Type:')) {
+    return rawText;
+  }
+
+  // Look for text/plain section if it's a multipart email from Gmail/Outlook
+  const plainIndex = rawText.indexOf('Content-Type: text/plain');
+  if (plainIndex !== -1) {
+    const textSection = rawText.slice(plainIndex);
+    const doubleNewline = textSection.indexOf('\r\n\r\n') !== -1 ? textSection.indexOf('\r\n\r\n') : textSection.indexOf('\n\n');
+    if (doubleNewline !== -1) {
+      const content = textSection.slice(doubleNewline + (textSection.indexOf('\r\n\r\n') !== -1 ? 4 : 2));
+      const endBoundary = content.indexOf('--');
+      return (endBoundary !== -1 ? content.slice(0, endBoundary) : content).trim();
+    }
+  }
+
+  // Fallback: Split by double newlines to skip headers
+  const parts = rawText.split(/\r?\n\r?\n/);
+  for (let i = parts.length - 1; i >= 1; i--) {
+    const part = parts[i].trim();
+    if (part && !part.includes(': ') && !part.startsWith('Content-') && !part.startsWith('--')) {
+      return part;
+    }
+  }
+
+  return rawText.substring(0, 300); // Ultimate fallback
 };
 
 // GET all emails for a specific address (supports route param)
@@ -84,12 +129,14 @@ router.post('/send', async (req, res) => {
 
     const senderNorm = normalizePhone(senderPhone);
     const normalizedRecipient = recipientEmail.toLowerCase().trim();
+    const senderFullEmail = `${senderNorm.pureDigits}@rizzmail.me`;
 
-    // 1. Save outbound email for sender
+    // 1. Save outbound email record in MongoDB for user's "Sent" tab
     const outboundEmail = new Email({
+      phoneNumber: senderNorm.pureDigits,
       recipient: normalizedRecipient,
-      emailAddress: senderNorm.alias,
-      sender: senderNorm.alias,
+      emailAddress: senderNorm.pureDigits,
+      sender: senderFullEmail,
       subject: subject || 'No Subject',
       body: body,
       direction: 'outbound',
@@ -97,99 +144,50 @@ router.post('/send', async (req, res) => {
     });
     await outboundEmail.save();
 
-    // 2. If recipient is a rizzmail.me address, instantly deliver it to their inbox
+    // 2. Handle Delivery
     if (normalizedRecipient.endsWith('@rizzmail.me')) {
+      // INTERNAL DELIVERY: Instant MongoDB save & WebSocket push
       const recipientNorm = normalizePhone(normalizedRecipient);
 
       const inboundEmail = new Email({
         phoneNumber: recipientNorm.pureDigits,
         recipient: recipientNorm.alias,
         emailAddress: recipientNorm.pureDigits,
-        sender: senderNorm.alias,
+        sender: senderFullEmail,
         subject: subject || 'No Subject',
         body: body,
         direction: 'inbound',
-        date: new Date()
+        date: new Date(),
+        createdAt: new Date()
       });
       await inboundEmail.save();
 
-      // Broadcast via Socket.io if available
       const io = req.app.get('io');
       if (io) {
         io.to(recipientNorm.pureDigits).emit('new_message', inboundEmail);
         io.to(recipientNorm.alias).emit('new_message', inboundEmail);
       }
+    } else {
+      // EXTERNAL DELIVERY: Send via SMTP to outside domains (Gmail, Yahoo, etc.)
+      await transporter.sendMail({
+        from: `"RizzMail User" <noreply@rizzmail.me>`,
+        replyTo: senderFullEmail,
+        to: normalizedRecipient,
+        subject: subject || 'No Subject',
+        text: body,
+        html: `<div style="font-family:sans-serif; padding:10px;"><p>${body}</p><hr/><small style="color:#666;">Sent securely via rizzmail.me burner inbox (${senderFullEmail})</small></div>`
+      });
+      console.log(`🚀 External email successfully sent from ${senderFullEmail} to ${normalizedRecipient}`);
     }
 
     res.status(200).json({ success: true, message: 'Email sent successfully!' });
   } catch (err) {
     console.error('❌ Send email error:', err);
-    res.status(500).json({ error: 'Server error sending email' });
+    res.status(500).json({ error: 'Server error sending email: ' + err.message });
   }
 });
 
 // Cloudflare Email Worker Webhook Receiver (Direct HTTP Ingestion)
-// Helper to clean raw email text and extract only the message body
-const cleanEmailBody = (rawText) => {
-  if (!rawText) return '';
-  
-  // Strip out email headers (everything before the first double newline)
-  let bodyPart = rawText;
-  const doubleNewlineIndex = rawText.indexOf('\r\n\r\n');
-  const doubleNewlineIndexAlt = rawText.indexOf('\n\n');
-  
-  if (doubleNewlineIndex !== -1 && doubleNewlineIndex < 2500) {
-    bodyPart = rawText.slice(doubleNewlineIndex + 4);
-  } else if (doubleNewlineIndexAlt !== -1 && doubleNewlineIndexAlt < 2500) {
-    bodyPart = rawText.slice(doubleNewlineIndexAlt + 2);
-  }
-
-  // Clean up MIME boundaries and content type artifacts
-  let cleaned = bodyPart
-    .replace(/Content-Type:[\s\S]*?\r?\n\r?\n/gi, '')
-    .replace(/Content-Transfer-Encoding:[\s\S]*?\r?\n/gi, '')
-    .replace(/--[a-zA-Z0-9-_=.]+/g, '') // Remove MIME boundaries
-    .replace(/text\/plain|text\/html|multipart\/alternative/gi, '')
-    .trim();
-
-  return cleaned || rawText.substring(0, 300);
-};
-
-// Cloudflare Email Worker Webhook Receiver (Direct HTTP Ingestion)
-// Robust cleaner to strip raw email headers and extract only plain text
-const extractCleanBody = (rawText) => {
-  if (!rawText) return '';
-  
-  // If it doesn't look like a raw email source, return as is
-  if (!rawText.includes('Received:') && !rawText.includes('Content-Type:')) {
-    return rawText;
-  }
-
-  // Look for text/plain section if it's a multipart email from Gmail/Outlook
-  const plainIndex = rawText.indexOf('Content-Type: text/plain');
-  if (plainIndex !== -1) {
-    const textSection = rawText.slice(plainIndex);
-    const doubleNewline = textSection.indexOf('\r\n\r\n') !== -1 ? textSection.indexOf('\r\n\r\n') : textSection.indexOf('\n\n');
-    if (doubleNewline !== -1) {
-      const content = textSection.slice(doubleNewline + (textSection.indexOf('\r\n\r\n') !== -1 ? 4 : 2));
-      const endBoundary = content.indexOf('--');
-      return (endBoundary !== -1 ? content.slice(0, endBoundary) : content).trim();
-    }
-  }
-
-  // Fallback: Split by double newlines to skip headers
-  const parts = rawText.split(/\r?\n\r?\n/);
-  for (let i = parts.length - 1; i >= 1; i--) {
-    const part = parts[i].trim();
-    if (part && !part.includes(': ') && !part.startsWith('Content-') && !part.startsWith('--')) {
-      return part;
-    }
-  }
-
-  return rawText.substring(0, 300); // Ultimate fallback
-};
-
-// Cloudflare Email Worker Webhook Receiver
 router.post('/webhook', async (req, res) => {
   try {
     const { recipient, sender, subject, body } = req.body;
@@ -199,7 +197,7 @@ router.post('/webhook', async (req, res) => {
     }
 
     const recipientNorm = normalizePhone(recipient);
-    const cleanBodyText = extractCleanBody(body); // <--- Cleans out all code/headers!
+    const cleanBodyText = extractCleanBody(body);
 
     const newEmail = new Email({
       phoneNumber: recipientNorm.pureDigits,
@@ -207,28 +205,11 @@ router.post('/webhook', async (req, res) => {
       recipient: recipientNorm.alias,
       sender: sender || 'unknown@domain.com',
       subject: subject || 'No Subject',
-      body: cleanBodyText, // <--- Saves ONLY the clean message
+      body: cleanBodyText,
       direction: 'inbound',
       date: new Date(),
       createdAt: new Date()
     });
-
-    await newEmail.save();
-
-    // Instant real-time WebSocket broadcast
-    const io = req.app.get('io');
-    if (io) {
-      io.to(recipientNorm.pureDigits).emit('new_message', newEmail);
-      io.to(recipientNorm.alias).emit('new_message', newEmail);
-    }
-
-    console.log(`✅ Clean inbound email saved for: ${recipientNorm.alias}`);
-    return res.status(200).json({ success: true, message: 'Webhook email processed successfully' });
-  } catch (err) {
-    console.error('❌ Webhook error:', err);
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
 
     await newEmail.save();
 
