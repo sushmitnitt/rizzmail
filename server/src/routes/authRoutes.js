@@ -11,7 +11,7 @@ try {
   sendEmailNotificationSMS = async () => true;
 }
 
-// Send OTP Route
+// 1. Send OTP Route
 router.post("/send-otp", async (req, res) => {
   try {
     const { phone, phoneNumber } = req.body || {};
@@ -50,7 +50,7 @@ router.post("/send-otp", async (req, res) => {
   }
 });
 
-// Verify OTP Route (Auto-provisions profile & terms to skip extra setup steps)
+// 2. Verify OTP Route
 router.post("/verify-otp", async (req, res) => {
   try {
     const { phone, phoneNumber, otp } = req.body || {};
@@ -71,29 +71,19 @@ router.post("/verify-otp", async (req, res) => {
 
     await Otp.deleteOne({ phone: targetPhone });
 
-    // Auto-create or complete user profile instantly so they go straight to inbox
+    // Check if user exists. If new, create clean record without forcing dummy profile data.
     let user = await User.findOne({ phoneNumber: targetPhone });
     if (!user) {
       user = new User({
         phoneNumber: targetPhone,
-        name: "Rizz User",
-        birthdate: "2000-01-01",
-        birthdateLocked: true,
-        termsAgreed: true
+        termsAgreed: false
       });
       await user.save();
-    } else {
-      let updated = false;
-      if (!user.name) { user.name = "Rizz User"; updated = true; }
-      if (!user.birthdate) { user.birthdate = "2000-01-01"; user.birthdateLocked = true; updated = true; }
-      if (!user.termsAgreed) { user.termsAgreed = true; updated = true; }
-      if (updated) { await user.save(); }
     }
 
     return res.json({ 
       success: true, 
       message: "Phone verified successfully!", 
-      hasProfile: true, 
       user 
     });
   } catch (err) {
@@ -102,8 +92,8 @@ router.post("/verify-otp", async (req, res) => {
   }
 });
 
-// Update Profile Route
-router.post("/update-profile", async (req, res) => {
+// 3. Robust Profile Update Handler (Supports /profile & /update-profile with POST/PUT)
+const handleProfileUpdate = async (req, res) => {
   try {
     const { 
       phone, 
@@ -126,6 +116,7 @@ router.post("/update-profile", async (req, res) => {
 
     const finalBirthdate = birthdate || dob;
 
+    // Validate Age >= 13
     if (finalBirthdate) {
       const dobDate = new Date(finalBirthdate);
       if (!isNaN(dobDate.getTime())) {
@@ -155,12 +146,10 @@ router.post("/update-profile", async (req, res) => {
     const finalPhoto = photo !== undefined ? photo : profilePhoto;
     const finalTerms = termsAgreed !== undefined ? termsAgreed : agreedToTerms;
 
-    const updateData = {
-      phoneNumber: targetPhone,
-      name: finalName !== undefined ? finalName : (user?.name || "Rizz User"),
-      photo: finalPhoto !== undefined ? finalPhoto : (user?.photo || ""),
-      termsAgreed: finalTerms !== undefined ? finalTerms : (user?.termsAgreed || true)
-    };
+    const updateData = {};
+    if (finalName !== undefined) updateData.name = finalName;
+    if (finalPhoto !== undefined) updateData.photo = finalPhoto;
+    if (finalTerms !== undefined) updateData.termsAgreed = finalTerms;
 
     if (finalBirthdate && (!user || !user.birthdate)) {
       updateData.birthdate = finalBirthdate;
@@ -169,15 +158,34 @@ router.post("/update-profile", async (req, res) => {
 
     user = await User.findOneAndUpdate(
       { phoneNumber: targetPhone },
-      updateData,
+      { $set: updateData },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
     console.log(`✅ Profile updated successfully for ${targetPhone}`);
     return res.json({ success: true, message: "Profile saved successfully!", user });
   } catch (err) {
-    console.error("❌ Critical error in /update-profile route:", err);
+    console.error("❌ Critical error in profile update route:", err);
     return res.status(500).json({ success: false, message: err.message || "Internal server error" });
+  }
+};
+
+// Register profile routes under all common paths/methods used by frontends
+router.post("/update-profile", handleProfileUpdate);
+router.put("/update-profile", handleProfileUpdate);
+router.post("/profile", handleProfileUpdate);
+router.put("/profile", handleProfileUpdate);
+
+// 4. Delete Account Route
+router.delete("/account/:phone", async (req, res) => {
+  try {
+    const targetPhone = req.params.phone;
+    await User.findOneAndDelete({ phoneNumber: targetPhone });
+    console.log(`🗑️ Account successfully deleted for: ${targetPhone}`);
+    return res.json({ success: true, message: "Account successfully deleted" });
+  } catch (err) {
+    console.error("❌ Account deletion error:", err);
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
