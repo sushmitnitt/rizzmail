@@ -1,121 +1,196 @@
-const User = require('../models/User');
-const axios = require('axios');
+import React, { useState, useEffect } from 'react';
+import axios from '../services/api'; // Using your normalized api client
 
-// In-memory map to store verification IDs for active sessions
-const verificationStore = {};
+const greetings = [
+  { lang: "Hindi", text: "आपका स्वागत है" },
+  { lang: "Bengali", text: "আপনাকে স্বাগতম" },
+  { lang: "Telugu", text: "స్వాగతం" },
+  { lang: "Marathi", text: "आपले स्वागत आहे" },
+  { lang: "Tamil", text: "நல்வரவு" },
+  { lang: "Gujarati", text: "તમારું સ્વાગત છે" },
+  { lang: "Kannada", text: "ಸ್ವಾಗತ" },
+  { lang: "Malayalam", text: "സ്വാഗതം" }
+];
 
-const sendOTP = async (req, res) => {
-  try {
-    const { phoneNumber } = req.body;
+export default function Login({ onLoginSuccess }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [fade, setFade] = useState(true);
 
-    if (!phoneNumber) {
-      return res.status(400).json({ error: 'Phone number is required' });
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otp, setOtp] = useState('');
+  const [step, setStep] = useState('SEND_OTP'); // 'SEND_OTP' or 'VERIFY_OTP'
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  // Multilingual welcome text fading animation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFade(false); // Fade out
+      setTimeout(() => {
+        setCurrentIndex((prevIndex) => (prevIndex + 1) % greetings.length);
+        setFade(true); // Fade in
+      }, 400);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handle sending OTP to real mobile device via Message Central backend
+  const handleSendOtp = async (e) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+
+    if (!phoneNumber || phoneNumber.length < 10) {
+      setError('Please enter a valid mobile number');
+      return;
     }
 
-    // Clean phone number (removing '+' and spaces)
-    const cleanNumber = phoneNumber.replace(/^\+/, '').trim();
-    const countryCode = cleanNumber.startsWith('91') ? '91' : '91';
-    const mobileNumber = cleanNumber.startsWith('91') ? cleanNumber.slice(2) : cleanNumber;
+    try {
+      setLoading(true);
+      const res = await axios.post('/auth/send-otp', { phoneNumber });
+      setMessage(res.data.message || 'OTP sent successfully to your phone!');
+      setStep('VERIFY_OTP');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to send OTP. Please check your network or number.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const customerId = process.env.MESSAGECENTRAL_CUSTOMER_ID;
-    const base64Key = process.env.MESSAGECENTRAL_ENCODED_KEY;
+  // Handle OTP verification
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
 
-    if (!customerId || !base64Key) {
-      return res.status(400).json({ error: 'Message Central credentials are missing in your server .env file' });
+    if (!otp || otp.length !== 6) {
+      setError('Please enter a valid 6-digit OTP');
+      return;
     }
 
-    // 1. Generate Auth Token from Message Central
-    const tokenRes = await axios.get('https://cpaas.messagecentral.com/auth/v1/authentication/token', {
-      params: {
-        customerId: customerId,
-        key: base64Key,
-        scope: 'NEW',
-        country: countryCode
+    try {
+      setLoading(true);
+      const res = await axios.post('/auth/verify-otp', { phoneNumber, otp });
+      setMessage('Login successful!');
+      if (onLoginSuccess) {
+        onLoginSuccess(res.data.user);
       }
-    });
-
-    const authToken = tokenRes.data?.token;
-    if (!authToken) {
-      return res.status(500).json({ error: 'Failed to authenticate with SMS gateway' });
+    } catch (err) {
+      setError(err.response?.data?.error || 'Invalid or expired OTP.');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // 2. Send Verification OTP via SMS
-    const sendRes = await axios.post('https://cpaas.messagecentral.com/verification/v3/send', null, {
-      params: {
-        countryCode: countryCode,
-        customerId: customerId,
-        mobileNumber: mobileNumber,
-        flowType: 'SMS',
-        otpLength: 6
-      },
-      headers: {
-        authToken: authToken
-      }
-    });
+  return (
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-4">
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
+        
+        {/* Header with Multilingual Greeting Animation */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
+            Rizzmail
+          </h1>
+          <div className="h-10 flex items-center justify-center mt-2">
+            <p
+              className={`text-lg font-medium text-purple-400 transition-opacity duration-500 ease-in-out ${
+                fade ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-2'
+              }`}
+            >
+              {greetings[currentIndex].text}
+            </p>
+          </div>
+        </div>
 
-    if (sendRes.data.responseCode !== 200) {
-      console.error('[Message Central Error]:', sendRes.data);
-      return res.status(500).json({ error: sendRes.data.message || 'Failed to send SMS' });
-    }
+        {/* Error / Success Banners */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-950/60 border border-red-800 text-red-200 text-sm rounded-lg text-center">
+            {error}
+          </div>
+        )}
 
-    // Save verification ID for the validation step
-    verificationStore[phoneNumber] = sendRes.data.data.verificationId;
+        {message && (
+          <div className="mb-4 p-3 bg-emerald-950/60 border border-emerald-800 text-emerald-200 text-sm rounded-lg text-center">
+            {message}
+          </div>
+        )}
 
-    console.log(`[Message Central SMS] Real OTP successfully dispatched to physical device: ${phoneNumber}`);
-    res.status(200).json({ message: 'OTP sent successfully to your phone!' });
-  } catch (error) {
-    console.error('Error in sendOTP:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Server error while sending SMS' });
-  }
-};
+        {/* Step 1: Phone Number Input Form */}
+        {step === 'SEND_OTP' ? (
+          <form onSubmit={handleSendOtp} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Mobile Number
+              </label>
+              <div className="flex">
+                <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-700 bg-slate-800 text-slate-300 text-sm">
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="9876543210"
+                  maxLength={10}
+                  className="flex-1 min-w-0 block w-full px-3 py-2.5 rounded-r-lg border border-slate-700 bg-slate-900 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-purple-500"
+                  required
+                />
+              </div>
+            </div>
 
-const verifyOTP = async (req, res) => {
-  try {
-    const { phoneNumber, otp } = req.body;
-    const verificationId = verificationStore[phoneNumber];
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-lg transition duration-200 shadow-lg shadow-purple-600/30 disabled:opacity-50"
+            >
+              {loading ? 'Sending OTP...' : 'Send OTP'}
+            </button>
+          </form>
+        ) : (
+          /* Step 2: OTP Verification Form */
+          <form onSubmit={handleVerifyOtp} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2 text-center">
+                Enter 6-Digit OTP sent to <span className="text-purple-400">+91 {phoneNumber}</span>
+              </label>
+              <input
+                type="text"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                placeholder="123456"
+                className="w-full px-4 py-3 rounded-lg border border-slate-700 bg-slate-900 text-white text-center tracking-[1em] text-2xl placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                required
+              />
+            </div>
 
-    if (!verificationId) {
-      return res.status(400).json({ error: 'No active OTP request found for this number' });
-    }
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-lg transition duration-200 shadow-lg shadow-purple-600/30 disabled:opacity-50"
+            >
+              {loading ? 'Verifying OTP...' : 'Verify & Login'}
+            </button>
 
-    const customerId = process.env.MESSAGECENTRAL_CUSTOMER_ID;
-    const base64Key = process.env.MESSAGECENTRAL_ENCODED_KEY;
-
-    // Generate Auth Token for validation
-    const tokenRes = await axios.get('https://cpaas.messagecentral.com/auth/v1/authentication/token', {
-      params: { customerId, key: base64Key, scope: 'NEW', country: '91' }
-    });
-    const authToken = tokenRes.data?.token;
-
-    // Validate OTP with Message Central API
-    const validateRes = await axios.get('https://cpaas.messagecentral.com/verification/v3/validateOtp', {
-      params: {
-        verificationId: verificationId,
-        code: otp
-      },
-      headers: {
-        authToken: authToken
-      }
-    });
-
-    const status = validateRes.data?.data?.verificationStatus;
-    if (status !== 'VERIFICATION_COMPLETED') {
-      return res.status(400).json({ error: 'Invalid or expired OTP' });
-    }
-
-    delete verificationStore[phoneNumber];
-
-    // Find or create user in MongoDB
-    let user = await User.findOne({ phoneNumber });
-    if (!user) {
-      user = await User.create({ phoneNumber });
-    }
-
-    res.status(200).json({ message: 'Login successful', user });
-  } catch (error) {
-    console.error('Error in verifyOTP:', error.response?.data || error.message);
-    res.status(400).json({ error: 'Invalid or expired OTP' });
-  }
-};
-
-module.exports = { sendOTP, verifyOTP };
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep('SEND_OTP');
+                  setOtp('');
+                  setMessage('');
+                  setError('');
+                }}
+                className="text-sm text-purple-400 hover:underline"
+              >
+                Change Phone Number
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
