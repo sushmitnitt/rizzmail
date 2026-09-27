@@ -80,6 +80,7 @@ router.get('/messages/:phone', async (req, res) => {
 });
 
 // Send email route (Outbound via SendGrid HTTP API & internal rizzmail delivery)
+// Send email route (Outbound via SendGrid HTTP API & internal rizzmail delivery)
 router.post('/send', async (req, res) => {
   try {
     const { senderPhone, recipientEmail, subject, body } = req.body;
@@ -92,7 +93,7 @@ router.post('/send', async (req, res) => {
     const normalizedRecipient = recipientEmail.toLowerCase().trim();
     const senderFullEmail = `${senderNorm.pureDigits}@rizzmail.me`;
 
-    // 1. Save outbound record for sender
+    // 1. Save outbound record for sender's "Sent" tab
     const outboundEmail = new Email({
       phoneNumber: senderNorm.pureDigits,
       recipient: normalizedRecipient,
@@ -101,9 +102,17 @@ router.post('/send', async (req, res) => {
       subject: subject || 'No Subject',
       body: body,
       direction: 'outbound',
-      date: new Date()
+      date: new Date(),
+      createdAt: new Date()
     });
     await outboundEmail.save();
+
+    // Broadcast outbound message to user's connected socket rooms so Sent tab updates live
+    const io = req.app.get('io');
+    if (io) {
+      io.to(senderNorm.pureDigits).emit('new_message', outboundEmail);
+      io.to(senderNorm.alias).emit('new_message', outboundEmail);
+    }
 
     // 2. Delivery logic
     if (normalizedRecipient.endsWith('@rizzmail.me')) {
@@ -122,13 +131,12 @@ router.post('/send', async (req, res) => {
       });
       await inboundEmail.save();
 
-      const io = req.app.get('io');
       if (io) {
         io.to(recipientNorm.pureDigits).emit('new_message', inboundEmail);
         io.to(recipientNorm.alias).emit('new_message', inboundEmail);
       }
     } else {
-      // EXTERNAL DELIVERY: Send via SendGrid HTTP API (Port 443 - never blocked!)
+      // EXTERNAL DELIVERY: Send via SendGrid HTTP API (Port 443)
       const sendgridApiKey = process.env.SENDGRID_API_KEY || process.env.SMTP_PASS;
       
       if (!sendgridApiKey) {
@@ -142,7 +150,7 @@ router.post('/send', async (req, res) => {
           }
         ],
         from: {
-          email: 'noreply@rizzmail.me',
+          email: senderFullEmail,
           name: 'RizzMail User'
         },
         reply_to: {
@@ -160,13 +168,13 @@ router.post('/send', async (req, res) => {
           'Authorization': `Bearer ${sendgridApiKey}`,
           'Content-Type': 'application/json'
         },
-        timeout: 10000 // 10 second safety timeout
+        timeout: 10000 
       });
 
       console.log(`🚀 External email successfully sent via SendGrid API from ${senderFullEmail} to ${normalizedRecipient}`);
     }
 
-    res.status(200).json({ success: true, message: 'Email sent successfully!' });
+    res.status(200).json({ success: true, message: 'Email sent successfully!', email: outboundEmail });
   } catch (err) {
     console.error('❌ Send email error:', err.response?.data || err.message);
     res.status(500).json({ error: 'Server error sending email: ' + (err.response?.data?.errors?.[0]?.message || err.message) });
