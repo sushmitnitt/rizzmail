@@ -75,7 +75,6 @@ router.get('/:emailAddress', async (req, res) => {
       isDeleted: { $ne: true }
     }).sort({ date: -1, createdAt: -1 }).lean();
 
-    // Dynamically inject latest user DPs
     for (let email of emails) {
       if (email.sender) {
         const details = await getSenderDetails(email.sender);
@@ -105,7 +104,6 @@ router.get('/messages/:phone', async (req, res) => {
       isDeleted: { $ne: true }
     }).sort({ date: -1, createdAt: -1 }).lean();
 
-    // Live-hydrate profile photos and names for all message senders
     for (let email of emails) {
       if (email.sender) {
         const details = await getSenderDetails(email.sender);
@@ -121,7 +119,7 @@ router.get('/messages/:phone', async (req, res) => {
   }
 });
 
-// Send email route (Outbound via SendGrid HTTP API & internal rizzmail delivery)
+// Send email route
 router.post('/send', async (req, res) => {
   try {
     const { senderPhone, recipientEmail, subject, body } = req.body;
@@ -134,10 +132,8 @@ router.post('/send', async (req, res) => {
     const normalizedRecipient = recipientEmail.toLowerCase().trim();
     const senderFullEmail = `${senderNorm.pureDigits}@rizzmail.me`;
 
-    // Fetch sender profile details (Name & DP) from User collection
     const senderDetails = await getSenderDetails(senderNorm.pureDigits);
 
-    // 1. Save outbound record for sender's "Sent" tab
     const outboundEmail = new Email({
       phoneNumber: senderNorm.pureDigits,
       recipient: normalizedRecipient,
@@ -153,14 +149,12 @@ router.post('/send', async (req, res) => {
     });
     await outboundEmail.save();
 
-    // Broadcast outbound message to user's connected socket rooms
     const io = req.app.get('io');
     if (io) {
       io.to(senderNorm.pureDigits).emit('new_message', outboundEmail);
       io.to(senderNorm.alias).emit('new_message', outboundEmail);
     }
 
-    // 2. Delivery logic
     if (normalizedRecipient.endsWith('@rizzmail.me')) {
       const recipientNorm = normalizePhone(normalizedRecipient);
 
