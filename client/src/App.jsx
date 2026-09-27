@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -51,8 +51,8 @@ function App() {
   const [otp, setOtp] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   
-  // Step flow: 1: Phone, 2: OTP, 3: Profile Creation, 4: Terms, 5: Setup Screen, 6: Dashboard, 7: Deletion Warning, 8: Deletion OTP
   const [step, setStep] = useState(() => (user ? 6 : 1));
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile drawer toggle
 
   const [setupStage, setSetupStage] = useState(0);
   const setupStepsList = [
@@ -88,7 +88,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState(null);
 
-  const [activeTab, setActiveTab] = useState('inbox'); // 'inbox', 'sent', 'trash', 'compose'
+  const [activeTab, setActiveTab] = useState('inbox'); 
   const [recipientEmail, setRecipientEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -209,13 +209,12 @@ function App() {
       localStorage.setItem('rizzmail_user', JSON.stringify(normalizedUser));
       setLoading(false);
 
-      // Smart Flow Routing: If profile data is missing, require profile creation. Otherwise log straight in!
       if (!normalizedUser.firstName || !normalizedUser.dob) {
-        setStep(3); // New user profile creation
+        setStep(3);
       } else if (!normalizedUser.agreedToTerms) {
-        setStep(4); // Terms agreement
+        setStep(4);
       } else {
-        setStep(6); // Returning user -> straight to dashboard
+        setStep(6);
       }
     } catch (err) {
       setLoading(false);
@@ -230,7 +229,6 @@ function App() {
       return;
     }
 
-    // Validate Age >= 13
     const dobDate = new Date(dob);
     const today = new Date();
     let age = today.getFullYear() - dobDate.getFullYear();
@@ -426,6 +424,7 @@ function App() {
     setSubject('Re: Your message');
     setActiveTab('compose');
     setIsEditingProfile(false);
+    setMobileMenuOpen(false);
   };
 
   const handleSendEmailSubmit = async (e) => {
@@ -478,7 +477,6 @@ function App() {
   const handleDeleteMessage = async (msgId) => {
     try {
       await deleteMessageAPI(msgId);
-      // Mark as deleted in local state or remove
       setMessages((prev) => prev.map(m => m._id === msgId ? { ...m, isDeleted: true } : m));
       setSelectedMessage(null);
     } catch (err) {
@@ -515,7 +513,7 @@ function App() {
     if (!matchesSearch) return false;
 
     if (activeTab === 'trash') return msg.isDeleted;
-    if (msg.isDeleted) return false; // Hide deleted items from Inbox and Sent
+    if (msg.isDeleted) return false; 
 
     if (activeTab === 'inbox') return msg.direction !== 'outbound';
     if (activeTab === 'sent') return msg.direction === 'outbound';
@@ -526,7 +524,18 @@ function App() {
     <div className="app-container">
       <header className="app-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-          {/* UPDATED LOGO: Changed from 'gm' to 'rm' with vibrant gradient */}
+          {/* MOBILE HAMBURGER TOGGLE */}
+          {user && step === 6 && (
+            <button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="theme-toggle-btn mobile-hamburger-btn" 
+              style={{ display: 'none' }}
+              title="Toggle Menu"
+            >
+              <Menu size={20} />
+            </button>
+          )}
+
           <div style={{
             width: '2.6rem',
             height: '2.6rem',
@@ -547,7 +556,6 @@ function App() {
           </div>
           <div>
             <h1 className="logo-text">rizzmail.me</h1>
-            {/* UPDATED QUOTE / SUBTITLE */}
             <p>Burner Numbers. Real Inboxes. Zero Trace.</p>
           </div>
         </div>
@@ -608,7 +616,9 @@ function App() {
                     {countriesList.map((c) => (<option key={c.name + c.code} value={c.code}>{c.label}</option>))}
                   </select>
                   <input
-                    type="text"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
                     className="phone-number-input"
                     placeholder="9876543210"
                     value={phoneNumber}
@@ -635,6 +645,8 @@ function App() {
               <div className="input-group-stack">
                 <input
                   type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
                   placeholder="0 0 0 0 0 0"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
@@ -680,9 +692,9 @@ function App() {
           </div>
         )}
 
-        {/* GMAIL DASHBOARD LAYOUT */}
+        {/* DASHBOARD LAYOUT */}
         {!isLoggingOut && step === 6 && user && (
-          <div style={{ width: '100%', height: '100%' }}>
+          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
             {isEditingProfile ? (
               <div className="card-wrapper" style={{ margin: '2rem auto', maxWidth: '520px' }}>
                 <div className="card" style={{ textAlign: 'left' }}>
@@ -701,23 +713,39 @@ function App() {
               </div>
             ) : (
               <div className="gmail-layout">
+                {/* MOBILE OVERLAY BACKDROP */}
+                {mobileMenuOpen && (
+                  <div 
+                    onClick={() => setMobileMenuOpen(false)}
+                    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 99, display: 'none' }}
+                    className="mobile-backdrop"
+                  />
+                )}
+
                 {/* GMAIL SIDEBAR */}
-                <div className="gmail-sidebar">
-                  <button className="gmail-compose-btn" onClick={() => setActiveTab('compose')}>
+                <div className={`gmail-sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }} className="mobile-sidebar-header">
+                    <h3>Menu</h3>
+                    <button onClick={() => setMobileMenuOpen(false)} className="theme-toggle-btn" style={{ display: 'none' }} id="close-mobile-menu">
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <button className="gmail-compose-btn" onClick={() => { setActiveTab('compose'); setMobileMenuOpen(false); }}>
                     <Edit3 size={18} /> Compose
                   </button>
 
-                  <button className={`sidebar-nav-item ${activeTab === 'inbox' ? 'active' : ''}`} onClick={() => setActiveTab('inbox')}>
+                  <button className={`sidebar-nav-item ${activeTab === 'inbox' ? 'active' : ''}`} onClick={() => { setActiveTab('inbox'); setMobileMenuOpen(false); }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Mail size={16} /> Inbox</span>
                     <span style={{ fontSize: '0.75rem', fontWeight: '700' }}>{messages.filter(m => m.direction !== 'outbound' && !m.isDeleted).length}</span>
                   </button>
 
-                  <button className={`sidebar-nav-item ${activeTab === 'sent' ? 'active' : ''}`} onClick={() => setActiveTab('sent')}>
+                  <button className={`sidebar-nav-item ${activeTab === 'sent' ? 'active' : ''}`} onClick={() => { setActiveTab('sent'); setMobileMenuOpen(false); }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Send size={16} /> Sent</span>
                     <span style={{ fontSize: '0.75rem', fontWeight: '700' }}>{messages.filter(m => m.direction === 'outbound' && !m.isDeleted).length}</span>
                   </button>
 
-                  <button className={`sidebar-nav-item ${activeTab === 'trash' ? 'active' : ''}`} onClick={() => setActiveTab('trash')}>
+                  <button className={`sidebar-nav-item ${activeTab === 'trash' ? 'active' : ''}`} onClick={() => { setActiveTab('trash'); setMobileMenuOpen(false); }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Trash2 size={16} /> Trash</span>
                     <span style={{ fontSize: '0.75rem', fontWeight: '700' }}>{messages.filter(m => m.isDeleted).length}</span>
                   </button>
@@ -734,9 +762,20 @@ function App() {
                 {/* GMAIL MAIN CONTENT AREA */}
                 <div className="gmail-main">
                   <div className="gmail-toolbar">
-                    <div className="search-bar-container" style={{ margin: 0, flex: 1, maxWidth: '600px' }}>
-                      <Search size={16} className="search-icon" />
-                      <input type="text" placeholder="Search mail..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="search-input" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, maxWidth: '600px' }}>
+                      {/* MOBILE HAMBURGER BUTTON IN TOOLBAR */}
+                      <button 
+                        onClick={() => setMobileMenuOpen(true)}
+                        className="refresh-btn mobile-menu-trigger"
+                        style={{ display: 'none', padding: '0.5rem' }}
+                        title="Open Menu"
+                      >
+                        <Menu size={18} />
+                      </button>
+                      <div className="search-bar-container" style={{ margin: 0, flex: 1 }}>
+                        <Search size={16} className="search-icon" />
+                        <input type="text" placeholder="Search mail..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="search-input" />
+                      </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button onClick={handleSimulateIncomingEmail} className="refresh-btn" title="Simulate incoming test email">
@@ -803,7 +842,7 @@ function App() {
           </div>
         )}
 
-        {/* EMAIL READING MODAL WITH DELETE & REPLY */}
+        {/* EMAIL READING MODAL */}
         {selectedMessage && (
           <div className="modal-overlay" onClick={() => setSelectedMessage(null)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>

@@ -1083,3 +1083,32 @@ html, body {
   color: var(--text-muted);
   flex-shrink: 0;
 }
+
+@media (max-width: 768px) {
+  .mobile-menu-trigger {
+    display: flex !important;
+  }
+  .mobile-sidebar-header {
+    display: flex !important;
+  }
+  #close-mobile-menu {
+    display: flex !important;
+  }
+  .gmail-sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100vh;
+    z-index: 100;
+    background: var(--card-bg);
+    transition: left 0.3s ease-in-out;
+    box-shadow: 5px 0 25px rgba(0,0,0,0.3);
+  }
+  .gmail-sidebar.mobile-open {
+    left: 0;
+  }
+  .mobile-backdrop {
+    display: block !important;
+  }
+}
