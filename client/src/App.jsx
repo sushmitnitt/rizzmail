@@ -543,6 +543,20 @@ function App() {
     chatThreadsMap[canonicalKey].messages.push(msg);
   });
 
+  // Ensure activeChatSender is always present in map even if there are 0 messages yet
+  if (activeChatSender) {
+    const activeCanonical = getCanonicalKey(activeChatSender);
+    if (!chatThreadsMap[activeCanonical]) {
+      chatThreadsMap[activeCanonical] = {
+        canonicalKey: activeCanonical,
+        sender: activeChatSender,
+        name: activeChatSender.split('@')[0],
+        avatar: '',
+        messages: []
+      };
+    }
+  }
+
   const chatThreadsList = Object.values(chatThreadsMap).map(thread => {
     const uniqueMap = new Map();
     thread.messages.forEach(m => uniqueMap.set(m._id || JSON.stringify(m), m));
@@ -889,10 +903,10 @@ function App() {
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.2rem' }}>
                                 <span style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{thread.name}</span>
-                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(thread.lastMessage?.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{thread.lastMessage ? new Date(thread.lastMessage.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                               </div>
                               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>
-                                {thread.lastMessage?.subject ? `${thread.lastMessage.subject}: ` : ''}{thread.lastMessage?.body}
+                                {thread.lastMessage ? (thread.lastMessage.subject ? `${thread.lastMessage.subject}: ` : '') + thread.lastMessage.body : 'New conversation'}
                               </p>
                             </div>
                           </div>
@@ -939,28 +953,35 @@ function App() {
                       </div>
 
                       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
-                        {activeThread.messages.map((msg, idx) => {
-                          const isOutbound = msg.direction === 'outbound';
-                          return (
-                            <div key={msg._id || idx} style={{ display: 'flex', justifyContent: isOutbound ? 'flex-end' : 'flex-start', width: '100%' }}>
-                              <div style={{
-                                maxWidth: '70%',
-                                background: isOutbound ? '#6366f1' : 'var(--card-bg)',
-                                color: isOutbound ? '#ffffff' : 'var(--text-primary)',
-                                padding: '0.75rem 1rem',
-                                borderRadius: isOutbound ? '1rem 1rem 0 1rem' : '1rem 1rem 1rem 0',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                                border: isOutbound ? 'none' : '1px solid var(--input-border)'
-                              }}>
-                                {msg.subject && <div style={{ fontSize: '0.75rem', opacity: 0.8, marginBottom: '0.25rem', fontWeight: '600' }}>{msg.subject}</div>}
-                                <div style={{ fontSize: '0.9rem', wordBreak: 'break-word', lineHeight: '1.4' }}>{msg.body}</div>
-                                <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem' }}>
-                                  {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {activeThread.messages.length === 0 ? (
+                          <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
+                            <p>No messages yet in this conversation.</p>
+                            <small>Send your first message below to start chatting!</small>
+                          </div>
+                        ) : (
+                          activeThread.messages.map((msg, idx) => {
+                            const isOutbound = msg.direction === 'outbound';
+                            return (
+                              <div key={msg._id || idx} style={{ display: 'flex', justifyContent: isOutbound ? 'flex-end' : 'flex-start', width: '100%' }}>
+                                <div style={{
+                                  maxWidth: '70%',
+                                  background: isOutbound ? '#6366f1' : 'var(--card-bg)',
+                                  color: isOutbound ? '#ffffff' : 'var(--text-primary)',
+                                  padding: '0.75rem 1rem',
+                                  borderRadius: isOutbound ? '1rem 1rem 0 1rem' : '1rem 1rem 1rem 0',
+                                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                                  border: isOutbound ? 'none' : '1px solid var(--input-border)'
+                                }}>
+                                  {msg.subject && <div style={{ fontSize: '0.75rem', opacity: 0.8, marginBottom: '0.25rem', fontWeight: '600' }}>{msg.subject}</div>}
+                                  <div style={{ fontSize: '0.9rem', wordBreak: 'break-word', lineHeight: '1.4' }}>{msg.body}</div>
+                                  <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem' }}>
+                                    {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })
+                        )}
                       </div>
 
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
