@@ -117,6 +117,44 @@ router.post('/send', async (req, res) => {
   }
 });
 
+// Cloudflare Email Worker Webhook Receiver (Direct HTTP Ingestion)
+router.post('/webhook', async (req, res) => {
+  try {
+    const { recipient, sender, subject, body } = req.body;
+    
+    if (!recipient) {
+      return res.status(400).json({ error: 'Recipient is required' });
+    }
+
+    const cleanRecipient = recipient.replace('@rizzmail.me', '').trim().toLowerCase();
+    const targetAlias = `${cleanRecipient}@rizzmail.me`;
+
+    const newEmail = new Email({
+      recipient: targetAlias,
+      emailAddress: cleanRecipient,
+      sender: sender || 'unknown@external.com',
+      subject: subject || 'No Subject',
+      body: body || '',
+      direction: 'inbound',
+      date: new Date()
+    });
+    
+    await newEmail.save();
+
+    // Broadcast live via Socket.io instantly
+    const io = req.app.get('io');
+    if (io) {
+      io.to(cleanRecipient).emit('new_message', newEmail);
+      io.to(targetAlias).emit('new_message', newEmail);
+    }
+
+    res.status(200).json({ success: true, message: 'Webhook email processed successfully' });
+  } catch (err) {
+    console.error('❌ Webhook ingestion error:', err);
+    res.status(500).json({ error: 'Internal server error processing webhook' });
+  }
+});
+
 // Simulate incoming email endpoint (for testing & evaluation)
 router.post('/simulate-incoming', async (req, res) => {
   try {
