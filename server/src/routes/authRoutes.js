@@ -50,7 +50,7 @@ router.post("/send-otp", async (req, res) => {
   }
 });
 
-// Verify OTP Route
+// Verify OTP Route (Auto-provisions profile & terms to skip extra setup steps)
 router.post("/verify-otp", async (req, res) => {
   try {
     const { phone, phoneNumber, otp } = req.body || {};
@@ -71,14 +71,30 @@ router.post("/verify-otp", async (req, res) => {
 
     await Otp.deleteOne({ phone: targetPhone });
 
-    const user = await User.findOne({ phoneNumber: targetPhone });
-    const hasProfile = Boolean(user && user.name && user.birthdate && user.termsAgreed);
+    // Auto-create or complete user profile instantly so they go straight to inbox
+    let user = await User.findOne({ phoneNumber: targetPhone });
+    if (!user) {
+      user = new User({
+        phoneNumber: targetPhone,
+        name: "Rizz User",
+        birthdate: "2000-01-01",
+        birthdateLocked: true,
+        termsAgreed: true
+      });
+      await user.save();
+    } else {
+      let updated = false;
+      if (!user.name) { user.name = "Rizz User"; updated = true; }
+      if (!user.birthdate) { user.birthdate = "2000-01-01"; user.birthdateLocked = true; updated = true; }
+      if (!user.termsAgreed) { user.termsAgreed = true; updated = true; }
+      if (updated) { await user.save(); }
+    }
 
     return res.json({ 
       success: true, 
       message: "Phone verified successfully!", 
-      hasProfile, 
-      user: user || { phoneNumber: targetPhone } 
+      hasProfile: true, 
+      user 
     });
   } catch (err) {
     console.error("❌ Critical error in /verify-otp route:", err);
@@ -140,10 +156,10 @@ router.post("/update-profile", async (req, res) => {
     const finalTerms = termsAgreed !== undefined ? termsAgreed : agreedToTerms;
 
     const updateData = {
-      phoneNumber: targetPhone, // Explicitly enforce phoneNumber field matching the index
-      name: finalName !== undefined ? finalName : (user?.name || ""),
+      phoneNumber: targetPhone,
+      name: finalName !== undefined ? finalName : (user?.name || "Rizz User"),
       photo: finalPhoto !== undefined ? finalPhoto : (user?.photo || ""),
-      termsAgreed: finalTerms !== undefined ? finalTerms : (user?.termsAgreed || false)
+      termsAgreed: finalTerms !== undefined ? finalTerms : (user?.termsAgreed || true)
     };
 
     if (finalBirthdate && (!user || !user.birthdate)) {

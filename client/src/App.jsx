@@ -221,6 +221,12 @@ function App() {
       setError('Please enter the exact 6-digit code sent to your phone.');
       return;
     }
+    setUser(normalizedUser);
+      localStorage.setItem('rizzmail_user', JSON.stringify(normalizedUser));
+      setLoading(false);
+
+      // Instantly go to Dashboard (Step 6) without asking for profile or terms again!
+      setStep(6);
 
     setLoading(true);
     try {
