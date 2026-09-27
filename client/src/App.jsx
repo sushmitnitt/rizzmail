@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, QrCode, Settings, Camera, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive } from 'lucide-react';
 import './App.css';
 
-// Dynamically connect to Render backend in production, fallback to localhost for development
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
 const socket = io(SOCKET_URL);
 
@@ -37,14 +36,8 @@ function App() {
     if (!saved) return null;
     try {
       const parsed = JSON.parse(saved);
-      if (parsed && (parsed.firstName || parsed.name) && (parsed.agreedToTerms || parsed.termsAgreed)) {
-        return {
-          ...parsed,
-          phoneNumber: parsed.phoneNumber || parsed.phone,
-          firstName: parsed.firstName || (parsed.name ? parsed.name.split(' ')[0] : ''),
-          lastName: parsed.lastName || (parsed.name ? parsed.name.split(' ').slice(1).join(' ') : ''),
-          profilePhoto: parsed.profilePhoto || parsed.photo
-        };
+      if (parsed && parsed.phoneNumber) {
+        return parsed;
       }
     } catch (e) {
       console.error(e);
@@ -56,10 +49,9 @@ function App() {
   const [countryCode, setCountryCode] = useState('91');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
-  const [resendMessage, setResendMessage] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   
-  // Steps: 1: Phone, 2: OTP, 3: Profile, 4: Terms, 5: Dynamic Setup Screen, 6: Dashboard, 7: Deletion Warning, 8: Deletion OTP
+  // Step flow: 1: Phone, 2: OTP, 3: Profile Creation, 4: Terms, 5: Setup Screen, 6: Dashboard, 7: Deletion Warning, 8: Deletion OTP
   const [step, setStep] = useState(() => (user ? 6 : 1));
 
   const [setupStage, setSetupStage] = useState(0);
@@ -92,12 +84,11 @@ function App() {
   const [error, setError] = useState('');
   
   const [copied, setCopied] = useState(false);
-  const [showCardQR, setShowCardQR] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState(null);
 
-  const [activeTab, setActiveTab] = useState('inbox');
+  const [activeTab, setActiveTab] = useState('inbox'); // 'inbox', 'sent', 'trash', 'compose'
   const [recipientEmail, setRecipientEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -207,16 +198,25 @@ function App() {
       const normalizedUser = {
         ...rawUser,
         phoneNumber: rawUser.phoneNumber || rawUser.phone || targetPhone,
-        firstName: rawUser.firstName || (rawUser.name ? rawUser.name.split(' ')[0] : 'User'),
+        firstName: rawUser.firstName || (rawUser.name ? rawUser.name.split(' ')[0] : ''),
         lastName: rawUser.lastName || (rawUser.name ? rawUser.name.split(' ').slice(1).join(' ') : ''),
         profilePhoto: rawUser.profilePhoto || rawUser.photo,
-        agreedToTerms: true
+        dob: rawUser.dob || rawUser.birthdate || '',
+        agreedToTerms: rawUser.agreedToTerms || rawUser.termsAgreed || false
       };
 
       setUser(normalizedUser);
       localStorage.setItem('rizzmail_user', JSON.stringify(normalizedUser));
       setLoading(false);
-      setStep(6); // Instantly open dashboard
+
+      // Smart Flow Routing: If profile data is missing, require profile creation. Otherwise log straight in!
+      if (!normalizedUser.firstName || !normalizedUser.dob) {
+        setStep(3); // New user profile creation
+      } else if (!normalizedUser.agreedToTerms) {
+        setStep(4); // Terms agreement
+      } else {
+        setStep(6); // Returning user -> straight to dashboard
+      }
     } catch (err) {
       setLoading(false);
       setError(err.response?.data?.error || err.response?.data?.message || 'Invalid verification code entered.');
@@ -227,6 +227,19 @@ function App() {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim() || !dob) {
       setError('Please fill in all identity fields including Date of Birth.');
+      return;
+    }
+
+    // Validate Age >= 13
+    const dobDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - dobDate.getFullYear();
+    const m = today.getMonth() - dobDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
+      age--;
+    }
+    if (age < 13) {
+      setError('You must be at least 13 years old to use RizzMail.');
       return;
     }
 
@@ -252,6 +265,7 @@ function App() {
         phoneNumber: rawUser.phoneNumber || rawUser.phone || activePhone,
         firstName: rawUser.firstName || firstName,
         lastName: rawUser.lastName || lastName,
+        dob: dob,
         profilePhoto: rawUser.profilePhoto || rawUser.photo || profilePhoto,
         agreedToTerms: true
       };
@@ -287,6 +301,7 @@ function App() {
         phoneNumber: rawUser.phoneNumber || rawUser.phone || activePhone,
         firstName: rawUser.firstName || user?.firstName,
         lastName: rawUser.lastName || user?.lastName,
+        dob: rawUser.dob || user?.dob,
         profilePhoto: rawUser.profilePhoto || user?.profilePhoto,
         agreedToTerms: true
       };
@@ -330,6 +345,7 @@ function App() {
         phoneNumber: rawUser.phoneNumber || rawUser.phone || activePhone,
         firstName: editFirstName,
         lastName: editLastName,
+        dob: user.dob,
         profilePhoto: editProfilePhoto,
         agreedToTerms: true
       };
@@ -412,50 +428,30 @@ function App() {
     setIsEditingProfile(false);
   };
 
- const handleSendEmailSubmit = async (e) => {
+  const handleSendEmailSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSendSuccess('');
-
-    // Basic validation check before sending
-    const activePhone = getUserPhone();
-    if (!activePhone) {
-      setError('Sender phone number is missing. Please re-login.');
-      return;
-    }
-    if (!recipientEmail || !body) {
-      setError('Recipient email and message body are required.');
-      return;
-    }
-
     setLoading(true);
-    console.log('🚀 Attempting to send email...', { senderPhone: activePhone, recipientEmail, subject, body });
-
     try {
-      const response = await sendEmailAPI({
+      const activePhone = getUserPhone();
+      await sendEmailAPI({
         senderPhone: activePhone,
-        recipientEmail: recipientEmail.trim(),
-        subject: subject || 'No Subject',
-        body: body
+        recipientEmail,
+        subject,
+        body
       });
-
-      console.log('✅ Send email response:', response.data);
       setSendSuccess('Email sent successfully!');
       setRecipientEmail('');
       setSubject('');
       setBody('');
       
       loadInbox(activePhone);
-      setTimeout(() => {
-        setSendSuccess('');
-        setActiveTab('inbox');
-      }, 1500);
+      setTimeout(() => setActiveTab('inbox'), 1500);
     } catch (err) {
-      console.error('❌ Send email submission error:', err);
-      const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to send email';
-      setError(errorMsg);
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to send email');
     } finally {
-      setLoading(false); // Always unlocks the button, even if it fails
+      setLoading(false);
     }
   };
 
@@ -482,7 +478,8 @@ function App() {
   const handleDeleteMessage = async (msgId) => {
     try {
       await deleteMessageAPI(msgId);
-      setMessages((prev) => prev.filter(m => m._id !== msgId));
+      // Mark as deleted in local state or remove
+      setMessages((prev) => prev.map(m => m._id === msgId ? { ...m, isDeleted: true } : m));
       setSelectedMessage(null);
     } catch (err) {
       setError('Failed to delete email');
@@ -517,6 +514,9 @@ function App() {
 
     if (!matchesSearch) return false;
 
+    if (activeTab === 'trash') return msg.isDeleted;
+    if (msg.isDeleted) return false; // Hide deleted items from Inbox and Sent
+
     if (activeTab === 'inbox') return msg.direction !== 'outbound';
     if (activeTab === 'sent') return msg.direction === 'outbound';
     return true;
@@ -526,11 +526,12 @@ function App() {
     <div className="app-container">
       <header className="app-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+          {/* UPDATED LOGO: Changed from 'gm' to 'rm' with vibrant gradient */}
           <div style={{
             width: '2.6rem',
             height: '2.6rem',
             borderRadius: '0.75rem',
-            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+            background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -542,11 +543,12 @@ function App() {
             flexShrink: 0,
             letterSpacing: '1px'
           }}>
-            gm
+            rm
           </div>
           <div>
             <h1 className="logo-text">rizzmail.me</h1>
-            <p>Gmail-Style Secure Burner Mailbox</p>
+            {/* UPDATED QUOTE / SUBTITLE */}
+            <p>Burner Numbers. Real Inboxes. Zero Trace.</p>
           </div>
         </div>
         
@@ -597,7 +599,7 @@ function App() {
             <form onSubmit={handleSendOTP} className="card">
               <div className="badge-pill"><Shield size={12} /> Secure Authentication</div>
               <h2>Welcome to RizzMail</h2>
-              <p className="subtitle">Enter your mobile number to sign in.</p>
+              <p className="subtitle">Enter your mobile number to sign in or create an account.</p>
               
               <div style={{ marginBottom: '1.5rem' }}>
                 <div className="phone-input-container">
@@ -650,10 +652,10 @@ function App() {
           <div className="card-wrapper" style={{ margin: 'auto', maxWidth: '440px' }}>
             <form onSubmit={handleSaveProfile} className="card">
               <h2>Complete Profile</h2>
-              <p className="subtitle">Provide your name and date of birth (13+).</p>
+              <p className="subtitle">Provide your name and date of birth (Must be 13+).</p>
               <div className="input-group-stack"><label>First Name</label><input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required /></div>
               <div className="input-group-stack"><label>Last Name</label><input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required /></div>
-              <div className="input-group-stack"><label>Date of Birth</label><input type="date" value={dob} onChange={(e) => setDob(e.target.value)} required /></div>
+              <div className="input-group-stack"><label>Date of Birth (13+)</label><input type="date" value={dob} onChange={(e) => setDob(e.target.value)} required /></div>
               <button type="submit" className="primary-btn" disabled={loading}>Next: Terms ➔</button>
             </form>
           </div>
@@ -663,8 +665,8 @@ function App() {
           <div className="card-wrapper" style={{ margin: 'auto', maxWidth: '520px' }}>
             <div className="card" style={{ textAlign: 'left' }}>
               <h2>Terms of Service</h2>
-              <p className="subtitle">Please agree to continue.</p>
-              <button type="button" onClick={handleAgreeToTerms} className="primary-btn">I Agree & Initialize ➔</button>
+              <p className="subtitle">Please agree to continue to your burner inbox.</p>
+              <button type="button" onClick={handleAgreeToTerms} className="primary-btn" disabled={loading}>I Agree & Initialize ➔</button>
             </div>
           </div>
         )}
@@ -707,11 +709,17 @@ function App() {
 
                   <button className={`sidebar-nav-item ${activeTab === 'inbox' ? 'active' : ''}`} onClick={() => setActiveTab('inbox')}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Mail size={16} /> Inbox</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: '700' }}>{messages.filter(m => m.direction !== 'outbound').length}</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: '700' }}>{messages.filter(m => m.direction !== 'outbound' && !m.isDeleted).length}</span>
                   </button>
 
                   <button className={`sidebar-nav-item ${activeTab === 'sent' ? 'active' : ''}`} onClick={() => setActiveTab('sent')}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Send size={16} /> Sent</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: '700' }}>{messages.filter(m => m.direction === 'outbound' && !m.isDeleted).length}</span>
+                  </button>
+
+                  <button className={`sidebar-nav-item ${activeTab === 'trash' ? 'active' : ''}`} onClick={() => setActiveTab('trash')}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Trash2 size={16} /> Trash</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: '700' }}>{messages.filter(m => m.isDeleted).length}</span>
                   </button>
 
                   <div style={{ marginTop: 'auto', borderTop: '1px solid var(--input-border)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -746,7 +754,7 @@ function App() {
                       {sendSuccess && <div className="success-banner">{sendSuccess}</div>}
                       <div className="input-group-stack">
                         <label>To:</label>
-                        <input type="email" placeholder="recipient@rizzmail.me" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} required />
+                        <input type="email" placeholder="recipient@gmail.com or recipient@rizzmail.me" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} required />
                       </div>
                       <div className="input-group-stack">
                         <label>Subject:</label>
@@ -758,7 +766,7 @@ function App() {
                       </div>
                       <div style={{ display: 'flex', gap: '1rem' }}>
                         <button type="submit" className="primary-btn" style={{ width: 'auto', padding: '0.75rem 2rem' }} disabled={loading}>
-                          <Send size={16} /> Send
+                          {loading ? <Loader2 size={16} className="spin" /> : <Send size={16} />} {loading ? 'Sending...' : 'Send'}
                         </button>
                         <button type="button" onClick={() => setActiveTab('inbox')} style={{ background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.75rem 1.5rem', borderRadius: '0.875rem', cursor: 'pointer' }}>Cancel</button>
                       </div>
