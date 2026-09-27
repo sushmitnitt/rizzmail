@@ -52,7 +52,7 @@ function App() {
   const [resendCooldown, setResendCooldown] = useState(0);
   
   const [step, setStep] = useState(() => (user ? 6 : 1));
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile drawer toggle
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [setupStage, setSetupStage] = useState(0);
   const setupStepsList = [
@@ -521,10 +521,9 @@ function App() {
   });
 
   return (
-    <div className="app-container">
+    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
       <header className="app-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-          {/* MOBILE HAMBURGER TOGGLE */}
           {user && step === 6 && (
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -590,12 +589,12 @@ function App() {
         </div>
       </header>
 
-      <main className="main-content" style={{ padding: step === 6 && !isEditingProfile ? '0' : '2rem 1rem', width: '100%', flex: 1 }}>
-        {error && <div className="error-banner">{error}</div>}
+      <main className="main-content" style={{ padding: step === 6 && !isEditingProfile ? '0' : '2rem 1rem', width: '100%', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+        {error && <div className="error-banner" style={{ width: '100%', maxWidth: '440px', marginBottom: '1rem' }}>{error}</div>}
 
         {isLoggingOut && (
-          <div className="card-wrapper" style={{ textAlign: 'center', margin: 'auto', animation: 'slideUp 0.3s ease-out' }}>
-            <div className="card" style={{ padding: '3.5rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card-wrapper" style={{ textAlign: 'center', margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', animation: 'slideUp 0.3s ease-out' }}>
+            <div className="card" style={{ padding: '3.5rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
               <Lock size={32} style={{ color: '#818cf8', animation: 'spin 1.5s linear infinite', marginBottom: '1rem' }} />
               <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Signing Out...</h2>
             </div>
@@ -603,8 +602,8 @@ function App() {
         )}
 
         {!isLoggingOut && step === 1 && (
-          <div style={{ margin: 'auto', maxWidth: '440px' }}>
-            <form onSubmit={handleSendOTP} className="card">
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
+            <form onSubmit={handleSendOTP} className="card" style={{ width: '100%' }}>
               <div className="badge-pill"><Shield size={12} /> Secure Authentication</div>
               <h2>Welcome to RizzMail</h2>
               <p className="subtitle">Enter your mobile number to sign in or create an account.</p>
@@ -636,8 +635,8 @@ function App() {
         )}
 
         {!isLoggingOut && step === 2 && (
-          <div className="card-wrapper" style={{ margin: 'auto', maxWidth: '440px' }}>
-            <form onSubmit={handleVerifyOtp} className="card">
+          <div className="card-wrapper" style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
+            <form onSubmit={handleVerifyOtp} className="card" style={{ width: '100%' }}>
               <div className="badge-pill"><Lock size={12} /> Verification</div>
               <h2>Enter Code</h2>
               <p className="subtitle">We've sent a 6-digit code to <b>{phoneNumber}</b>.</p>
@@ -661,8 +660,8 @@ function App() {
         )}
 
         {!isLoggingOut && step === 3 && (
-          <div className="card-wrapper" style={{ margin: 'auto', maxWidth: '440px' }}>
-            <form onSubmit={handleSaveProfile} className="card">
+          <div className="card-wrapper" style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
+            <form onSubmit={handleSaveProfile} className="card" style={{ width: '100%' }}>
               <h2>Complete Profile</h2>
               <p className="subtitle">Provide your name and date of birth (Must be 13+).</p>
               <div className="input-group-stack"><label>First Name</label><input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required /></div>
@@ -674,8 +673,8 @@ function App() {
         )}
 
         {!isLoggingOut && step === 4 && (
-          <div className="card-wrapper" style={{ margin: 'auto', maxWidth: '520px' }}>
-            <div className="card" style={{ textAlign: 'left' }}>
+          <div className="card-wrapper" style={{ margin: 'auto', width: '100%', maxWidth: '520px', display: 'flex', justifyContent: 'center' }}>
+            <div className="card" style={{ textAlign: 'left', width: '100%' }}>
               <h2>Terms of Service</h2>
               <p className="subtitle">Please agree to continue to your burner inbox.</p>
               <button type="button" onClick={handleAgreeToTerms} className="primary-btn" disabled={loading}>I Agree & Initialize ➔</button>
@@ -684,8 +683,8 @@ function App() {
         )}
 
         {!isLoggingOut && step === 5 && (
-          <div className="card-wrapper" style={{ textAlign: 'center', margin: 'auto' }}>
-            <div className="card" style={{ padding: '3.5rem 2rem' }}>
+          <div className="card-wrapper" style={{ textAlign: 'center', margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
+            <div className="card" style={{ padding: '3.5rem 2rem', width: '100%' }}>
               <Cpu size={34} style={{ color: '#818cf8', animation: 'spin 2s linear infinite', marginBottom: '1rem' }} />
               <h2>{setupStepsList[setupStage]}</h2>
             </div>
@@ -694,10 +693,10 @@ function App() {
 
         {/* DASHBOARD LAYOUT */}
         {!isLoggingOut && step === 6 && user && (
-          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+          <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', justifyContent: 'center' }}>
             {isEditingProfile ? (
-              <div className="card-wrapper" style={{ margin: '2rem auto', maxWidth: '520px' }}>
-                <div className="card" style={{ textAlign: 'left' }}>
+              <div className="card-wrapper" style={{ margin: '2rem auto', width: '100%', maxWidth: '520px', display: 'flex', justifyContent: 'center' }}>
+                <div className="card" style={{ textAlign: 'left', width: '100%' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                     <h3>Manage Account</h3>
                     <button onClick={() => setIsEditingProfile(false)} className="text-btn">Back</button>
@@ -713,7 +712,6 @@ function App() {
               </div>
             ) : (
               <div className="gmail-layout">
-                {/* MOBILE OVERLAY BACKDROP */}
                 {mobileMenuOpen && (
                   <div 
                     onClick={() => setMobileMenuOpen(false)}
@@ -722,7 +720,6 @@ function App() {
                   />
                 )}
 
-                {/* GMAIL SIDEBAR */}
                 <div className={`gmail-sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }} className="mobile-sidebar-header">
                     <h3>Menu</h3>
@@ -759,11 +756,9 @@ function App() {
                   </div>
                 </div>
 
-                {/* GMAIL MAIN CONTENT AREA */}
                 <div className="gmail-main">
                   <div className="gmail-toolbar">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, maxWidth: '600px' }}>
-                      {/* MOBILE HAMBURGER BUTTON IN TOOLBAR */}
                       <button 
                         onClick={() => setMobileMenuOpen(true)}
                         className="refresh-btn mobile-menu-trigger"
@@ -842,7 +837,6 @@ function App() {
           </div>
         )}
 
-        {/* EMAIL READING MODAL */}
         {selectedMessage && (
           <div className="modal-overlay" onClick={() => setSelectedMessage(null)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -872,10 +866,9 @@ function App() {
           </div>
         )}
 
-        {/* ACCOUNT DELETION WARNING STEP */}
         {!isLoggingOut && step === 7 && (
-          <div className="card-wrapper" style={{ maxWidth: '480px', margin: 'auto' }}>
-            <div className="card" style={{ textAlign: 'left' }}>
+          <div className="card-wrapper" style={{ maxWidth: '480px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <div className="card" style={{ textAlign: 'left', width: '100%' }}>
               <div className="badge-pill" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
                 <AlertTriangle size={12} /> Warning: Account Deletion
               </div>
@@ -891,10 +884,9 @@ function App() {
           </div>
         )}
 
-        {/* ACCOUNT DELETION OTP STEP */}
         {!isLoggingOut && step === 8 && (
-          <div className="card-wrapper" style={{ maxWidth: '460px', margin: 'auto' }}>
-            <form onSubmit={handleConfirmAccountDeletion} className="card" style={{ textAlign: 'left' }}>
+          <div className="card-wrapper" style={{ maxWidth: '460px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <form onSubmit={handleConfirmAccountDeletion} className="card" style={{ textAlign: 'left', width: '100%' }}>
               <h2 style={{ color: '#ef4444', fontSize: '1.4rem' }}>Enter Deletion OTP</h2>
               <p className="subtitle" style={{ marginBottom: '1.5rem' }}>Enter the 6-digit verification code sent to your phone.</p>
               <div className="input-group-stack" style={{ marginBottom: '1.5rem' }}>
@@ -907,14 +899,12 @@ function App() {
             </form>
           </div>
         )}
-
       </main>
 
-      {/* LOGOUT CONFIRMATION MODAL */}
       {showLogoutConfirm && (
         <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
-          <div className="card-wrapper" style={{ maxWidth: '400px', margin: 'auto' }} onClick={(e) => e.stopPropagation()}>
-            <div className="card" style={{ textAlign: 'left' }}>
+          <div className="card-wrapper" style={{ maxWidth: '400px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
+            <div className="card" style={{ textAlign: 'left', width: '100%' }}>
               <h3>Sign Out Confirmation</h3>
               <p className="subtitle" style={{ margin: '1rem 0' }}>Are you sure you want to log out?</p>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
