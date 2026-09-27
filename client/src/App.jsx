@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Image as ImageIcon } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -114,6 +114,20 @@ function App() {
     return user?.phoneNumber || user?.phone || phoneNumber;
   };
 
+  // Canonical key normalizer so numbers and rizzmail aliases merge into ONE single chat
+  const getCanonicalKey = (input) => {
+    if (!input) return '';
+    const str = input.toString().toLowerCase().trim();
+    if (str.endsWith('@rizzmail.me')) {
+      const localPart = str.split('@')[0];
+      const pure = localPart.replace(/[^0-9]/g, '');
+      if (pure.length >= 10) return pure.slice(-10);
+    }
+    const pureDigits = str.replace(/[^0-9]/g, '');
+    if (pureDigits.length >= 10) return pureDigits.slice(-10);
+    return str;
+  };
+
   useEffect(() => {
     const activePhone = getUserPhone();
     if (user && step === 6 && activePhone) {
@@ -130,19 +144,15 @@ function App() {
       setSetupStage(0);
       const interval = setInterval(() => {
         setSetupStage((prev) => {
-          if (prev < setupStepsList.length - 1) {
-            return prev + 1;
-          } else {
+          if (prev < setupStepsList.length - 1) return prev + 1;
+          else {
             clearInterval(interval);
             return prev;
           }
         });
       }, 750);
 
-      const timeout = setTimeout(() => {
-        setStep(6);
-      }, 3200);
-
+      const timeout = setTimeout(() => setStep(6), 3200);
       return () => {
         clearInterval(interval);
         clearTimeout(timeout);
@@ -150,13 +160,10 @@ function App() {
     }
   }, [step]);
 
-  // WebSocket listener with strict deduplication by message ID
   useEffect(() => {
     socket.on('new_message', (incomingMsg) => {
       setMessages((prev) => {
-        if (incomingMsg._id && prev.some(m => m._id === incomingMsg._id)) {
-          return prev; // Prevent duplicate insertion
-        }
+        if (incomingMsg._id && prev.some(m => m._id === incomingMsg._id)) return prev;
         return [incomingMsg, ...prev];
       });
       setToast(incomingMsg);
@@ -175,11 +182,8 @@ function App() {
     }
     const reader = new FileReader();
     reader.onloadend = () => {
-      if (isEdit) {
-        setEditProfilePhoto(reader.result);
-      } else {
-        setProfilePhoto(reader.result);
-      }
+      if (isEdit) setEditProfilePhoto(reader.result);
+      else setProfilePhoto(reader.result);
     };
     reader.readAsDataURL(file);
   };
@@ -231,13 +235,9 @@ function App() {
       localStorage.setItem('rizzmail_user', JSON.stringify(normalizedUser));
       setLoading(false);
 
-      if (!normalizedUser.firstName || !normalizedUser.dob) {
-        setStep(3);
-      } else if (!normalizedUser.agreedToTerms) {
-        setStep(4);
-      } else {
-        setStep(6);
-      }
+      if (!normalizedUser.firstName || !normalizedUser.dob) setStep(3);
+      else if (!normalizedUser.agreedToTerms) setStep(4);
+      else setStep(6);
     } catch (err) {
       setLoading(false);
       setError(err.response?.data?.error || err.response?.data?.message || 'Invalid verification code entered.');
@@ -248,18 +248,6 @@ function App() {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim() || !dob) {
       setError('Please fill in all identity fields including Date of Birth.');
-      return;
-    }
-
-    const dobDate = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - dobDate.getFullYear();
-    const m = today.getMonth() - dobDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
-      age--;
-    }
-    if (age < 13) {
-      setError('You must be at least 13 years old to use RizzMail.');
       return;
     }
 
@@ -419,7 +407,7 @@ function App() {
       handleLogout();
     } catch (err) {
       setDeleteLoading(false);
-      setError(err.response?.data?.error || err.response?.data?.message || 'Invalid confirmation code. Deletion aborted.');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Invalid confirmation code.');
     }
   };
 
@@ -453,7 +441,6 @@ function App() {
         body: chatMessageBody
       });
       
-      // Instantly inject outbound message cleanly without duplicating
       if (res.data && res.data.message) {
         const newMsg = res.data.message;
         setMessages((prev) => {
@@ -463,7 +450,6 @@ function App() {
       } else {
         loadInbox(activePhone);
       }
-      
       setChatMessageBody('');
     } catch (err) {
       setError('Failed to send reply.');
@@ -483,12 +469,28 @@ function App() {
           phone: activePhone,
           sender: "evaluator@rizzmail.me",
           subject: "WhatsApp Chat Simulation",
-          body: "Hello! This is a simulated incoming message testing your WhatsApp-style chat interface."
+          body: "Hello! Testing profile picture visibility."
         })
       });
       loadInbox(getUserPhone());
     } catch (e) {
       console.error("Simulation failed", e);
+    }
+  };
+
+  // Delete an entire chat thread
+  const handleDeleteChatThread = async (canonicalKey) => {
+    try {
+      const backendBase = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
+      await fetch(`${backendBase}/api/email/thread/${canonicalKey}`, { method: 'DELETE' });
+      setMessages((prev) => prev.filter(m => {
+        const isOutbound = m.direction === 'outbound';
+        const other = isOutbound ? m.recipient : m.sender;
+        return getCanonicalKey(other) !== canonicalKey;
+      }));
+      setActiveChatSender(null);
+    } catch (e) {
+      setError('Failed to delete chat thread.');
     }
   };
 
@@ -512,34 +514,37 @@ function App() {
     }, 2400);
   };
 
-  // STRICT WHATSAPP CHAT THREAD ISOLATION
+  // UNIFIED CANONICAL CHAT THREADS
   const chatThreadsMap = {};
   messages.forEach((msg) => {
-    if (msg.isDeleted && activeTab !== 'trash') return;
-    
-    // Identify the other party strictly: if outbound, it's the recipient; if inbound, it's the sender
+    if (msg.isDeleted) return;
     const isOutbound = msg.direction === 'outbound';
     const otherParty = isOutbound ? msg.recipient : msg.sender;
     if (!otherParty) return;
 
-    if (!chatThreadsMap[otherParty]) {
-      chatThreadsMap[otherParty] = {
+    const canonicalKey = getCanonicalKey(otherParty);
+
+    if (!chatThreadsMap[canonicalKey]) {
+      chatThreadsMap[canonicalKey] = {
+        canonicalKey: canonicalKey,
         sender: otherParty,
         name: isOutbound ? (msg.recipientName || otherParty.split('@')[0]) : (msg.senderName || otherParty.split('@')[0]),
         avatar: isOutbound ? (msg.recipientPhoto || '') : (msg.senderPhoto || ''),
         messages: []
       };
     }
-    chatThreadsMap[otherParty].messages.push(msg);
+    // Always persist latest avatar if available in any message
+    const photo = isOutbound ? msg.recipientPhoto : msg.senderPhoto;
+    if (photo && !chatThreadsMap[canonicalKey].avatar) {
+      chatThreadsMap[canonicalKey].avatar = photo;
+    }
+    chatThreadsMap[canonicalKey].messages.push(msg);
   });
 
   const chatThreadsList = Object.values(chatThreadsMap).map(thread => {
-    // Deduplicate messages inside the thread by _id
     const uniqueMap = new Map();
     thread.messages.forEach(m => uniqueMap.set(m._id || JSON.stringify(m), m));
     thread.messages = Array.from(uniqueMap.values());
-
-    // Sort chronologically
     thread.messages.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
     thread.lastMessage = thread.messages[thread.messages.length - 1];
     return thread;
@@ -551,7 +556,7 @@ function App() {
     (thread.lastMessage && thread.lastMessage.body.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const activeThread = activeChatSender ? chatThreadsMap[activeChatSender] : null;
+  const activeThread = activeChatSender ? chatThreadsMap[getCanonicalKey(activeChatSender)] : null;
 
   return (
     <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
@@ -754,7 +759,7 @@ function App() {
           </div>
         )}
 
-        {/* STEP 6: WHATSAPP-STYLE CHAT INTERFACE */}
+        {/* STEP 6: WHATSAPP-STYLE CHAT INTERFACE WITH UNIFIED THREADS & DELETE CHAT */}
         {!isLoggingOut && step === 6 && user && (
           <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', justifyContent: 'center' }}>
             {isEditingProfile ? (
@@ -833,7 +838,7 @@ function App() {
                         const isSelected = activeChatSender === thread.sender;
                         return (
                           <div 
-                            key={thread.sender}
+                            key={thread.canonicalKey}
                             onClick={() => setActiveChatSender(thread.sender)}
                             style={{
                               display: 'flex',
@@ -874,27 +879,37 @@ function App() {
                   {activeThread ? (
                     <>
                       <div 
-                        onClick={() => setShowChatInfo(true)}
-                        style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.875rem', cursor: 'pointer' }}
+                        style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                       >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => setShowChatInfo(true)}>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setActiveChatSender(null); }}
+                            className="whatsapp-back-btn"
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'none' }}
+                          >
+                            <ArrowLeft size={20} />
+                          </button>
+                          <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: '0', color: '#fff', fontWeight: 'bold' }}>
+                            {activeThread.avatar ? (
+                              <img src={activeThread.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              activeThread.name.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeThread.name}</h3>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Tap here for contact info</span>
+                          </div>
+                        </div>
+
+                        {/* DELETE CHAT BUTTON */}
                         <button 
-                          onClick={(e) => { e.stopPropagation(); setActiveChatSender(null); }}
-                          className="whatsapp-back-btn"
-                          style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'none' }}
+                          onClick={() => handleDeleteChatThread(activeThread.canonicalKey)}
+                          title="Delete Chat Thread"
+                          style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: 'none', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: '600' }}
                         >
-                          <ArrowLeft size={20} />
+                          <Trash size={15} /> Delete Chat
                         </button>
-                        <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: '0', color: '#fff', fontWeight: 'bold' }}>
-                          {activeThread.avatar ? (
-                            <img src={activeThread.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            activeThread.name.charAt(0).toUpperCase()
-                          )}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeThread.name}</h3>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Tap here for contact info</span>
-                        </div>
                       </div>
 
                       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>

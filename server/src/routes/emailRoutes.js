@@ -17,7 +17,7 @@ const normalizePhone = (input) => {
   };
 };
 
-// Helper to fetch sender name and profile photo from User model
+// Helper to fetch sender name and profile photo live from User model
 const getSenderDetails = async (phoneOrEmail) => {
   try {
     if (!phoneOrEmail) return { name: 'User', photo: '' };
@@ -63,7 +63,7 @@ const extractCleanBody = (rawText) => {
   return rawText.substring(0, 300);
 };
 
-// GET all emails for a specific address
+// GET all emails for a specific address with live profile photo injection
 router.get('/:emailAddress', async (req, res) => {
   try {
     const emailAddress = req.params.emailAddress.toLowerCase();
@@ -71,15 +71,26 @@ router.get('/:emailAddress', async (req, res) => {
       $or: [
         { emailAddress },
         { recipient: emailAddress }
-      ]
-    }).sort({ date: -1, createdAt: -1 });
+      ],
+      isDeleted: { $ne: true }
+    }).sort({ date: -1, createdAt: -1 }).lean();
+
+    // Dynamically inject latest user DPs
+    for (let email of emails) {
+      if (email.sender) {
+        const details = await getSenderDetails(email.sender);
+        email.senderName = details.name;
+        email.senderPhoto = details.photo;
+      }
+    }
+
     res.json(emails);
   } catch (err) {
     res.status(500).json({ error: 'Server error fetching emails' });
   }
 });
 
-// Fetch messages by phone number or alias
+// Fetch messages by phone number or alias with live profile photo injection
 router.get('/messages/:phone', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phone);
@@ -90,8 +101,19 @@ router.get('/messages/:phone', async (req, res) => {
         { emailAddress: pureDigits },
         { recipient: { $regex: pureDigits,$options: 'i' } },
         { phoneNumber: pureDigits }
-      ]
-    }).sort({ date: -1, createdAt: -1 });
+      ],
+      isDeleted: { $ne: true }
+    }).sort({ date: -1, createdAt: -1 }).lean();
+
+    // Live-hydrate profile photos and names for all message senders
+    for (let email of emails) {
+      if (email.sender) {
+        const details = await getSenderDetails(email.sender);
+        email.senderName = details.name;
+        email.senderPhoto = details.photo;
+      }
+    }
+
     res.json(emails);
   } catch (err) {
     console.error('❌ Fetch messages error:', err);
@@ -131,7 +153,7 @@ router.post('/send', async (req, res) => {
     });
     await outboundEmail.save();
 
-    // Broadcast outbound message to user's connected socket rooms so Sent tab updates live
+    // Broadcast outbound message to user's connected socket rooms
     const io = req.app.get('io');
     if (io) {
       io.to(senderNorm.pureDigits).emit('new_message', outboundEmail);
@@ -162,7 +184,6 @@ router.post('/send', async (req, res) => {
         io.to(recipientNorm.alias).emit('new_message', inboundEmail);
       }
     } else {
-      // EXTERNAL DELIVERY: Send via SendGrid HTTP API (Port 443)
       const sendgridApiKey = process.env.SENDGRID_API_KEY || process.env.SMTP_PASS;
       
       if (!sendgridApiKey) {
@@ -170,25 +191,11 @@ router.post('/send', async (req, res) => {
       }
 
       await axios.post('https://api.sendgrid.com/v3/mail/send', {
-        personalizations: [
-          {
-            to: [{ email: normalizedRecipient }]
-          }
-        ],
-        from: {
-          email: senderFullEmail,
-          name: senderDetails.name || 'RizzMail User'
-        },
-        reply_to: {
-          email: senderFullEmail
-        },
+        personalizations: [{ to: [{ email: normalizedRecipient }] }],
+        from: { email: senderFullEmail, name: senderDetails.name || 'RizzMail User' },
+        reply_to: { email: senderFullEmail },
         subject: subject || 'No Subject',
-        content: [
-          {
-            type: 'text/plain',
-            value: body
-          }
-        ]
+        content: [{ type: 'text/plain', value: body }]
       }, {
         headers: {
           'Authorization': `Bearer ${sendgridApiKey}`,
@@ -196,14 +203,12 @@ router.post('/send', async (req, res) => {
         },
         timeout: 10000 
       });
-
-      console.log(`🚀 External email successfully sent via SendGrid API from ${senderFullEmail} to ${normalizedRecipient}`);
     }
 
     res.status(200).json({ success: true, message: 'Email sent successfully!', email: outboundEmail });
   } catch (err) {
     console.error('❌ Send email error:', err.response?.data || err.message);
-    res.status(500).json({ error: 'Server error sending email: ' + (err.response?.data?.errors?.[0]?.message || err.message) });
+    res.status(500).json({ error: 'Server error sending email' });
   }
 });
 
@@ -242,7 +247,6 @@ router.post('/webhook', async (req, res) => {
       io.to(recipientNorm.alias).emit('new_message', newEmail);
     }
 
-    console.log(`✅ Clean inbound email saved for: ${recipientNorm.alias}`);
     return res.status(200).json({ success: true, message: 'Webhook email processed successfully' });
   } catch (err) {
     console.error('❌ Webhook error:', err);
@@ -262,8 +266,17 @@ router.get('/inbox/:phoneNumber', async (req, res) => {
         { emailAddress: pureDigits },
         { recipient: alias },
         { recipient: { $regex: pureDigits,$options: 'i' } }
-      ]
-    }).sort({ createdAt: -1, date: -1 });
+      ],
+      isDeleted: { $ne: true }
+    }).sort({ createdAt: -1, date: -1 }).lean();
+
+    for (let email of emails) {
+      if (email.sender) {
+        const details = await getSenderDetails(email.sender);
+        email.senderName = details.name;
+        email.senderPhoto = details.photo;
+      }
+    }
 
     res.status(200).json({ success: true, emails });
   } catch (err) {
@@ -305,11 +318,31 @@ router.post('/simulate-incoming', async (req, res) => {
   }
 });
 
+// Delete entire chat thread
+router.delete('/thread/:identifier', async (req, res) => {
+  try {
+    const identifier = req.params.identifier;
+    const { pureDigits } = normalizePhone(identifier);
+    
+    await Email.updateMany(
+      {
+        $or: [
+          { sender: { $regex: pureDigits \vert{}\vert{} identifier,$options: 'i' } },
+          { recipient: { $regex: pureDigits \vert{}\vert{} identifier,$options: 'i' } }
+        ]
+      },
+      { $set: { isDeleted: true } }
+    );
+    res.json({ success: true, message: 'Thread deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete chat thread' });
+  }
+});
+
 // Delete single message
 router.delete('/message/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    await Email.findByIdAndDelete(id);
+    await Email.findByIdAndUpdate(req.params.id, { isDeleted: true });
     res.json({ success: true, message: 'Message deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete email' });
