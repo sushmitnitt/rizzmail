@@ -3,6 +3,19 @@ const router = express.Router();
 const Email = require('../models/Email');
 const User = require('../models/User');
 
+// Helper to normalize phone numbers into pure 10 digits and standard aliases
+const normalizePhone = (input) => {
+  if (!input) return { pureDigits: '', alias: '' };
+  const cleaned = input.toString().trim();
+  const pureDigits = cleaned.replace(/[^0-9]/g, '');
+  const tenDigits = pureDigits.length > 10 ? pureDigits.slice(-10) : pureDigits;
+  return {
+    pureDigits: tenDigits,
+    alias: `${tenDigits}@rizzmail.me`,
+    raw: cleaned
+  };
+};
+
 // GET all emails for a specific address (supports route param)
 router.get('/:emailAddress', async (req, res) => {
   try {
@@ -41,17 +54,15 @@ router.get('/', async (req, res) => {
 // Fetch messages by phone number or alias (used by frontend fetchMessages)
 router.get('/messages/:phone', async (req, res) => {
   try {
-    const phoneParam = req.params.phone;
-    const cleanPhone = phoneParam.startsWith('+') ? phoneParam.slice(1) : phoneParam;
-    const targetAlias = cleanPhone.includes('@') ? cleanPhone.toLowerCase() : `${cleanPhone}@rizzmail.me`;
-    const purePhone = cleanPhone.replace('@rizzmail.me', '').replace(/[^0-9]/g, '');
+    const { pureDigits, alias } = normalizePhone(req.params.phone);
 
     const emails = await Email.find({
       $or: [
-        { emailAddress: targetAlias },
-        { recipient: targetAlias },
-        { emailAddress: purePhone },
-        { recipient: { $regex: purePhone,$options: 'i' } }
+        { emailAddress: alias },
+        { recipient: alias },
+        { emailAddress: pureDigits },
+        { recipient: { $regex: pureDigits,$options: 'i' } },
+        { phoneNumber: pureDigits }
       ]
     }).sort({ date: -1, createdAt: -1 });
 
@@ -71,15 +82,14 @@ router.post('/send', async (req, res) => {
       return res.status(400).json({ error: 'Sender, recipient, and body are required.' });
     }
 
-    const cleanSenderPhone = senderPhone.startsWith('+') ? senderPhone.slice(1) : senderPhone;
-    const senderAlias = cleanSenderPhone.includes('@') ? cleanSenderPhone.toLowerCase() : `${cleanSenderPhone}@rizzmail.me`;
+    const senderNorm = normalizePhone(senderPhone);
     const normalizedRecipient = recipientEmail.toLowerCase().trim();
 
     // 1. Save outbound email for sender
     const outboundEmail = new Email({
       recipient: normalizedRecipient,
-      emailAddress: senderAlias,
-      sender: senderAlias,
+      emailAddress: senderNorm.alias,
+      sender: senderNorm.alias,
       subject: subject || 'No Subject',
       body: body,
       direction: 'outbound',
@@ -89,12 +99,13 @@ router.post('/send', async (req, res) => {
 
     // 2. If recipient is a rizzmail.me address, instantly deliver it to their inbox
     if (normalizedRecipient.endsWith('@rizzmail.me')) {
-      const recipientClean = normalizedRecipient.replace('@rizzmail.me', '').trim();
+      const recipientNorm = normalizePhone(normalizedRecipient);
 
       const inboundEmail = new Email({
-        recipient: normalizedRecipient,
-        emailAddress: recipientClean,
-        sender: senderAlias,
+        phoneNumber: recipientNorm.pureDigits,
+        recipient: recipientNorm.alias,
+        emailAddress: recipientNorm.pureDigits,
+        sender: senderNorm.alias,
         subject: subject || 'No Subject',
         body: body,
         direction: 'inbound',
@@ -105,8 +116,8 @@ router.post('/send', async (req, res) => {
       // Broadcast via Socket.io if available
       const io = req.app.get('io');
       if (io) {
-        io.to(recipientClean).emit('new_message', inboundEmail);
-        io.to(normalizedRecipient).emit('new_message', inboundEmail);
+        io.to(recipientNorm.pureDigits).emit('new_message', inboundEmail);
+        io.to(recipientNorm.alias).emit('new_message', inboundEmail);
       }
     }
 
@@ -118,7 +129,6 @@ router.post('/send', async (req, res) => {
 });
 
 // Cloudflare Email Worker Webhook Receiver (Direct HTTP Ingestion)
-// 1. Inbound Webhook endpoint for Cloudflare Email Workers
 router.post('/webhook', async (req, res) => {
   try {
     const { recipient, sender, subject, body } = req.body;
@@ -127,24 +137,30 @@ router.post('/webhook', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Recipient required' });
     }
 
-    // Extract the raw username part before '@' (e.g., "7007012049" from "7007012049@rizzmail.me")
-    const rawUsername = recipient.split('@')[0].trim();
-    
-    // Store both the exact username and clean digits so any query format matches
-    const cleanDigits = rawUsername.replace(/^\+/, '');
+    const recipientNorm = normalizePhone(recipient);
 
     const newEmail = new Email({
-      phoneNumber: rawUsername, // Saves primary extracted identifier
-      recipient,
+      phoneNumber: recipientNorm.pureDigits,
+      emailAddress: recipientNorm.pureDigits,
+      recipient: recipientNorm.alias,
       sender: sender || 'unknown@domain.com',
       subject: subject || 'No Subject',
       body: body || '',
+      direction: 'inbound',
+      date: new Date(),
       createdAt: new Date()
     });
 
     await newEmail.save();
 
-    console.log(`✅ Inbound email saved for recipient: ${rawUsername} from ${sender}`);
+    // Instant real-time WebSocket broadcast to connected client
+    const io = req.app.get('io');
+    if (io) {
+      io.to(recipientNorm.pureDigits).emit('new_message', newEmail);
+      io.to(recipientNorm.alias).emit('new_message', newEmail);
+    }
+
+    console.log(`✅ Inbound email saved & broadcasted for recipient: ${recipientNorm.alias} from ${sender}`);
     return res.status(200).json({ success: true, message: 'Webhook email processed successfully' });
   } catch (err) {
     console.error('❌ Webhook error:', err);
@@ -152,28 +168,20 @@ router.post('/webhook', async (req, res) => {
   }
 });
 
-// 2. Flexible Inbox fetcher that matches both with and without country codes
+// Flexible Inbox fetcher
 router.get('/inbox/:phoneNumber', async (req, res) => {
   try {
-    let { phoneNumber } = req.params;
-    if (!phoneNumber) return res.status(400).json({ success: false, message: 'Phone number required' });
-
-    // Generate possible search variations (e.g., "7007012049", "+917007012049", "917007012049")
-    const cleaned = phoneNumber.replace(/^\+/, '');
-    const variations = [
-      phoneNumber,
-      cleaned,
-      `+${cleaned}`
-    ];
-    // Also include common country code suffixes if missing
-    if (cleaned.length === 10) {
-      variations.push(`91${cleaned}`);
-      variations.push(`+91${cleaned}`);
-    }
+    const { pureDigits, alias } = normalizePhone(req.params.phoneNumber);
+    if (!pureDigits) return res.status(400).json({ success: false, message: 'Phone number required' });
 
     const emails = await Email.find({ 
-      phoneNumber: { $in: variations } 
-    }).sort({ createdAt: -1 });
+      $or: [
+        { phoneNumber: pureDigits },
+        { emailAddress: pureDigits },
+        { recipient: alias },
+        { recipient: { $regex: pureDigits,$options: 'i' } }
+      ]
+    }).sort({ createdAt: -1, date: -1 });
 
     res.status(200).json({ success: true, emails });
   } catch (err) {
@@ -185,12 +193,12 @@ router.get('/inbox/:phoneNumber', async (req, res) => {
 router.post('/simulate-incoming', async (req, res) => {
   try {
     const { phone, sender, subject, body } = req.body;
-    const cleanPhone = (phone || '').toString().replace(/^\+/, '').replace('@rizzmail.me', '').trim();
-    const targetAlias = `${cleanPhone}@rizzmail.me`;
+    const phoneNorm = normalizePhone(phone);
 
     const newEmail = new Email({
-      recipient: targetAlias,
-      emailAddress: cleanPhone,
+      phoneNumber: phoneNorm.pureDigits,
+      recipient: phoneNorm.alias,
+      emailAddress: phoneNorm.pureDigits,
       sender: sender || 'evaluator@rizzmail.me',
       subject: subject || 'Simulated Test Email',
       body: body || 'This is a live simulated incoming message.',
@@ -201,8 +209,8 @@ router.post('/simulate-incoming', async (req, res) => {
 
     const io = req.app.get('io');
     if (io) {
-      io.to(cleanPhone).emit('new_message', newEmail);
-      io.to(targetAlias).emit('new_message', newEmail);
+      io.to(phoneNorm.pureDigits).emit('new_message', newEmail);
+      io.to(phoneNorm.alias).emit('new_message', newEmail);
     }
 
     res.status(200).json({ success: true, email: newEmail });
@@ -218,22 +226,21 @@ router.delete('/message/:id', async (req, res) => {
     await Email.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Message deleted' });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete message' });
+    res.status(500).json({ error: 'Failed to delete email' });
   }
 });
 
 // Delete account and associated data
 router.delete('/account/:phone', async (req, res) => {
   try {
-    const cleanPhone = req.params.phone.replace(/^\+/, '').replace('@rizzmail.me', '');
-    const targetAlias = `${cleanPhone}@rizzmail.me`;
+    const { pureDigits, alias } = normalizePhone(req.params.phone);
 
-    await User.findOneAndDelete({ phoneNumber: { $regex: cleanPhone } });
+    await User.findOneAndDelete({ phoneNumber: { $regex: pureDigits } });
     await Email.deleteMany({
       $or: [
-        { emailAddress: cleanPhone },
-        { emailAddress: targetAlias },
-        { recipient: targetAlias }
+        { emailAddress: pureDigits },
+        { recipient: alias },
+        { recipient: { $regex: pureDigits,$options: 'i' } }
       ]
     });
 
