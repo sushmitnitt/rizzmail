@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from '../services/api'; // Using your normalized api client
+import axios from '../services/api';
 
 const greetings = [
   { lang: "Hindi", text: "आपका स्वागत है" },
@@ -26,24 +26,23 @@ export default function Login({ onLoginSuccess }) {
   // Multilingual welcome text fading animation
   useEffect(() => {
     const interval = setInterval(() => {
-      setFade(false); // Fade out
+      setFade(false); 
       setTimeout(() => {
         setCurrentIndex((prevIndex) => (prevIndex + 1) % greetings.length);
-        setFade(true); // Fade in
+        setFade(true); 
       }, 400);
     }, 3000);
 
     return () => clearInterval(interval);
   }, []);
 
-  // Handle sending OTP to real mobile device via Message Central backend
   const handleSendOtp = async (e) => {
     e.preventDefault();
     setError('');
     setMessage('');
 
     if (!phoneNumber || phoneNumber.length < 10) {
-      setError('Please enter a valid mobile number');
+      setError('Please enter a valid 10-digit mobile number');
       return;
     }
 
@@ -53,13 +52,12 @@ export default function Login({ onLoginSuccess }) {
       setMessage(res.data.message || 'OTP sent successfully to your phone!');
       setStep('VERIFY_OTP');
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to send OTP. Please check your network or number.');
+      setError(err.response?.data?.error || 'Failed to send OTP. Please check your network.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle OTP verification
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setError('');
@@ -85,17 +83,17 @@ export default function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-4">
-      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
+    <div className="min-h-[100dvh] bg-slate-950 flex flex-col items-center justify-center px-4 sm:px-6 py-8">
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl transition-all">
         
         {/* Header with Multilingual Greeting Animation */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
             Rizzmail
           </h1>
           <div className="h-10 flex items-center justify-center mt-2">
             <p
-              className={`text-lg font-medium text-purple-400 transition-opacity duration-500 ease-in-out ${
+              className={`text-base sm:text-lg font-medium text-purple-400 transition-opacity duration-500 ease-in-out ${
                 fade ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-2'
               }`}
             >
@@ -106,22 +104,22 @@ export default function Login({ onLoginSuccess }) {
 
         {/* Error / Success Banners */}
         {error && (
-          <div className="mb-4 p-3 bg-red-950/60 border border-red-800 text-red-200 text-sm rounded-lg text-center">
+          <div className="mb-4 p-3 bg-red-950/60 border border-red-800 text-red-200 text-xs sm:text-sm rounded-lg text-center">
             {error}
           </div>
         )}
 
         {message && (
-          <div className="mb-4 p-3 bg-emerald-950/60 border border-emerald-800 text-emerald-200 text-sm rounded-lg text-center">
+          <div className="mb-4 p-3 bg-emerald-950/60 border border-emerald-800 text-emerald-200 text-xs sm:text-sm rounded-lg text-center">
             {message}
           </div>
         )}
 
         {/* Step 1: Phone Number Input Form */}
         {step === 'SEND_OTP' ? (
-          <form onSubmit={handleSendOtp} className="space-y-5">
+          <form onSubmit={handleSendOtp} className="space-y-4 sm:space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-slate-300 mb-2">
                 Mobile Number
               </label>
               <div className="flex">
@@ -130,11 +128,13 @@ export default function Login({ onLoginSuccess }) {
                 </span>
                 <input
                   type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   placeholder="9876543210"
                   maxLength={10}
-                  className="flex-1 min-w-0 block w-full px-3 py-2.5 rounded-r-lg border border-slate-700 bg-slate-900 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-purple-500"
+                  className="flex-1 min-w-0 block w-full px-3 py-3 rounded-r-lg border border-slate-700 bg-slate-900 text-white placeholder-slate-500 text-base focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                   required
                 />
               </div>
@@ -143,25 +143,27 @@ export default function Login({ onLoginSuccess }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-lg transition duration-200 shadow-lg shadow-purple-600/30 disabled:opacity-50"
+              className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-lg transition duration-200 shadow-lg shadow-purple-600/30 disabled:opacity-50 text-base cursor-pointer"
             >
               {loading ? 'Sending OTP...' : 'Send OTP'}
             </button>
           </form>
         ) : (
           /* Step 2: OTP Verification Form */
-          <form onSubmit={handleVerifyOtp} className="space-y-5">
+          <form onSubmit={handleVerifyOtp} className="space-y-4 sm:space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2 text-center">
+              <label className="block text-xs sm:text-sm font-medium text-slate-300 mb-2 text-center">
                 Enter 6-Digit OTP sent to <span className="text-purple-400">+91 {phoneNumber}</span>
               </label>
               <input
                 type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 maxLength={6}
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 placeholder="123456"
-                className="w-full px-4 py-3 rounded-lg border border-slate-700 bg-slate-900 text-white text-center tracking-[1em] text-2xl placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                className="w-full px-4 py-3 rounded-lg border border-slate-700 bg-slate-900 text-white text-center tracking-[0.5em] sm:tracking-[1em] text-xl sm:text-2xl placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                 required
               />
             </div>
@@ -169,7 +171,7 @@ export default function Login({ onLoginSuccess }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-lg transition duration-200 shadow-lg shadow-purple-600/30 disabled:opacity-50"
+              className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-lg transition duration-200 shadow-lg shadow-purple-600/30 disabled:opacity-50 text-base cursor-pointer"
             >
               {loading ? 'Verifying OTP...' : 'Verify & Login'}
             </button>
@@ -183,7 +185,7 @@ export default function Login({ onLoginSuccess }) {
                   setMessage('');
                   setError('');
                 }}
-                className="text-sm text-purple-400 hover:underline"
+                className="text-sm text-purple-400 hover:underline cursor-pointer"
               >
                 Change Phone Number
               </button>
