@@ -156,6 +156,40 @@ const cleanEmailBody = (rawText) => {
 };
 
 // Cloudflare Email Worker Webhook Receiver (Direct HTTP Ingestion)
+// Robust cleaner to strip raw email headers and extract only plain text
+const extractCleanBody = (rawText) => {
+  if (!rawText) return '';
+  
+  // If it doesn't look like a raw email source, return as is
+  if (!rawText.includes('Received:') && !rawText.includes('Content-Type:')) {
+    return rawText;
+  }
+
+  // Look for text/plain section if it's a multipart email from Gmail/Outlook
+  const plainIndex = rawText.indexOf('Content-Type: text/plain');
+  if (plainIndex !== -1) {
+    const textSection = rawText.slice(plainIndex);
+    const doubleNewline = textSection.indexOf('\r\n\r\n') !== -1 ? textSection.indexOf('\r\n\r\n') : textSection.indexOf('\n\n');
+    if (doubleNewline !== -1) {
+      const content = textSection.slice(doubleNewline + (textSection.indexOf('\r\n\r\n') !== -1 ? 4 : 2));
+      const endBoundary = content.indexOf('--');
+      return (endBoundary !== -1 ? content.slice(0, endBoundary) : content).trim();
+    }
+  }
+
+  // Fallback: Split by double newlines to skip headers
+  const parts = rawText.split(/\r?\n\r?\n/);
+  for (let i = parts.length - 1; i >= 1; i--) {
+    const part = parts[i].trim();
+    if (part && !part.includes(': ') && !part.startsWith('Content-') && !part.startsWith('--')) {
+      return part;
+    }
+  }
+
+  return rawText.substring(0, 300); // Ultimate fallback
+};
+
+// Cloudflare Email Worker Webhook Receiver
 router.post('/webhook', async (req, res) => {
   try {
     const { recipient, sender, subject, body } = req.body;
@@ -165,7 +199,7 @@ router.post('/webhook', async (req, res) => {
     }
 
     const recipientNorm = normalizePhone(recipient);
-    const parsedBody = cleanEmailBody(body); // <--- Cleaned message body
+    const cleanBodyText = extractCleanBody(body); // <--- Cleans out all code/headers!
 
     const newEmail = new Email({
       phoneNumber: recipientNorm.pureDigits,
@@ -173,11 +207,28 @@ router.post('/webhook', async (req, res) => {
       recipient: recipientNorm.alias,
       sender: sender || 'unknown@domain.com',
       subject: subject || 'No Subject',
-      body: parsedBody, // <--- Saves only clean text
+      body: cleanBodyText, // <--- Saves ONLY the clean message
       direction: 'inbound',
       date: new Date(),
       createdAt: new Date()
     });
+
+    await newEmail.save();
+
+    // Instant real-time WebSocket broadcast
+    const io = req.app.get('io');
+    if (io) {
+      io.to(recipientNorm.pureDigits).emit('new_message', newEmail);
+      io.to(recipientNorm.alias).emit('new_message', newEmail);
+    }
+
+    console.log(`✅ Clean inbound email saved for: ${recipientNorm.alias}`);
+    return res.status(200).json({ success: true, message: 'Webhook email processed successfully' });
+  } catch (err) {
+    console.error('❌ Webhook error:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
 
     await newEmail.save();
 
