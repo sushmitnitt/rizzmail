@@ -344,23 +344,24 @@ router.delete('/message/:id', async (req, res) => {
 });
 
 // Delete account and associated data
-router.delete('/account/:phone', async (req, res) => {
+// Delete entire chat thread
+router.delete('/thread/:identifier', async (req, res) => {
   try {
-    const { pureDigits, alias } = normalizePhone(req.params.phone);
-
-    await User.findOneAndDelete({ phoneNumber: { $regex: pureDigits } });
-    await Email.deleteMany({
-      $or: [
-        { emailAddress: pureDigits },
-        { recipient: alias },
-        { recipient: { $regex: pureDigits,$options: 'i' } }
-      ]
-    });
-
-    res.json({ success: true, message: 'Account and data successfully deleted.' });
+    const identifier = req.params.identifier;
+    const { pureDigits } = normalizePhone(identifier);
+    
+    await Email.updateMany(
+      {
+        $or: [
+          { sender: { $regex: pureDigits || identifier, $options: 'i' } },
+          { recipient: { $regex: pureDigits || identifier, $options: 'i' } }
+        ]
+      },
+      { $set: { isDeleted: true } }
+    );
+    res.json({ success: true, message: 'Thread deleted successfully' });
   } catch (err) {
-    console.error('❌ Account deletion error:', err);
-    res.status(500).json({ error: 'Failed to delete account' });
+    res.status(500).json({ error: 'Failed to delete chat thread' });
   }
 });
 
