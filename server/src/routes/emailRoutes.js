@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Email = require('../models/Email');
 const User = require('../models/User');
-const nodemailer = require('nodemailer');
+const axios = require('axios');
 
 // Helper to normalize phone numbers into pure 10 digits and standard aliases
 const normalizePhone = (input) => {
@@ -17,27 +17,12 @@ const normalizePhone = (input) => {
   };
 };
 
-// Configure outbound SMTP transporter (SendGrid)
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.sendgrid.net',
-  port: process.env.SMTP_PORT || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
-
 // Robust cleaner to strip raw email headers and extract only plain text
 const extractCleanBody = (rawText) => {
   if (!rawText) return '';
-  
-  // If it doesn't look like a raw email source, return as is
   if (!rawText.includes('Received:') && !rawText.includes('Content-Type:')) {
     return rawText;
   }
-
-  // Look for text/plain section if it's a multipart email from Gmail/Outlook
   const plainIndex = rawText.indexOf('Content-Type: text/plain');
   if (plainIndex !== -1) {
     const textSection = rawText.slice(plainIndex);
@@ -48,8 +33,6 @@ const extractCleanBody = (rawText) => {
       return (endBoundary !== -1 ? content.slice(0, endBoundary) : content).trim();
     }
   }
-
-  // Fallback: Split by double newlines to skip headers
   const parts = rawText.split(/\r?\n\r?\n/);
   for (let i = parts.length - 1; i >= 1; i--) {
     const part = parts[i].trim();
@@ -57,11 +40,10 @@ const extractCleanBody = (rawText) => {
       return part;
     }
   }
-
-  return rawText.substring(0, 300); // Ultimate fallback
+  return rawText.substring(0, 300);
 };
 
-// GET all emails for a specific address (supports route param)
+// GET all emails for a specific address
 router.get('/:emailAddress', async (req, res) => {
   try {
     const emailAddress = req.params.emailAddress.toLowerCase();
@@ -77,30 +59,10 @@ router.get('/:emailAddress', async (req, res) => {
   }
 });
 
-// Also support query param version: /api/email?address=...
-router.get('/', async (req, res) => {
-  try {
-    const emailAddress = (req.query.address || '').toLowerCase();
-    if (!emailAddress) {
-      return res.status(400).json({ error: 'Email address is required' });
-    }
-    const emails = await Email.find({ 
-      $or: [
-        { emailAddress },
-        { recipient: emailAddress }
-      ]
-    }).sort({ date: -1, createdAt: -1 });
-    res.json(emails);
-  } catch (err) {
-    res.status(500).json({ error: 'Server error fetching emails' });
-  }
-});
-
-// Fetch messages by phone number or alias (used by frontend fetchMessages)
+// Fetch messages by phone number or alias
 router.get('/messages/:phone', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phone);
-
     const emails = await Email.find({
       $or: [
         { emailAddress: alias },
@@ -110,7 +72,6 @@ router.get('/messages/:phone', async (req, res) => {
         { phoneNumber: pureDigits }
       ]
     }).sort({ date: -1, createdAt: -1 });
-
     res.json(emails);
   } catch (err) {
     console.error('❌ Fetch messages error:', err);
@@ -118,7 +79,7 @@ router.get('/messages/:phone', async (req, res) => {
   }
 });
 
-// Send email route (Outbound & internal rizzmail delivery)
+// Send email route (Outbound via SendGrid HTTP API & internal rizzmail delivery)
 router.post('/send', async (req, res) => {
   try {
     const { senderPhone, recipientEmail, subject, body } = req.body;
@@ -131,7 +92,7 @@ router.post('/send', async (req, res) => {
     const normalizedRecipient = recipientEmail.toLowerCase().trim();
     const senderFullEmail = `${senderNorm.pureDigits}@rizzmail.me`;
 
-    // 1. Save outbound email record in MongoDB for user's "Sent" tab
+    // 1. Save outbound record for sender
     const outboundEmail = new Email({
       phoneNumber: senderNorm.pureDigits,
       recipient: normalizedRecipient,
@@ -144,9 +105,8 @@ router.post('/send', async (req, res) => {
     });
     await outboundEmail.save();
 
-    // 2. Handle Delivery
+    // 2. Delivery logic
     if (normalizedRecipient.endsWith('@rizzmail.me')) {
-      // INTERNAL DELIVERY: Instant MongoDB save & WebSocket push
       const recipientNorm = normalizePhone(normalizedRecipient);
 
       const inboundEmail = new Email({
@@ -168,26 +128,52 @@ router.post('/send', async (req, res) => {
         io.to(recipientNorm.alias).emit('new_message', inboundEmail);
       }
     } else {
-      // EXTERNAL DELIVERY: Send via SMTP to outside domains (Gmail, Yahoo, etc.)
-      await transporter.sendMail({
-        from: `"RizzMail User" <noreply@rizzmail.me>`,
-        replyTo: senderFullEmail,
-        to: normalizedRecipient,
+      // EXTERNAL DELIVERY: Send via SendGrid HTTP API (Port 443 - never blocked!)
+      const sendgridApiKey = process.env.SENDGRID_API_KEY || process.env.SMTP_PASS;
+      
+      if (!sendgridApiKey) {
+        throw new Error('SendGrid API key not configured in Render environment variables.');
+      }
+
+      await axios.post('https://api.sendgrid.com/v3/mail/send', {
+        personalizations: [
+          {
+            to: [{ email: normalizedRecipient }]
+          }
+        ],
+        from: {
+          email: 'noreply@rizzmail.me',
+          name: 'RizzMail User'
+        },
+        reply_to: {
+          email: senderFullEmail
+        },
         subject: subject || 'No Subject',
-        text: body,
-        html: `<div style="font-family:sans-serif; padding:10px;"><p>${body}</p><hr/><small style="color:#666;">Sent securely via rizzmail.me burner inbox (${senderFullEmail})</small></div>`
+        content: [
+          {
+            type: 'text/plain',
+            value: body
+          }
+        ]
+      }, {
+        headers: {
+          'Authorization': `Bearer ${sendgridApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000 // 10 second safety timeout
       });
-      console.log(`🚀 External email successfully sent from ${senderFullEmail} to ${normalizedRecipient}`);
+
+      console.log(`🚀 External email successfully sent via SendGrid API from ${senderFullEmail} to ${normalizedRecipient}`);
     }
 
     res.status(200).json({ success: true, message: 'Email sent successfully!' });
   } catch (err) {
-    console.error('❌ Send email error:', err);
-    res.status(500).json({ error: 'Server error sending email: ' + err.message });
+    console.error('❌ Send email error:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Server error sending email: ' + (err.response?.data?.errors?.[0]?.message || err.message) });
   }
 });
 
-// Cloudflare Email Worker Webhook Receiver (Direct HTTP Ingestion)
+// Cloudflare Email Worker Webhook Receiver
 router.post('/webhook', async (req, res) => {
   try {
     const { recipient, sender, subject, body } = req.body;
@@ -213,7 +199,6 @@ router.post('/webhook', async (req, res) => {
 
     await newEmail.save();
 
-    // Instant real-time WebSocket broadcast
     const io = req.app.get('io');
     if (io) {
       io.to(recipientNorm.pureDigits).emit('new_message', newEmail);
@@ -249,7 +234,7 @@ router.get('/inbox/:phoneNumber', async (req, res) => {
   }
 });
 
-// Simulate incoming email endpoint (for testing & evaluation)
+// Simulate incoming email endpoint
 router.post('/simulate-incoming', async (req, res) => {
   try {
     const { phone, sender, subject, body } = req.body;
