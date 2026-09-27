@@ -13,7 +13,10 @@ const io = new Server(server, {
   cors: { origin: "*" }
 });
 
-app.use(cors());
+app.use(cors({
+  origin: true, // Dynamically allows the incoming request origin (e.g. localhost:5173)
+  credentials: true
+}));
 app.use(express.json());
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/rizzmail";

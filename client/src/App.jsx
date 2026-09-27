@@ -4,7 +4,9 @@ import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, dele
 import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, QrCode, Settings, Camera, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap } from 'lucide-react';
 import './App.css';
 
-const socket = io('http://localhost:5000');
+// Dynamically connect to Render backend in production, fallback to localhost for development
+const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
+const socket = io(SOCKET_URL);
 
 const countriesList = [
   { name: 'India', code: '91', label: 'IN (+91)' },
@@ -483,7 +485,8 @@ function App() {
   const handleSimulateIncomingEmail = async () => {
     try {
       const activePhone = getEmailPhone(getUserPhone());
-      await fetch('http://localhost:5000/api/email/simulate-incoming', {
+      const backendBase = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
+      await fetch(`${backendBase}/api/email/simulate-incoming`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
