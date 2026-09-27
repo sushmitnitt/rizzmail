@@ -118,40 +118,66 @@ router.post('/send', async (req, res) => {
 });
 
 // Cloudflare Email Worker Webhook Receiver (Direct HTTP Ingestion)
+// 1. Inbound Webhook endpoint for Cloudflare Email Workers
 router.post('/webhook', async (req, res) => {
   try {
     const { recipient, sender, subject, body } = req.body;
-    
+
     if (!recipient) {
-      return res.status(400).json({ error: 'Recipient is required' });
+      return res.status(400).json({ success: false, message: 'Recipient required' });
     }
 
-    const cleanRecipient = recipient.replace('@rizzmail.me', '').trim().toLowerCase();
-    const targetAlias = `${cleanRecipient}@rizzmail.me`;
+    // Extract the raw username part before '@' (e.g., "7007012049" from "7007012049@rizzmail.me")
+    const rawUsername = recipient.split('@')[0].trim();
+    
+    // Store both the exact username and clean digits so any query format matches
+    const cleanDigits = rawUsername.replace(/^\+/, '');
 
     const newEmail = new Email({
-      recipient: targetAlias,
-      emailAddress: cleanRecipient,
-      sender: sender || 'unknown@external.com',
+      phoneNumber: rawUsername, // Saves primary extracted identifier
+      recipient,
+      sender: sender || 'unknown@domain.com',
       subject: subject || 'No Subject',
       body: body || '',
-      direction: 'inbound',
-      date: new Date()
+      createdAt: new Date()
     });
-    
+
     await newEmail.save();
 
-    // Broadcast live via Socket.io instantly
-    const io = req.app.get('io');
-    if (io) {
-      io.to(cleanRecipient).emit('new_message', newEmail);
-      io.to(targetAlias).emit('new_message', newEmail);
+    console.log(`✅ Inbound email saved for recipient: ${rawUsername} from ${sender}`);
+    return res.status(200).json({ success: true, message: 'Webhook email processed successfully' });
+  } catch (err) {
+    console.error('❌ Webhook error:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Flexible Inbox fetcher that matches both with and without country codes
+router.get('/inbox/:phoneNumber', async (req, res) => {
+  try {
+    let { phoneNumber } = req.params;
+    if (!phoneNumber) return res.status(400).json({ success: false, message: 'Phone number required' });
+
+    // Generate possible search variations (e.g., "7007012049", "+917007012049", "917007012049")
+    const cleaned = phoneNumber.replace(/^\+/, '');
+    const variations = [
+      phoneNumber,
+      cleaned,
+      `+${cleaned}`
+    ];
+    // Also include common country code suffixes if missing
+    if (cleaned.length === 10) {
+      variations.push(`91${cleaned}`);
+      variations.push(`+91${cleaned}`);
     }
 
-    res.status(200).json({ success: true, message: 'Webhook email processed successfully' });
+    const emails = await Email.find({ 
+      phoneNumber: { $in: variations } 
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, emails });
   } catch (err) {
-    console.error('❌ Webhook ingestion error:', err);
-    res.status(500).json({ error: 'Internal server error processing webhook' });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

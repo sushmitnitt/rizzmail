@@ -121,15 +121,6 @@ function App() {
     return cleaned;
   };
 
-  const handleImageUpload = (e, setImageState) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setImageState(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
   const getUserPhone = () => {
     return user?.phoneNumber || user?.phone || phoneNumber;
   };
@@ -199,21 +190,6 @@ function App() {
     }
   };
 
-  const handleResendOTP = async () => {
-    if (resendCooldown > 0) return;
-    try {
-      setError('');
-      setResendMessage('');
-      const targetPhone = phoneNumber || localStorage.getItem('rizzmail_phone');
-      await sendOTP(targetPhone);
-      setResendMessage('OTP resent successfully!');
-      setResendCooldown(30);
-      setTimeout(() => setResendMessage(''), 3000);
-    } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to resend OTP');
-    }
-  };
-
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setError('');
@@ -221,12 +197,6 @@ function App() {
       setError('Please enter the exact 6-digit code sent to your phone.');
       return;
     }
-    setUser(normalizedUser);
-      localStorage.setItem('rizzmail_user', JSON.stringify(normalizedUser));
-      setLoading(false);
-
-      // Instantly go to Dashboard (Step 6) without asking for profile or terms again!
-      setStep(6);
 
     setLoading(true);
     try {
@@ -237,23 +207,16 @@ function App() {
       const normalizedUser = {
         ...rawUser,
         phoneNumber: rawUser.phoneNumber || rawUser.phone || targetPhone,
-        firstName: rawUser.firstName || (rawUser.name ? rawUser.name.split(' ')[0] : ''),
+        firstName: rawUser.firstName || (rawUser.name ? rawUser.name.split(' ')[0] : 'User'),
         lastName: rawUser.lastName || (rawUser.name ? rawUser.name.split(' ').slice(1).join(' ') : ''),
         profilePhoto: rawUser.profilePhoto || rawUser.photo,
-        agreedToTerms: rawUser.agreedToTerms || rawUser.termsAgreed || false
+        agreedToTerms: true
       };
 
       setUser(normalizedUser);
       localStorage.setItem('rizzmail_user', JSON.stringify(normalizedUser));
       setLoading(false);
-
-      if (res.data.hasProfile || (normalizedUser.firstName && normalizedUser.agreedToTerms)) {
-        setStep(6);
-      } else if (normalizedUser.firstName) {
-        setStep(4);
-      } else {
-        setStep(3);
-      }
+      setStep(6); // Instantly open dashboard
     } catch (err) {
       setLoading(false);
       setError(err.response?.data?.error || err.response?.data?.message || 'Invalid verification code entered.');
@@ -264,17 +227,6 @@ function App() {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim() || !dob) {
       setError('Please fill in all identity fields including Date of Birth.');
-      return;
-    }
-
-    const today = new Date();
-    const birthDate = new Date(dob);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
-
-    if (age < 13) {
-      setError('You must be at least 13 years old to create a RizzMail account.');
       return;
     }
 
@@ -291,8 +243,8 @@ function App() {
         birthdate: dob,
         profilePhoto,
         photo: profilePhoto,
-        agreedToTerms: user?.agreedToTerms || false,
-        termsAgreed: user?.termsAgreed || false
+        agreedToTerms: true,
+        termsAgreed: true
       });
       const rawUser = res.data.user;
       const normalizedUser = {
@@ -301,7 +253,7 @@ function App() {
         firstName: rawUser.firstName || firstName,
         lastName: rawUser.lastName || lastName,
         profilePhoto: rawUser.profilePhoto || rawUser.photo || profilePhoto,
-        agreedToTerms: rawUser.agreedToTerms || rawUser.termsAgreed || true
+        agreedToTerms: true
       };
       setUser(normalizedUser);
       localStorage.setItem('rizzmail_user', JSON.stringify(normalizedUser));
@@ -479,7 +431,6 @@ function App() {
       setBody('');
       
       loadInbox(activePhone);
-
       setTimeout(() => setActiveTab('inbox'), 1500);
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.message || 'Failed to send email');
@@ -747,7 +698,7 @@ function App() {
                     <div style={{ padding: '0.5rem 1rem', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all', color: 'var(--text-muted)' }}>
                       <b>{getEmailPhone(getUserPhone())}@rizzmail.me</b>
                     </div>
-                    <button onClick={handleCopyEmail} className="sidebar-nav-item"><Copy size={15} /> Copy Address</button>
+                    <button onClick={handleCopyEmail} className="sidebar-nav-item"><Copy size={15} /> {copied ? 'Copied!' : 'Copy Address'}</button>
                     <button onClick={() => setShowLogoutConfirm(true)} className="sidebar-nav-item" style={{ color: '#f87171' }}><LogOut size={15} /> Sign Out</button>
                   </div>
                 </div>
