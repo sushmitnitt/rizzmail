@@ -29,7 +29,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(express.json());
+// Increase body size limit to 10mb to handle Base64 profile photo uploads
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // MongoDB Database Connection
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/rizzmail";

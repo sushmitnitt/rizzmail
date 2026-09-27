@@ -71,12 +71,12 @@ router.post("/verify-otp", async (req, res) => {
 
     await Otp.deleteOne({ phone: targetPhone });
 
-    // Check if user exists. If new, create clean record without forcing dummy profile data.
     let user = await User.findOne({ phoneNumber: targetPhone });
     if (!user) {
       user = new User({
         phoneNumber: targetPhone,
-        termsAgreed: false
+        termsAgreed: false,
+        agreedToTerms: false
       });
       await user.save();
     }
@@ -92,7 +92,7 @@ router.post("/verify-otp", async (req, res) => {
   }
 });
 
-// 3. Robust Profile Update Handler (Supports /profile & /update-profile with POST/PUT)
+// 3. Robust Profile Update Handler (Supports all field variations)
 const handleProfileUpdate = async (req, res) => {
   try {
     const { 
@@ -138,18 +138,32 @@ const handleProfileUpdate = async (req, res) => {
       }
     }
 
+    // Resolve Names
+    let fName = firstName !== undefined ? firstName : (user?.firstName || '');
+    let lName = lastName !== undefined ? lastName : (user?.lastName || '');
     let finalName = name;
-    if (!finalName && (firstName || lastName)) {
-      finalName = `${firstName || ""} ${lastName || ""}`.trim();
+    
+    if (!finalName && (fName || lName)) {
+      finalName = `${fName} ${lName}`.trim();
+    } else if (finalName && (!fName && !lName)) {
+      const parts = finalName.split(' ');
+      fName = parts[0] || '';
+      lName = parts.slice(1).join(' ') || '';
     }
 
-    const finalPhoto = photo !== undefined ? photo : profilePhoto;
-    const finalTerms = termsAgreed !== undefined ? termsAgreed : agreedToTerms;
+    // Resolve Photos & Terms
+    const finalPhoto = photo !== undefined ? photo : (profilePhoto !== undefined ? profilePhoto : (user?.profilePhoto || user?.photo || ''));
+    const finalTerms = termsAgreed !== undefined ? termsAgreed : (agreedToTerms !== undefined ? agreedToTerms : (user?.termsAgreed || false));
 
-    const updateData = {};
-    if (finalName !== undefined) updateData.name = finalName;
-    if (finalPhoto !== undefined) updateData.photo = finalPhoto;
-    if (finalTerms !== undefined) updateData.termsAgreed = finalTerms;
+    const updateData = {
+      name: finalName,
+      firstName: fName,
+      lastName: lName,
+      photo: finalPhoto,
+      profilePhoto: finalPhoto,
+      termsAgreed: finalTerms,
+      agreedToTerms: finalTerms
+    };
 
     if (finalBirthdate && (!user || !user.birthdate)) {
       updateData.birthdate = finalBirthdate;
