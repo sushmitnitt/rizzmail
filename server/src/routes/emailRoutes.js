@@ -17,6 +17,26 @@ const normalizePhone = (input) => {
   };
 };
 
+// Helper to fetch sender name and profile photo from User model
+const getSenderDetails = async (phoneOrEmail) => {
+  try {
+    if (!phoneOrEmail) return { name: 'User', photo: '' };
+    const clean = phoneOrEmail.toString().replace(/[^0-9]/g, '').slice(-10);
+    const user = await User.findOne({
+      $or: [
+        { phoneNumber: { $regex: clean,$options: 'i' } },
+        { phoneNumber: phoneOrEmail }
+      ]
+    });
+    if (!user) return { name: phoneOrEmail.split('@')[0], photo: '' };
+    const name = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (user.name || phoneOrEmail.split('@')[0]);
+    const photo = user.profilePhoto || user.photo || '';
+    return { name, photo };
+  } catch (err) {
+    return { name: phoneOrEmail?.split('@')[0] || 'User', photo: '' };
+  }
+};
+
 // Robust cleaner to strip raw email headers and extract only plain text
 const extractCleanBody = (rawText) => {
   if (!rawText) return '';
@@ -80,7 +100,6 @@ router.get('/messages/:phone', async (req, res) => {
 });
 
 // Send email route (Outbound via SendGrid HTTP API & internal rizzmail delivery)
-// Send email route (Outbound via SendGrid HTTP API & internal rizzmail delivery)
 router.post('/send', async (req, res) => {
   try {
     const { senderPhone, recipientEmail, subject, body } = req.body;
@@ -93,6 +112,9 @@ router.post('/send', async (req, res) => {
     const normalizedRecipient = recipientEmail.toLowerCase().trim();
     const senderFullEmail = `${senderNorm.pureDigits}@rizzmail.me`;
 
+    // Fetch sender profile details (Name & DP) from User collection
+    const senderDetails = await getSenderDetails(senderNorm.pureDigits);
+
     // 1. Save outbound record for sender's "Sent" tab
     const outboundEmail = new Email({
       phoneNumber: senderNorm.pureDigits,
@@ -101,6 +123,8 @@ router.post('/send', async (req, res) => {
       sender: senderFullEmail,
       subject: subject || 'No Subject',
       body: body,
+      senderName: senderDetails.name,
+      senderPhoto: senderDetails.photo,
       direction: 'outbound',
       date: new Date(),
       createdAt: new Date()
@@ -125,6 +149,8 @@ router.post('/send', async (req, res) => {
         sender: senderFullEmail,
         subject: subject || 'No Subject',
         body: body,
+        senderName: senderDetails.name,
+        senderPhoto: senderDetails.photo,
         direction: 'inbound',
         date: new Date(),
         createdAt: new Date()
@@ -151,7 +177,7 @@ router.post('/send', async (req, res) => {
         ],
         from: {
           email: senderFullEmail,
-          name: 'RizzMail User'
+          name: senderDetails.name || 'RizzMail User'
         },
         reply_to: {
           email: senderFullEmail
@@ -192,6 +218,7 @@ router.post('/webhook', async (req, res) => {
 
     const recipientNorm = normalizePhone(recipient);
     const cleanBodyText = extractCleanBody(body);
+    const senderDetails = await getSenderDetails(sender);
 
     const newEmail = new Email({
       phoneNumber: recipientNorm.pureDigits,
@@ -200,6 +227,8 @@ router.post('/webhook', async (req, res) => {
       sender: sender || 'unknown@domain.com',
       subject: subject || 'No Subject',
       body: cleanBodyText,
+      senderName: senderDetails.name,
+      senderPhoto: senderDetails.photo,
       direction: 'inbound',
       date: new Date(),
       createdAt: new Date()
@@ -247,6 +276,7 @@ router.post('/simulate-incoming', async (req, res) => {
   try {
     const { phone, sender, subject, body } = req.body;
     const phoneNorm = normalizePhone(phone);
+    const senderDetails = await getSenderDetails(sender || 'evaluator@rizzmail.me');
 
     const newEmail = new Email({
       phoneNumber: phoneNorm.pureDigits,
@@ -255,6 +285,8 @@ router.post('/simulate-incoming', async (req, res) => {
       sender: sender || 'evaluator@rizzmail.me',
       subject: subject || 'Simulated Test Email',
       body: body || 'This is a live simulated incoming message.',
+      senderName: senderDetails.name,
+      senderPhoto: senderDetails.photo,
       direction: 'inbound',
       date: new Date()
     });
@@ -276,7 +308,8 @@ router.post('/simulate-incoming', async (req, res) => {
 // Delete single message
 router.delete('/message/:id', async (req, res) => {
   try {
-    await Email.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+    await Email.findByIdAndDelete(id);
     res.json({ success: true, message: 'Message deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete email' });

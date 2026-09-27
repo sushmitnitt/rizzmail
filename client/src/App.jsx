@@ -65,7 +65,6 @@ function App() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Profile fields with photo support
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dob, setDob] = useState('');
@@ -88,11 +87,10 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState(null);
 
-  // WhatsApp-style Chat Navigation
-  const [activeChatSender, setActiveChatSender] = useState(null); // Selected chat thread sender
-  const [showChatInfo, setShowChatInfo] = useState(false); // Contact details drawer/modal
-  const [chatMessageBody, setChatMessageBody] = useState(''); // Reply input
-  const [activeTab, setActiveTab] = useState('chats'); // 'chats', 'sent', 'trash'
+  const [activeChatSender, setActiveChatSender] = useState(null);
+  const [showChatInfo, setShowChatInfo] = useState(false);
+  const [chatMessageBody, setChatMessageBody] = useState('');
+  const [activeTab, setActiveTab] = useState('chats');
 
   useEffect(() => {
     let timer;
@@ -152,9 +150,15 @@ function App() {
     }
   }, [step]);
 
+  // WebSocket listener with strict deduplication by message ID
   useEffect(() => {
     socket.on('new_message', (incomingMsg) => {
-      setMessages((prev) => [incomingMsg, ...prev]);
+      setMessages((prev) => {
+        if (incomingMsg._id && prev.some(m => m._id === incomingMsg._id)) {
+          return prev; // Prevent duplicate insertion
+        }
+        return [incomingMsg, ...prev];
+      });
       setToast(incomingMsg);
       setTimeout(() => setToast(null), 5000);
     });
@@ -162,7 +166,6 @@ function App() {
     return () => socket.off('new_message');
   }, []);
 
-  // Handle Image File to Base64 conversion for profile photo
   const handleImageUpload = (e, isEdit = false) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -443,14 +446,25 @@ function App() {
     setLoading(true);
     try {
       const activePhone = getUserPhone();
-      await sendEmailAPI({
+      const res = await sendEmailAPI({
         senderPhone: activePhone,
         recipientEmail: activeChatSender,
         subject: 'Re: Conversation',
         body: chatMessageBody
       });
+      
+      // Instantly inject outbound message cleanly without duplicating
+      if (res.data && res.data.message) {
+        const newMsg = res.data.message;
+        setMessages((prev) => {
+          if (newMsg._id && prev.some(m => m._id === newMsg._id)) return prev;
+          return [newMsg, ...prev];
+        });
+      } else {
+        loadInbox(activePhone);
+      }
+      
       setChatMessageBody('');
-      loadInbox(activePhone);
     } catch (err) {
       setError('Failed to send reply.');
     } finally {
@@ -498,25 +512,34 @@ function App() {
     }, 2400);
   };
 
-  // Group messages into WhatsApp-style chat threads by sender
+  // STRICT WHATSAPP CHAT THREAD ISOLATION
   const chatThreadsMap = {};
   messages.forEach((msg) => {
     if (msg.isDeleted && activeTab !== 'trash') return;
-    const sender = msg.direction === 'outbound' ? msg.recipient : msg.sender;
-    if (!sender) return;
-    if (!chatThreadsMap[sender]) {
-      chatThreadsMap[sender] = {
-        sender: sender,
-        name: msg.senderName || sender.split('@')[0],
-        avatar: msg.senderPhoto || '',
+    
+    // Identify the other party strictly: if outbound, it's the recipient; if inbound, it's the sender
+    const isOutbound = msg.direction === 'outbound';
+    const otherParty = isOutbound ? msg.recipient : msg.sender;
+    if (!otherParty) return;
+
+    if (!chatThreadsMap[otherParty]) {
+      chatThreadsMap[otherParty] = {
+        sender: otherParty,
+        name: isOutbound ? (msg.recipientName || otherParty.split('@')[0]) : (msg.senderName || otherParty.split('@')[0]),
+        avatar: isOutbound ? (msg.recipientPhoto || '') : (msg.senderPhoto || ''),
         messages: []
       };
     }
-    chatThreadsMap[sender].messages.push(msg);
+    chatThreadsMap[otherParty].messages.push(msg);
   });
 
   const chatThreadsList = Object.values(chatThreadsMap).map(thread => {
-    // Sort messages chronologically
+    // Deduplicate messages inside the thread by _id
+    const uniqueMap = new Map();
+    thread.messages.forEach(m => uniqueMap.set(m._id || JSON.stringify(m), m));
+    thread.messages = Array.from(uniqueMap.values());
+
+    // Sort chronologically
     thread.messages.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
     thread.lastMessage = thread.messages[thread.messages.length - 1];
     return thread;
@@ -669,14 +692,12 @@ function App() {
           </div>
         )}
 
-        {/* STEP 3: COMPLETE PROFILE WITH PROFILE PHOTO UPLOAD */}
         {!isLoggingOut && step === 3 && (
           <div className="card-wrapper" style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
             <form onSubmit={handleSaveProfile} className="card" style={{ width: '100%' }}>
               <h2>Complete Profile</h2>
               <p className="subtitle">Provide your name, date of birth, and profile photo.</p>
               
-              {/* Profile Photo Uploader */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.25rem' }}>
                 <div style={{
                   width: '80px',
@@ -745,7 +766,6 @@ function App() {
                   </div>
                   {profileSuccess && <div className="success-banner">{profileSuccess}</div>}
 
-                  {/* Profile Photo Editor */}
                   <form onSubmit={handleUpdateAccountDetails} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <div style={{
@@ -784,7 +804,6 @@ function App() {
                 </div>
               </div>
             ) : (
-              /* WHATSAPP LAYOUT: Sidebar (Chat List) + Chat Window */
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: 'calc(100vh - 70px)', background: 'var(--card-bg)', border: '1px solid var(--input-border)', borderRadius: '1rem', overflow: 'hidden' }}>
                 
                 {/* CHAT LIST PANE */}
@@ -854,7 +873,6 @@ function App() {
                 <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)' }}>
                   {activeThread ? (
                     <>
-                      {/* WHATSAPP CHAT HEADER (TAP FOR INFO) */}
                       <div 
                         onClick={() => setShowChatInfo(true)}
                         style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.875rem', cursor: 'pointer' }}
@@ -879,7 +897,6 @@ function App() {
                         </div>
                       </div>
 
-                      {/* CHAT MESSAGES BUBBLES AREA */}
                       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
                         {activeThread.messages.map((msg, idx) => {
                           const isOutbound = msg.direction === 'outbound';
@@ -905,7 +922,6 @@ function App() {
                         })}
                       </div>
 
-                      {/* CHAT REPLY FOOTER */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                         <input 
                           type="text"
@@ -933,7 +949,6 @@ function App() {
           </div>
         )}
 
-        {/* WHATSAPP-STYLE CONTACT INFO MODAL (WHEN TAPPING HEADER) */}
         {showChatInfo && activeThread && (
           <div className="modal-overlay" onClick={() => setShowChatInfo(false)}>
             <div className="modal-content" style={{ maxWidth: '380px', textAlign: 'center', padding: '2rem 1.5rem' }} onClick={(e) => e.stopPropagation()}>
@@ -957,7 +972,6 @@ function App() {
           </div>
         )}
 
-        {/* ACCOUNT DELETION WARNING STEP */}
         {!isLoggingOut && step === 7 && (
           <div className="card-wrapper" style={{ maxWidth: '480px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }}>
             <div className="card" style={{ textAlign: 'left', width: '100%' }}>
