@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Image as ImageIcon } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -65,6 +65,7 @@ function App() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  // Profile fields with photo support
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dob, setDob] = useState('');
@@ -84,15 +85,14 @@ function App() {
   const [error, setError] = useState('');
   
   const [copied, setCopied] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState(null);
 
-  const [activeTab, setActiveTab] = useState('inbox'); 
-  const [recipientEmail, setRecipientEmail] = useState('');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
-  const [sendSuccess, setSendSuccess] = useState('');
+  // WhatsApp-style Chat Navigation
+  const [activeChatSender, setActiveChatSender] = useState(null); // Selected chat thread sender
+  const [showChatInfo, setShowChatInfo] = useState(false); // Contact details drawer/modal
+  const [chatMessageBody, setChatMessageBody] = useState(''); // Reply input
+  const [activeTab, setActiveTab] = useState('chats'); // 'chats', 'sent', 'trash'
 
   useEffect(() => {
     let timer;
@@ -161,6 +161,25 @@ function App() {
 
     return () => socket.off('new_message');
   }, []);
+
+  // Handle Image File to Base64 conversion for profile photo
+  const handleImageUpload = (e, isEdit = false) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Profile image must be less than 2MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (isEdit) {
+        setEditProfilePhoto(reader.result);
+      } else {
+        setProfilePhoto(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSendOTP = async (e) => {
     e.preventDefault();
@@ -418,37 +437,22 @@ function App() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleReply = (senderEmail) => {
-    setSelectedMessage(null);
-    setRecipientEmail(senderEmail);
-    setSubject('Re: Your message');
-    setActiveTab('compose');
-    setIsEditingProfile(false);
-    setMobileMenuOpen(false);
-  };
-
-  const handleSendEmailSubmit = async (e) => {
+  const handleSendReplySubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSendSuccess('');
+    if (!chatMessageBody.trim() || !activeChatSender) return;
     setLoading(true);
     try {
       const activePhone = getUserPhone();
       await sendEmailAPI({
         senderPhone: activePhone,
-        recipientEmail,
-        subject,
-        body
+        recipientEmail: activeChatSender,
+        subject: 'Re: Conversation',
+        body: chatMessageBody
       });
-      setSendSuccess('Email sent successfully!');
-      setRecipientEmail('');
-      setSubject('');
-      setBody('');
-      
+      setChatMessageBody('');
       loadInbox(activePhone);
-      setTimeout(() => setActiveTab('inbox'), 1500);
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to send email');
+      setError('Failed to send reply.');
     } finally {
       setLoading(false);
     }
@@ -464,23 +468,13 @@ function App() {
         body: JSON.stringify({
           phone: activePhone,
           sender: "evaluator@rizzmail.me",
-          subject: "Live Security & Notification Alert",
-          body: "Your burner inbox successfully ingested this message in real-time via WebSocket broadcast."
+          subject: "WhatsApp Chat Simulation",
+          body: "Hello! This is a simulated incoming message testing your WhatsApp-style chat interface."
         })
       });
       loadInbox(getUserPhone());
     } catch (e) {
       console.error("Simulation failed", e);
-    }
-  };
-
-  const handleDeleteMessage = async (msgId) => {
-    try {
-      await deleteMessageAPI(msgId);
-      setMessages((prev) => prev.map(m => m._id === msgId ? { ...m, isDeleted: true } : m));
-      setSelectedMessage(null);
-    } catch (err) {
-      setError('Failed to delete email');
     }
   };
 
@@ -499,26 +493,42 @@ function App() {
       setIsLoggingOut(false);
       setStep(1);
       setMessages([]);
-      setActiveTab('inbox');
+      setActiveChatSender(null);
       setIsEditingProfile(false);
     }, 2400);
   };
 
-  const filteredMessages = messages.filter((msg) => {
-    const matchesSearch = 
-      msg.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (msg.subject && msg.subject.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      msg.body.toLowerCase().includes(searchQuery.toLowerCase());
-
-    if (!matchesSearch) return false;
-
-    if (activeTab === 'trash') return msg.isDeleted;
-    if (msg.isDeleted) return false; 
-
-    if (activeTab === 'inbox') return msg.direction !== 'outbound';
-    if (activeTab === 'sent') return msg.direction === 'outbound';
-    return true;
+  // Group messages into WhatsApp-style chat threads by sender
+  const chatThreadsMap = {};
+  messages.forEach((msg) => {
+    if (msg.isDeleted && activeTab !== 'trash') return;
+    const sender = msg.direction === 'outbound' ? msg.recipient : msg.sender;
+    if (!sender) return;
+    if (!chatThreadsMap[sender]) {
+      chatThreadsMap[sender] = {
+        sender: sender,
+        name: msg.senderName || sender.split('@')[0],
+        avatar: msg.senderPhoto || '',
+        messages: []
+      };
+    }
+    chatThreadsMap[sender].messages.push(msg);
   });
+
+  const chatThreadsList = Object.values(chatThreadsMap).map(thread => {
+    // Sort messages chronologically
+    thread.messages.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+    thread.lastMessage = thread.messages[thread.messages.length - 1];
+    return thread;
+  });
+
+  const filteredThreads = chatThreadsList.filter(thread => 
+    thread.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    thread.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (thread.lastMessage && thread.lastMessage.body.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const activeThread = activeChatSender ? chatThreadsMap[activeChatSender] : null;
 
   return (
     <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
@@ -659,11 +669,43 @@ function App() {
           </div>
         )}
 
+        {/* STEP 3: COMPLETE PROFILE WITH PROFILE PHOTO UPLOAD */}
         {!isLoggingOut && step === 3 && (
           <div className="card-wrapper" style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
             <form onSubmit={handleSaveProfile} className="card" style={{ width: '100%' }}>
               <h2>Complete Profile</h2>
-              <p className="subtitle">Provide your name and date of birth (Must be 13+).</p>
+              <p className="subtitle">Provide your name, date of birth, and profile photo.</p>
+              
+              {/* Profile Photo Uploader */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%',
+                  background: 'var(--input-bg)',
+                  border: '2px dashed var(--input-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  cursor: 'pointer'
+                }}>
+                  {profilePhoto ? (
+                    <img src={profilePhoto} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <User size={32} style={{ color: 'var(--text-muted)' }} />
+                  )}
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => handleImageUpload(e, false)}
+                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                  />
+                </div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Tap to upload profile photo</label>
+              </div>
+
               <div className="input-group-stack"><label>First Name</label><input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required /></div>
               <div className="input-group-stack"><label>Last Name</label><input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required /></div>
               <div className="input-group-stack"><label>Date of Birth (13+)</label><input type="date" value={dob} onChange={(e) => setDob(e.target.value)} required /></div>
@@ -691,7 +733,7 @@ function App() {
           </div>
         )}
 
-        {/* DASHBOARD LAYOUT */}
+        {/* STEP 6: WHATSAPP-STYLE CHAT INTERFACE */}
         {!isLoggingOut && step === 6 && user && (
           <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', justifyContent: 'center' }}>
             {isEditingProfile ? (
@@ -702,7 +744,38 @@ function App() {
                     <button onClick={() => setIsEditingProfile(false)} className="text-btn">Back</button>
                   </div>
                   {profileSuccess && <div className="success-banner">{profileSuccess}</div>}
+
+                  {/* Profile Photo Editor */}
                   <form onSubmit={handleUpdateAccountDetails} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <div style={{
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '50%',
+                        background: 'var(--input-bg)',
+                        border: '2px dashed var(--input-border)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        cursor: 'pointer'
+                      }}>
+                        {editProfilePhoto ? (
+                          <img src={editProfilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <User size={32} style={{ color: 'var(--text-muted)' }} />
+                        )}
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={(e) => handleImageUpload(e, true)}
+                          style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                        />
+                      </div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Change profile photo</label>
+                    </div>
+
                     <div className="input-group-stack"><label>First Name</label><input type="text" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} required /></div>
                     <div className="input-group-stack"><label>Last Name</label><input type="text" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} required /></div>
                     <button type="submit" className="primary-btn">Save Changes</button>
@@ -711,161 +784,180 @@ function App() {
                 </div>
               </div>
             ) : (
-              <div className="gmail-layout">
-                {mobileMenuOpen && (
-                  <div 
-                    onClick={() => setMobileMenuOpen(false)}
-                    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 99, display: 'none' }}
-                    className="mobile-backdrop"
-                  />
-                )}
-
-                <div className={`gmail-sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }} className="mobile-sidebar-header">
-                    <h3>Menu</h3>
-                    <button onClick={() => setMobileMenuOpen(false)} className="theme-toggle-btn" style={{ display: 'none' }} id="close-mobile-menu">
-                      <X size={18} />
+              /* WHATSAPP LAYOUT: Sidebar (Chat List) + Chat Window */
+              <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: 'calc(100vh - 70px)', background: 'var(--card-bg)', border: '1px solid var(--input-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+                
+                {/* CHAT LIST PANE */}
+                <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0 }}>
+                  <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div className="search-bar-container" style={{ margin: 0, flex: 1 }}>
+                      <Search size={16} className="search-icon" />
+                      <input type="text" placeholder="Search chats..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="search-input" />
+                    </div>
+                    <button onClick={handleSimulateIncomingEmail} className="refresh-btn" title="Simulate incoming chat">
+                      <Zap size={14} />
+                    </button>
+                    <button onClick={() => loadInbox(getUserPhone())} className="refresh-btn" title="Refresh">
+                      <RefreshCw size={14} />
                     </button>
                   </div>
 
-                  <button className="gmail-compose-btn" onClick={() => { setActiveTab('compose'); setMobileMenuOpen(false); }}>
-                    <Edit3 size={18} /> Compose
-                  </button>
-
-                  <button className={`sidebar-nav-item ${activeTab === 'inbox' ? 'active' : ''}`} onClick={() => { setActiveTab('inbox'); setMobileMenuOpen(false); }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Mail size={16} /> Inbox</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: '700' }}>{messages.filter(m => m.direction !== 'outbound' && !m.isDeleted).length}</span>
-                  </button>
-
-                  <button className={`sidebar-nav-item ${activeTab === 'sent' ? 'active' : ''}`} onClick={() => { setActiveTab('sent'); setMobileMenuOpen(false); }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Send size={16} /> Sent</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: '700' }}>{messages.filter(m => m.direction === 'outbound' && !m.isDeleted).length}</span>
-                  </button>
-
-                  <button className={`sidebar-nav-item ${activeTab === 'trash' ? 'active' : ''}`} onClick={() => { setActiveTab('trash'); setMobileMenuOpen(false); }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Trash2 size={16} /> Trash</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: '700' }}>{messages.filter(m => m.isDeleted).length}</span>
-                  </button>
-
-                  <div style={{ marginTop: 'auto', borderTop: '1px solid var(--input-border)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <div style={{ padding: '0.5rem 1rem', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all', color: 'var(--text-muted)' }}>
-                      <b>{getEmailPhone(getUserPhone())}@rizzmail.me</b>
-                    </div>
-                    <button onClick={handleCopyEmail} className="sidebar-nav-item"><Copy size={15} /> {copied ? 'Copied!' : 'Copy Address'}</button>
-                    <button onClick={() => setShowLogoutConfirm(true)} className="sidebar-nav-item" style={{ color: '#f87171' }}><LogOut size={15} /> Sign Out</button>
+                  <div style={{ flex: 1, overflowY: 'auto' }}>
+                    {filteredThreads.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
+                        <Mail size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
+                        <p>No active chats</p>
+                        <small>Click <b>⚡ Test Mail</b> to simulate a chat message.</small>
+                      </div>
+                    ) : (
+                      filteredThreads.map((thread) => {
+                        const isSelected = activeChatSender === thread.sender;
+                        return (
+                          <div 
+                            key={thread.sender}
+                            onClick={() => setActiveChatSender(thread.sender)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.875rem',
+                              padding: '0.875rem 1rem',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid var(--input-border)',
+                              background: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                              transition: 'background 0.2s'
+                            }}
+                          >
+                            <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: '#fff', fontWeight: 'bold' }}>
+                              {thread.avatar ? (
+                                <img src={thread.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                thread.name.charAt(0).toUpperCase()
+                              )}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.2rem' }}>
+                                <span style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{thread.name}</span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(thread.lastMessage?.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>
+                                {thread.lastMessage?.subject ? `${thread.lastMessage.subject}: ` : ''}{thread.lastMessage?.body}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
 
-                <div className="gmail-main">
-                  <div className="gmail-toolbar">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, maxWidth: '600px' }}>
-                      <button 
-                        onClick={() => setMobileMenuOpen(true)}
-                        className="refresh-btn mobile-menu-trigger"
-                        style={{ display: 'none', padding: '0.5rem' }}
-                        title="Open Menu"
+                {/* ACTIVE CHAT WINDOW PANE */}
+                <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)' }}>
+                  {activeThread ? (
+                    <>
+                      {/* WHATSAPP CHAT HEADER (TAP FOR INFO) */}
+                      <div 
+                        onClick={() => setShowChatInfo(true)}
+                        style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.875rem', cursor: 'pointer' }}
                       >
-                        <Menu size={18} />
-                      </button>
-                      <div className="search-bar-container" style={{ margin: 0, flex: 1 }}>
-                        <Search size={16} className="search-icon" />
-                        <input type="text" placeholder="Search mail..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="search-input" />
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={handleSimulateIncomingEmail} className="refresh-btn" title="Simulate incoming test email">
-                        <Zap size={14} /> Test Mail
-                      </button>
-                      <button onClick={() => loadInbox(getUserPhone())} className="refresh-btn" title="Refresh">
-                        <RefreshCw size={14} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {activeTab === 'compose' ? (
-                    <form onSubmit={handleSendEmailSubmit} style={{ padding: '2rem', maxWidth: '700px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                      <h3>New Message</h3>
-                      {sendSuccess && <div className="success-banner">{sendSuccess}</div>}
-                      <div className="input-group-stack">
-                        <label>To:</label>
-                        <input type="email" placeholder="recipient@gmail.com or recipient@rizzmail.me" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} required />
-                      </div>
-                      <div className="input-group-stack">
-                        <label>Subject:</label>
-                        <input type="text" placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
-                      </div>
-                      <div className="input-group-stack">
-                        <label>Message Body:</label>
-                        <textarea rows="8" placeholder="Write your email here..." value={body} onChange={(e) => setBody(e.target.value)} required />
-                      </div>
-                      <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button type="submit" className="primary-btn" style={{ width: 'auto', padding: '0.75rem 2rem' }} disabled={loading}>
-                          {loading ? <Loader2 size={16} className="spin" /> : <Send size={16} />} {loading ? 'Sending...' : 'Send'}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setActiveChatSender(null); }}
+                          className="whatsapp-back-btn"
+                          style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'none' }}
+                        >
+                          <ArrowLeft size={20} />
                         </button>
-                        <button type="button" onClick={() => setActiveTab('inbox')} style={{ background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.75rem 1.5rem', borderRadius: '0.875rem', cursor: 'pointer' }}>Cancel</button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div style={{ flex: 1, overflowY: 'auto' }}>
-                      {filteredMessages.length === 0 ? (
-                        <div className="empty-inbox" style={{ border: 'none', background: 'transparent', padding: '5rem' }}>
-                          <Mail size={48} />
-                          <p style={{ marginTop: '1rem' }}>No messages in {activeTab}</p>
-                          <small>Click <b>Test Mail</b> above to test real-time WebSocket ingestion.</small>
+                        <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: '0', color: '#fff', fontWeight: 'bold' }}>
+                          {activeThread.avatar ? (
+                            <img src={activeThread.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            activeThread.name.charAt(0).toUpperCase()
+                          )}
                         </div>
-                      ) : (
-                        filteredMessages.map((msg) => {
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeThread.name}</h3>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Tap here for contact info</span>
+                        </div>
+                      </div>
+
+                      {/* CHAT MESSAGES BUBBLES AREA */}
+                      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
+                        {activeThread.messages.map((msg, idx) => {
                           const isOutbound = msg.direction === 'outbound';
                           return (
-                            <div key={msg._id || Math.random()} className="gmail-message-row" onClick={() => setSelectedMessage(msg)}>
-                              <span className="gmail-sender" style={{ color: isOutbound ? '#818cf8' : '#34d399' }}>
-                                {isOutbound ? `To: ${msg.recipient}` : msg.sender}
-                              </span>
-                              <span className="gmail-content-snippet">
-                                <b>{msg.subject || 'No Subject'}</b> — {msg.body}
-                              </span>
-                              <span className="gmail-time">{new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <div key={msg._id || idx} style={{ display: 'flex', justifyContent: isOutbound ? 'flex-end' : 'flex-start', width: '100%' }}>
+                              <div style={{
+                                maxWidth: '70%',
+                                background: isOutbound ? '#6366f1' : 'var(--card-bg)',
+                                color: isOutbound ? '#ffffff' : 'var(--text-primary)',
+                                padding: '0.75rem 1rem',
+                                borderRadius: isOutbound ? '1rem 1rem 0 1rem' : '1rem 1rem 1rem 0',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                                border: isOutbound ? 'none' : '1px solid var(--input-border)'
+                              }}>
+                                {msg.subject && <div style={{ fontSize: '0.75rem', opacity: 0.8, marginBottom: '0.25rem', fontWeight: '600' }}>{msg.subject}</div>}
+                                <div style={{ fontSize: '0.9rem', wordBreak: 'break-word', lineHeight: '1.4' }}>{msg.body}</div>
+                                <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem' }}>
+                                  {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
                             </div>
                           );
-                        })
-                      )}
+                        })}
+                      </div>
+
+                      {/* CHAT REPLY FOOTER */}
+                      <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <input 
+                          type="text"
+                          placeholder="Type a message..."
+                          value={chatMessageBody}
+                          onChange={(e) => setChatMessageBody(e.target.value)}
+                          style={{ flex: 1, padding: '0.75rem 1rem', borderRadius: '1.5rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                        />
+                        <button type="submit" disabled={loading} style={{ background: '#6366f1', color: '#fff', border: 'none', width: '42px', height: '42px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
+                          <Send size={18} />
+                        </button>
+                      </form>
+                    </>
+                  ) : (
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', padding: '2rem', textAlign: 'center' }}>
+                      <Mail size={56} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>RizzMail Web WhatsApp</h3>
+                      <p style={{ maxWidth: '320px', fontSize: '0.9rem' }}>Select a chat from the left panel to start messaging with secure burner endpoints.</p>
                     </div>
                   )}
                 </div>
+
               </div>
             )}
           </div>
         )}
 
-        {selectedMessage && (
-          <div className="modal-overlay" onClick={() => setSelectedMessage(null)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <div>
-                  <span className="badge" style={{ marginBottom: '0.5rem', display: 'inline-block' }}>
-                    {selectedMessage.direction === 'outbound' ? `To: ${selectedMessage.recipient}` : `From: ${selectedMessage.sender}`}
-                  </span>
-                  <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>{selectedMessage.subject || 'No Subject'}</h3>
-                  <span className="date">{new Date(selectedMessage.createdAt || Date.now()).toLocaleString()}</span>
-                </div>
-                <button onClick={() => setSelectedMessage(null)} className="close-modal-btn"><X size={18} /></button>
+        {/* WHATSAPP-STYLE CONTACT INFO MODAL (WHEN TAPPING HEADER) */}
+        {showChatInfo && activeThread && (
+          <div className="modal-overlay" onClick={() => setShowChatInfo(false)}>
+            <div className="modal-content" style={{ maxWidth: '380px', textAlign: 'center', padding: '2rem 1.5rem' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: '#6366f1', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', color: '#fff', fontSize: '2.5rem', fontWeight: 'bold', boxShadow: '0 8px 24px rgba(99,102,241,0.4)' }}>
+                {activeThread.avatar ? (
+                  <img src={activeThread.avatar} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  activeThread.name.charAt(0).toUpperCase()
+                )}
               </div>
-              <div className="modal-body">{selectedMessage.body}</div>
-              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <button 
-                  onClick={() => handleDeleteMessage(selectedMessage._id)} 
-                  style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: 'none', padding: '0.625rem 1.25rem', borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                >
-                  <Trash2 size={16} /> Delete
-                </button>
-                <button onClick={() => handleReply(selectedMessage.sender)} className="primary-btn" style={{ width: 'auto', padding: '0.625rem 1.25rem' }}>
-                  <CornerUpLeft size={16} /> Reply
-                </button>
+              <h2 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{activeThread.name}</h2>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all', marginBottom: '1.5rem' }}>{activeThread.sender}</p>
+              
+              <div style={{ background: 'var(--input-bg)', padding: '1rem', borderRadius: '0.875rem', textAlign: 'left', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
+                <div style={{ color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Endpoint Security</div>
+                <div style={{ color: 'var(--text-primary)', fontWeight: '600' }}>End-to-end encrypted @rizzmail.me relay</div>
               </div>
+
+              <button onClick={() => setShowChatInfo(false)} className="primary-btn">Close Info</button>
             </div>
           </div>
         )}
 
+        {/* ACCOUNT DELETION WARNING STEP */}
         {!isLoggingOut && step === 7 && (
           <div className="card-wrapper" style={{ maxWidth: '480px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }}>
             <div className="card" style={{ textAlign: 'left', width: '100%' }}>

@@ -1112,3 +1112,23 @@ html, body {
     display: block !important;
   }
 }
+
+@media (max-width: 768px) {
+  .whatsapp-sidebar {
+    width: 100% !important;
+  }
+  .whatsapp-sidebar.mobile-hidden {
+    display: none !important;
+  }
+  .whatsapp-chat-window.mobile-hidden {
+    display: none !important;
+  }
+  .whatsapp-back-btn {
+    display: flex !important;
+  }
+  .whatsapp-layout {
+    height: calc(100vh - 60px) !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+}
