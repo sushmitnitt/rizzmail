@@ -129,6 +129,33 @@ router.post('/send', async (req, res) => {
 });
 
 // Cloudflare Email Worker Webhook Receiver (Direct HTTP Ingestion)
+// Helper to clean raw email text and extract only the message body
+const cleanEmailBody = (rawText) => {
+  if (!rawText) return '';
+  
+  // Strip out email headers (everything before the first double newline)
+  let bodyPart = rawText;
+  const doubleNewlineIndex = rawText.indexOf('\r\n\r\n');
+  const doubleNewlineIndexAlt = rawText.indexOf('\n\n');
+  
+  if (doubleNewlineIndex !== -1 && doubleNewlineIndex < 2500) {
+    bodyPart = rawText.slice(doubleNewlineIndex + 4);
+  } else if (doubleNewlineIndexAlt !== -1 && doubleNewlineIndexAlt < 2500) {
+    bodyPart = rawText.slice(doubleNewlineIndexAlt + 2);
+  }
+
+  // Clean up MIME boundaries and content type artifacts
+  let cleaned = bodyPart
+    .replace(/Content-Type:[\s\S]*?\r?\n\r?\n/gi, '')
+    .replace(/Content-Transfer-Encoding:[\s\S]*?\r?\n/gi, '')
+    .replace(/--[a-zA-Z0-9-_=.]+/g, '') // Remove MIME boundaries
+    .replace(/text\/plain|text\/html|multipart\/alternative/gi, '')
+    .trim();
+
+  return cleaned || rawText.substring(0, 300);
+};
+
+// Cloudflare Email Worker Webhook Receiver (Direct HTTP Ingestion)
 router.post('/webhook', async (req, res) => {
   try {
     const { recipient, sender, subject, body } = req.body;
@@ -138,6 +165,7 @@ router.post('/webhook', async (req, res) => {
     }
 
     const recipientNorm = normalizePhone(recipient);
+    const parsedBody = cleanEmailBody(body); // <--- Cleaned message body
 
     const newEmail = new Email({
       phoneNumber: recipientNorm.pureDigits,
@@ -145,7 +173,7 @@ router.post('/webhook', async (req, res) => {
       recipient: recipientNorm.alias,
       sender: sender || 'unknown@domain.com',
       subject: subject || 'No Subject',
-      body: body || '',
+      body: parsedBody, // <--- Saves only clean text
       direction: 'inbound',
       date: new Date(),
       createdAt: new Date()
@@ -153,14 +181,14 @@ router.post('/webhook', async (req, res) => {
 
     await newEmail.save();
 
-    // Instant real-time WebSocket broadcast to connected client
+    // Instant real-time WebSocket broadcast
     const io = req.app.get('io');
     if (io) {
       io.to(recipientNorm.pureDigits).emit('new_message', newEmail);
       io.to(recipientNorm.alias).emit('new_message', newEmail);
     }
 
-    console.log(`✅ Inbound email saved & broadcasted for recipient: ${recipientNorm.alias} from ${sender}`);
+    console.log(`✅ Clean inbound email saved for: ${recipientNorm.alias}`);
     return res.status(200).json({ success: true, message: 'Webhook email processed successfully' });
   } catch (err) {
     console.error('❌ Webhook error:', err);

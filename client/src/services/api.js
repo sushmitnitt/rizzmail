@@ -1,25 +1,24 @@
 import axios from 'axios';
 
-// Automatically use Render backend if live, otherwise fallback to localhost for local dev
+// Automatically use Render backend in production, fallback to local for development
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com/api';
 
-const api = axios.create({
+const API = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json'
-  },
-  withCredentials: true
+  }
 });
 
-// Auth Endpoints
-export const sendOTP = (phoneNumber) => api.post('/auth/send-otp', { phoneNumber });
-export const verifyOTP = (phoneNumber, otp) => api.post('/auth/verify-otp', { phoneNumber, otp });
-export const updateProfileAPI = (profileData) => api.post('/auth/update-profile', profileData);
-export const deleteMessageAPI = (emailId) => api.delete(`/email/message/${emailId}`);
+// Auth APIs
+export const sendOTP = (phone) => API.post('/auth/send-otp', { phone });
+export const verifyOTP = (phone, otp) => API.post('/auth/verify-otp', { phone, otp });
+export const updateProfileAPI = (userData) => API.put('/auth/profile', userData);
+export const deleteAccountAPI = (phone) => API.delete(`/auth/account/${phone}`);
 
-// Email Endpoints
-export const fetchMessages = (phone) => api.get(`/email/messages/${phone}`);
-export const sendEmailAPI = (emailData) => api.post('/email/send', emailData);
-export const deleteAccountAPI = (phone) => api.delete(`/email/account/${phone}`);
+// Email APIs (Matches the backend routes we just updated)
+export const fetchMessages = (phone) => API.get(`/email/messages/${phone}`);
+export const sendEmailAPI = (emailData) => API.post('/email/send', emailData);
+export const deleteMessageAPI = (id) => API.delete(`/email/message/${id}`);
 
-export default api;
+export default API;
