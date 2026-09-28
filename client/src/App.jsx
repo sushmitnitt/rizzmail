@@ -21,6 +21,18 @@ const countriesList = [
   { name: 'Saudi Arabia', code: '966', label: 'SA (+966)' }
 ];
 
+// Single unified normalization function to guarantee 1 contact = 1 conversation
+const normalizeContactIdentifier = (input) => {
+  if (!input) return '';
+  const str = input.toString().toLowerCase().trim();
+  const localPart = str.split('@')[0];
+  const pureDigits = localPart.replace(/[^0-9]/g, '');
+  if (pureDigits.length >= 10) {
+    return pureDigits.slice(-10);
+  }
+  return localPart || str;
+};
+
 function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('rizzmail_theme') || 'dark');
 
@@ -89,7 +101,6 @@ function App() {
   const [activeChatSender, setActiveChatSender] = useState(null);
   const [showChatInfo, setShowChatInfo] = useState(false);
   const [chatMessageBody, setChatMessageBody] = useState('');
-  const [activeTab, setActiveTab] = useState('chats');
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatInput, setNewChatInput] = useState('');
 
@@ -113,21 +124,6 @@ function App() {
 
   const getUserPhone = () => {
     return user?.phoneNumber || user?.phone || phoneNumber;
-  };
-
-  // Canonical key normalizer to unify phone numbers and aliases into one single thread
-  const getCanonicalKey = (input) => {
-    if (!input) return '';
-    const str = input.toString().toLowerCase().trim();
-    if (str.endsWith('@rizzmail.me')) {
-      const localPart = str.split('@')[0];
-      const pure = localPart.replace(/[^0-9]/g, '');
-      if (pure.length >= 10) return pure.slice(-10);
-      return localPart;
-    }
-    const pureDigits = str.replace(/[^0-9]/g, '');
-    if (pureDigits.length >= 10) return pureDigits.slice(-10);
-    return str;
   };
 
   useEffect(() => {
@@ -422,41 +418,47 @@ function App() {
     }
   };
 
-  const handleCopyEmail = () => {
-    const activePhone = getUserPhone();
-    const emailStr = `${getEmailPhone(activePhone)}@rizzmail.me`;
-    navigator.clipboard.writeText(emailStr);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
+  // Instant Optimistic Message Sending with Reconciliation (Rule 8, 9, 10)
   const handleSendReplySubmit = async (e) => {
     e.preventDefault();
     if (!chatMessageBody.trim() || !activeChatSender) return;
-    setLoading(true);
+
+    const tempClientMessageId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+    const activePhone = getUserPhone();
+    const recipientTarget = activeChatSender;
+
+    const optimisticMsg = {
+      clientMessageId: tempClientMessageId,
+      sender: `${normalizeContactIdentifier(activePhone)}@rizzmail.me`,
+      recipient: recipientTarget,
+      subject: 'Re: Conversation',
+      body: chatMessageBody.trim(),
+      direction: 'outbound',
+      createdAt: new Date().toISOString(),
+      isOptimistic: true
+    };
+
+    setMessages((prev) => [optimisticMsg, ...prev]);
+    setChatMessageBody('');
+
     try {
-      const activePhone = getUserPhone();
       const res = await sendEmailAPI({
         senderPhone: activePhone,
-        recipientEmail: activeChatSender,
+        recipientEmail: recipientTarget,
         subject: 'Re: Conversation',
-        body: chatMessageBody
+        body: optimisticMsg.body,
+        clientMessageId: tempClientMessageId
       });
       
       if (res.data && res.data.message) {
-        const newMsg = res.data.message;
-        setMessages((prev) => {
-          if (newMsg._id && prev.some(m => m._id === newMsg._id)) return prev;
-          return [newMsg, ...prev];
-        });
+        const confirmedMsg = res.data.message;
+        setMessages((prev) => prev.map(m => m.clientMessageId === tempClientMessageId ? confirmedMsg : m));
       } else {
         loadInbox(activePhone);
       }
-      setChatMessageBody('');
     } catch (err) {
-      setError('Failed to send reply.');
-    } finally {
-      setLoading(false);
+      setError('Failed to send message.');
+      setMessages((prev) => prev.map(m => m.clientMessageId === tempClientMessageId ? { ...m, hasError: true } : m));
     }
   };
 
@@ -487,7 +489,7 @@ function App() {
       setMessages((prev) => prev.filter(m => {
         const isOutbound = m.direction === 'outbound';
         const other = isOutbound ? m.recipient : m.sender;
-        return getCanonicalKey(other) !== canonicalKey;
+        return normalizeContactIdentifier(other) !== canonicalKey;
       }));
       setActiveChatSender(null);
     } catch (e) {
@@ -515,37 +517,44 @@ function App() {
     }, 2400);
   };
 
-  // STRICT UNIFIED THREAD MAPPING
+  // STRICT UNIFIED CANONICAL THREAD MAPPING (Rule 1, 3, 5, 11, 12)
   const chatThreadsMap = {};
+
   messages.forEach((msg) => {
     if (msg.isDeleted) return;
     const isOutbound = msg.direction === 'outbound';
-    const otherParty = isOutbound ? msg.recipient : msg.sender;
-    if (!otherParty) return;
+    
+    const myPhoneNorm = normalizeContactIdentifier(getUserPhone());
+    const senderNorm = normalizeContactIdentifier(msg.sender);
+    const recipientNorm = normalizeContactIdentifier(msg.recipient);
 
-    const canonicalKey = getCanonicalKey(otherParty);
+    const counterpartyRaw = (senderNorm === myPhoneNorm) ? msg.recipient : msg.sender;
+    if (!counterpartyRaw) return;
+
+    const canonicalKey = normalizeContactIdentifier(counterpartyRaw);
 
     if (!chatThreadsMap[canonicalKey]) {
       chatThreadsMap[canonicalKey] = {
         canonicalKey: canonicalKey,
-        sender: otherParty,
-        name: msg.counterpartyName || (isOutbound ? msg.recipient : msg.sender).split('@')[0],
+        sender: counterpartyRaw,
+        name: msg.counterpartyName || counterpartyRaw.split('@')[0],
         avatar: msg.counterpartyPhoto || '',
         messages: []
       };
     }
+    
     if (msg.counterpartyPhoto && !chatThreadsMap[canonicalKey].avatar) {
       chatThreadsMap[canonicalKey].avatar = msg.counterpartyPhoto;
     }
     if (msg.counterpartyName && chatThreadsMap[canonicalKey].name.includes('@')) {
       chatThreadsMap[canonicalKey].name = msg.counterpartyName;
     }
+
     chatThreadsMap[canonicalKey].messages.push(msg);
   });
 
-  // Ensure activeChatSender is always present in map even if there are 0 messages yet
   if (activeChatSender) {
-    const activeCanonical = getCanonicalKey(activeChatSender);
+    const activeCanonical = normalizeContactIdentifier(activeChatSender);
     if (!chatThreadsMap[activeCanonical]) {
       chatThreadsMap[activeCanonical] = {
         canonicalKey: activeCanonical,
@@ -559,9 +568,12 @@ function App() {
 
   const chatThreadsList = Object.values(chatThreadsMap).map(thread => {
     const uniqueMap = new Map();
-    thread.messages.forEach(m => uniqueMap.set(m._id || JSON.stringify(m), m));
+    thread.messages.forEach(m => {
+      const msgKey = m._id || m.clientMessageId || JSON.stringify(m);
+      uniqueMap.set(msgKey, m);
+    });
     thread.messages = Array.from(uniqueMap.values());
-    thread.messages.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+    thread.messages.sort((a, b) => new Date(a.createdAt || a.date || 0) - new Date(b.createdAt || b.date || 0));
     thread.lastMessage = thread.messages[thread.messages.length - 1];
     return thread;
   });
@@ -572,7 +584,7 @@ function App() {
     (thread.lastMessage && thread.lastMessage.body.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const activeThread = activeChatSender ? chatThreadsMap[getCanonicalKey(activeChatSender)] : null;
+  const activeThread = activeChatSender ? chatThreadsMap[normalizeContactIdentifier(activeChatSender)] : null;
 
   return (
     <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
@@ -962,7 +974,7 @@ function App() {
                           activeThread.messages.map((msg, idx) => {
                             const isOutbound = msg.direction === 'outbound';
                             return (
-                              <div key={msg._id || idx} style={{ display: 'flex', justifyContent: isOutbound ? 'flex-end' : 'flex-start', width: '100%' }}>
+                              <div key={msg._id || msg.clientMessageId || idx} style={{ display: 'flex', justifyContent: isOutbound ? 'flex-end' : 'flex-start', width: '100%' }}>
                                 <div style={{
                                   maxWidth: '70%',
                                   background: isOutbound ? '#6366f1' : 'var(--card-bg)',
@@ -974,8 +986,9 @@ function App() {
                                 }}>
                                   {msg.subject && <div style={{ fontSize: '0.75rem', opacity: 0.8, marginBottom: '0.25rem', fontWeight: '600' }}>{msg.subject}</div>}
                                   <div style={{ fontSize: '0.9rem', wordBreak: 'break-word', lineHeight: '1.4' }}>{msg.body}</div>
-                                  <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem' }}>
+                                  <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                                     {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {isOutbound && (msg.isOptimistic ? ' ◌' : ' ✓')}
                                   </div>
                                 </div>
                               </div>
