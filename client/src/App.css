@@ -16,6 +16,7 @@
   --card-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
   --pill-bg: rgba(15, 23, 42, 0.6);
   --pill-border: rgba(255, 255, 255, 0.06);
+  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
 }
 
 [data-theme='light'] {
@@ -33,13 +34,13 @@
   --card-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.08);
   --pill-bg: rgba(255, 255, 255, 0.8);
   --pill-border: rgba(226, 232, 240, 0.8);
+  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
 
 html, body {
@@ -51,6 +52,7 @@ html, body {
   font-family: 'Inter', sans-serif;
   color: var(--text-primary);
   overflow-x: hidden;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 /* Fluid App Container */
@@ -113,6 +115,7 @@ html, body {
   border-bottom: 1px solid var(--header-border);
   background: var(--header-bg);
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -131,7 +134,7 @@ html, body {
   width: 2.35rem;
   height: 2.35rem;
   border-radius: 0.65rem;
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  background: var(--accent-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -235,12 +238,15 @@ html, body {
 }
 
 .card {
+  position: relative;
+  z-index: 1;
   background: var(--card-bg);
   backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border-radius: calc(1.5rem - 1px);
   padding: clamp(2rem, 5vw, 2.75rem) clamp(1.5rem, 4vw, 2.5rem);
   width: 100%;
-  border: none;
+  border: 1px solid var(--input-border);
   box-shadow: var(--card-shadow);
 }
 
@@ -405,7 +411,7 @@ html, body {
   border: none;
   border-radius: 0.875rem;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -414,7 +420,7 @@ html, body {
 }
 
 .primary-btn:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: 0 6px 25px rgba(99, 102, 241, 0.6);
   filter: brightness(1.1);
 }
@@ -423,6 +429,7 @@ html, body {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
 .text-btn {
@@ -545,6 +552,10 @@ html, body {
   transition: all 0.2s ease;
 }
 
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
 .dashboard-nav {
   display: flex;
   gap: 0.5rem;
@@ -614,6 +625,10 @@ html, body {
   transition: all 0.2s ease;
 }
 
+.refresh-btn:hover {
+  border-color: #6366f1;
+}
+
 .search-bar-container {
   position: relative;
   margin-bottom: 1.25rem;
@@ -637,6 +652,12 @@ html, body {
   color: var(--input-text);
   font-size: 0.875rem;
   transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
 .message-list {
@@ -719,6 +740,7 @@ html, body {
   bottom: 0;
   background: rgba(2, 6, 23, 0.7);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -751,7 +773,7 @@ html, body {
 
 .close-modal-btn {
   background: var(--pill-bg);
-  border: none;
+  border: 1px solid var(--input-border);
   color: var(--text-secondary);
   width: 2rem;
   height: 2rem;
@@ -761,6 +783,12 @@ html, body {
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.close-modal-btn:hover {
+  color: var(--text-primary);
+  border-color: #6366f1;
 }
 
 .modal-body {
@@ -780,6 +808,7 @@ html, body {
   background: var(--card-bg);
   border: 1px solid rgba(99, 102, 241, 0.5);
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   padding: 1rem 1.25rem;
   border-radius: 1rem;
   box-shadow: var(--card-shadow);
@@ -790,6 +819,7 @@ html, body {
   z-index: 100;
   color: var(--text-primary);
   max-width: calc(100vw - 3rem);
+  animation: fadeIn 0.3s ease;
 }
 
 .toast-icon {
@@ -853,95 +883,6 @@ html, body {
   0% { transform: scale(0.95); opacity: 0.8; }
   50% { transform: scale(1.3); opacity: 1; }
   100% { transform: scale(0.95); opacity: 0.8; }
-}
-
-/* Responsive Mobile Adjustments */
-@media (max-width: 640px) {
-  .app-header {
-    padding: 1rem 1.25rem;
-  }
-  
-  .main-content {
-    padding: 1.5rem 1rem;
-  }
-
-  .dashboard {
-    padding: 0.5rem;
-  }
-
-  .user-info-card {
-    padding: 1.25rem;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .logout-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .toast-notification {
-    bottom: 1rem;
-    right: 1rem;
-    left: 1rem;
-    max-width: none;
-  }
-}
-
-/* Force-remove all left and right borders, outlines, or vertical dividers globally */
-*, *::before, *::after {
-  border-left: none !important;
-  border-right: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-
-/* Clean background container adapting to active theme variables */
-.app-container {
-  position: relative;
-  overflow: hidden;
-  background-color: var(--bg-color);
-}
-
-.app-container::before {
-  content: '';
-  position: absolute;
-  top: 10%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.05) 50%, transparent 70%);
-  z-index: 0;
-  pointer-events: none;
-}
-
-/* Card layout relying fully on theme variables instead of fixed dark colors */
-.card {
-  position: relative;
-  z-index: 1;
-  background: var(--card-bg) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--input-border) !important;
-  box-shadow: var(--card-shadow);
-}
-
-/* Make the phone input container glow on focus */
-.phone-input-container:focus-within {
-  border-color: #6366f1 !important;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-}
-
-/* Give the primary button a richer hover lift effect */
-.primary-btn {
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
-}
-
-.primary-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(99, 102, 241, 0.6);
 }
 
 /* Gmail Layout Styles */
@@ -1014,7 +955,7 @@ html, body {
 }
 
 .sidebar-nav-item.active {
-  background: var(--accent-bg, rgba(99, 102, 241, 0.15));
+  background: rgba(99, 102, 241, 0.15);
   color: #6366f1;
   font-weight: 600;
 }
@@ -1054,7 +995,6 @@ html, body {
 
 .gmail-message-row:hover {
   background: var(--pill-bg);
-  box-shadow: inset 1px 0 0 var(--input-border), inset -1px 0 0 var(--input-border);
 }
 
 .gmail-message-row.unread {
@@ -1084,6 +1024,7 @@ html, body {
   flex-shrink: 0;
 }
 
+/* Responsive Mobile Adjustments */
 @media (max-width: 768px) {
   .mobile-menu-trigger {
     display: flex !important;
@@ -1111,9 +1052,7 @@ html, body {
   .mobile-backdrop {
     display: block !important;
   }
-}
 
-@media (max-width: 768px) {
   .whatsapp-sidebar {
     width: 100% !important;
   }
@@ -1130,5 +1069,12 @@ html, body {
     height: calc(100vh - 60px) !important;
     border-radius: 0 !important;
     border: none !important;
+  }
+  
+  .toast-notification {
+    bottom: 1rem;
+    right: 1rem;
+    left: 1rem;
+    max-width: none;
   }
 }
