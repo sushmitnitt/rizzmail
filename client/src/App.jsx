@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Image as ImageIcon, CheckCheck } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -96,6 +96,7 @@ function App() {
   
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [chatFilter, setChatFilter] = useState('all'); // all, unread
   const [toast, setToast] = useState(null);
 
   // Chat Navigation & Feature Modals
@@ -108,6 +109,15 @@ function App() {
   // Extra Interactive Features State
   const [attachmentPreview, setAttachmentPreview] = useState(null);
   const [activeCall, setActiveCall] = useState(null); // { type: 'voice' | 'video', name: '' }
+  const [showSnippets, setShowSnippets] = useState(false);
+
+  const quickSnippetsList = [
+    "Got it, thanks!",
+    "Please check my latest email.",
+    "Let's sync up later today.",
+    "Verified and approved.",
+    "Can you send the details?"
+  ];
 
   useEffect(() => {
     let timer;
@@ -616,11 +626,16 @@ function App() {
     return thread;
   });
 
-  const filteredThreads = chatThreadsList.filter(thread => 
-    thread.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    thread.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (thread.lastMessage && thread.lastMessage.body.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredThreads = chatThreadsList.filter(thread => {
+    const matchesSearch = thread.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      thread.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (thread.lastMessage && thread.lastMessage.body.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    if (chatFilter === 'unread') {
+      return matchesSearch && thread.messages.some(m => m.direction === 'inbound'); // example unread heuristic
+    }
+    return matchesSearch;
+  });
 
   const activeThread = activeChatSender ? chatThreadsMap[normalizeContactIdentifier(activeChatSender)] : null;
 
@@ -639,27 +654,10 @@ function App() {
             </button>
           )}
 
-          <div style={{
-            width: '2.6rem',
-            height: '2.6rem',
-            borderRadius: '0.75rem',
-            background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontFamily: 'JetBrains Mono, monospace',
-            fontWeight: '800',
-            fontSize: '1.2rem',
-            color: '#ffffff',
-            boxShadow: '0 4px 18px rgba(99, 102, 241, 0.45)',
-            flexShrink: 0,
-            letterSpacing: '1px'
-          }}>
-            rm
-          </div>
+          <div className="app-logo-icon">rm</div>
           <div>
             <h1 className="logo-text">rizzmail.me</h1>
-            <p>Burner Numbers. Real Inboxes. Zero Trace.</p>
+            <p>Your personal email via your phone number.</p>
           </div>
         </div>
         
@@ -744,7 +742,7 @@ function App() {
         {error && <div className="error-banner" style={{ width: '100%', maxWidth: '440px', marginBottom: '1rem' }}>{error}</div>}
 
         {isLoggingOut && (
-          <div className="card-wrapper" style={{ textAlign: 'center', margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', animation: 'slideUp 0.3s ease-out' }}>
+          <div className="card-wrapper" style={{ textAlign: 'center', margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
             <div className="card" style={{ padding: '3.5rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
               <Lock size={32} style={{ color: '#818cf8', animation: 'spin 1.5s linear infinite', marginBottom: '1rem' }} />
               <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Signing Out...</h2>
@@ -757,7 +755,7 @@ function App() {
             <form onSubmit={handleSendOTP} className="card" style={{ width: '100%' }}>
               <div className="badge-pill"><Shield size={12} /> Secure Authentication</div>
               <h2>Welcome to RizzMail</h2>
-              <p className="subtitle">Enter your mobile number to sign in or create an account.</p>
+              <p className="subtitle">Your personal email via your phone number.</p>
               
               <div style={{ marginBottom: '1.5rem' }}>
                 <div className="phone-input-container">
@@ -941,6 +939,22 @@ function App() {
                       </button>
                     </div>
 
+                    {/* QUICK FILTER TABS */}
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button 
+                        onClick={() => setChatFilter('all')} 
+                        style={{ background: chatFilter === 'all' ? '#6366f1' : 'var(--input-bg)', color: chatFilter === 'all' ? '#fff' : 'var(--text-muted)', border: '1px solid var(--input-border)', padding: '0.3rem 0.75rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
+                      >
+                        All Chats
+                      </button>
+                      <button 
+                        onClick={() => setChatFilter('unread')} 
+                        style={{ background: chatFilter === 'unread' ? '#6366f1' : 'var(--input-bg)', color: chatFilter === 'unread' ? '#fff' : 'var(--text-muted)', border: '1px solid var(--input-border)', padding: '0.3rem 0.75rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
+                      >
+                        Unread
+                      </button>
+                    </div>
+
                     {/* QUICK COPY BURNER EMAIL BADGE */}
                     <div style={{ background: 'var(--input-bg)', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', border: '1px solid var(--input-border)' }}>
                       <span style={{ color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getEmailPhone(getUserPhone())}@rizzmail.me</span>
@@ -1090,11 +1104,11 @@ function App() {
                               <div key={msg._id || msg.clientMessageId || idx} style={{ display: 'flex', justifyContent: isOutbound ? 'flex-end' : 'flex-start', width: '100%' }}>
                                 <div style={{
                                   maxWidth: '70%',
-                                  background: isOutbound ? '#6366f1' : 'var(--card-bg)',
+                                  background: isOutbound ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' : 'var(--card-bg)',
                                   color: isOutbound ? '#ffffff' : 'var(--text-primary)',
                                   padding: '0.75rem 1rem',
                                   borderRadius: isOutbound ? '1rem 1rem 0 1rem' : '1rem 1rem 1rem 0',
-                                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                                   border: isOutbound ? 'none' : '1px solid var(--input-border)',
                                   position: 'relative'
                                 }}>
@@ -1136,12 +1150,37 @@ function App() {
                         </div>
                       )}
 
-                      {/* COMPOSER BAR WITH ATTACHMENT & EMOJI BUTTONS */}
+                      {/* QUICK SNIPPETS POPUP MENU */}
+                      {showSnippets && (
+                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}><Sparkles size={12} /> Quick Replies:</span>
+                          {quickSnippetsList.map((snip, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => { setChatMessageBody(snip); setShowSnippets(false); }}
+                              style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', cursor: 'pointer' }}
+                            >
+                              {snip}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* COMPOSER BAR WITH ATTACHMENT, EMOJI & SNIPPET BUTTONS */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                         <label title="Attach image or file" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Paperclip size={20} />
                           <input type="file" accept="image/*" onChange={handleAttachmentUpload} style={{ display: 'none' }} />
                         </label>
+                        <button 
+                          type="button" 
+                          onClick={() => setShowSnippets(!showSnippets)}
+                          title="Quick message templates"
+                          style={{ background: 'transparent', border: 'none', color: showSnippets ? '#6366f1' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <Sparkles size={20} />
+                        </button>
                         <button 
                           type="button" 
                           onClick={() => setChatMessageBody(prev => prev + ' 😊')}
