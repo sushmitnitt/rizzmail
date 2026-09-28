@@ -126,7 +126,6 @@ function App() {
   const [showChatInfo, setShowChatInfo] = useState(false);
   const [chatMessageBody, setChatMessageBody] = useState('');
   const [chatSubject, setChatSubject] = useState('');
-  const [showSubjectInput, setShowSubjectInput] = useState(false);
   
   const [showTraditionalModal, setShowTraditionalModal] = useState(false);
   const [traditionalTo, setTraditionalTo] = useState('');
@@ -500,7 +499,7 @@ function App() {
     const activePhone = getUserPhone();
     const recipientTarget = activeChatSender;
     const finalBody = chatMessageBody.trim();
-    const finalSubject = showSubjectInput ? (chatSubject.trim() || '') : '';
+    const finalSubject = chatSubject.trim() || '';
 
     const optimisticMsg = {
       clientMessageId: tempClientMessageId,
@@ -517,8 +516,8 @@ function App() {
 
     setMessages((prev) => [optimisticMsg, ...prev]);
     setChatMessageBody('');
+    setChatSubject('');
     setAttachmentPreview(null);
-    setShowSubjectInput(false);
 
     try {
       const res = await sendEmailAPI({
@@ -767,7 +766,6 @@ function App() {
             <span className="pulse-dot"></span> System Online
           </div>
           
-          {/* PROFILE ICON IN TOP-RIGHT PROVIDING ACCESS TO ACCOUNT SETTINGS */}
           {user && step === 6 && !isLoggingOut && (
             <div style={{ position: 'relative', overflow: 'visible' }} ref={profileMenuRef}>
               <button 
@@ -1348,7 +1346,7 @@ function App() {
                         </div>
                       </div>
 
-                      {/* MESSAGES WITH VISUAL ATTACHMENT PREVIEWS */}
+                      {/* MESSAGES WITH VISUAL ATTACHMENT PREVIEWS & SUBJECTS */}
                       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
@@ -1376,6 +1374,11 @@ function App() {
                                   }}
                                   title="Tap to open in traditional view & reply"
                                 >
+                                  {msg.subject && (
+                                    <div style={{ fontSize: '0.75rem', fontWeight: '700', opacity: 0.9, marginBottom: '0.25rem', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.15rem' }}>
+                                      Subject: {msg.subject}
+                                    </div>
+                                  )}
                                   {msg.attachment && (
                                     <div style={{ marginBottom: msg.body ? '0.5rem' : 0, borderRadius: '0.5rem', overflow: 'hidden' }}>
                                       <img src={msg.attachment} alt="Attachment Preview" style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', borderRadius: '0.5rem', display: 'block' }} />
@@ -1406,20 +1409,6 @@ function App() {
                         )}
                       </div>
 
-                      {showSubjectInput && (
-                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                          <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)' }}>Subject:</span>
-                          <input 
-                            type="text" 
-                            placeholder="Enter email subject..."
-                            value={chatSubject}
-                            onChange={(e) => setChatSubject(e.target.value)}
-                            style={{ flex: 1, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: '0.5rem', padding: '0.4rem 0.75rem', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }}
-                          />
-                          <button onClick={() => setShowSubjectInput(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={14} /></button>
-                        </div>
-                      )}
-
                       {attachmentPreview && (
                         <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
                           <div style={{ width: '40px', height: '40px', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid var(--input-border)' }}>
@@ -1446,55 +1435,61 @@ function App() {
                         </div>
                       )}
 
-                      {/* CHAT COMPOSER BAR */}
-                      <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.75rem', alignItems: 'center', flexShrink: 0 }}>
-                        <label title="Attach image or file up to 5MB" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Paperclip size={20} />
-                          <input type="file" accept="image/*" onChange={handleAttachmentUpload} style={{ display: 'none' }} />
-                        </label>
-                        
-                        <button 
-                          type="button" 
-                          onClick={() => {
-                            setTraditionalTo(activeChatSender);
-                            setTraditionalSubject('');
-                            setTraditionalBody('');
-                            setIsTraditionalLocked(true);
-                            setShowTraditionalModal(true);
-                          }}
-                          title="Open in Traditional View (To field locked)"
-                          style={{ background: 'transparent', border: 'none', color: '#6366f1', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <Camera size={20} />
-                        </button>
+                      {/* CHAT COMPOSER BAR WITH COMPACT SUBJECT FIELD ABOVE MESSAGE BOX */}
+                      <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem', flexShrink: 0 }}>
+                        {/* Compact Subject Field right above the message box */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', width: '50px' }}>Subject</span>
+                          <input 
+                            type="text"
+                            placeholder="Add a subject (optional)..."
+                            value={chatSubject}
+                            onChange={(e) => setChatSubject(e.target.value)}
+                            style={{ flex: 1, padding: '0.4rem 0.75rem', borderRadius: '0.5rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: '0.8rem', outline: 'none' }}
+                          />
+                        </div>
 
-                        <button 
-                          type="button" 
-                          onClick={() => setShowSubjectInput(!showSubjectInput)}
-                          title="Toggle Subject Field"
-                          style={{ background: 'transparent', border: 'none', color: showSubjectInput ? '#6366f1' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '600' }}
-                        >
-                          Subject
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => setShowSnippets(!showSnippets)}
-                          title="Quick message templates"
-                          style={{ background: 'transparent', border: 'none', color: showSnippets ? '#6366f1' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <Sparkles size={20} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                          <label title="Attach image or file up to 5MB" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Paperclip size={20} />
+                            <input type="file" accept="image/*" onChange={handleAttachmentUpload} style={{ display: 'none' }} />
+                          </label>
+                          
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              setTraditionalTo(activeChatSender);
+                              setTraditionalSubject(chatSubject);
+                              setTraditionalBody(chatMessageBody);
+                              setIsTraditionalLocked(true);
+                              setShowTraditionalModal(true);
+                            }}
+                            title="Open in Traditional View"
+                            style={{ background: 'transparent', border: 'none', color: '#6366f1', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <Camera size={20} />
+                          </button>
 
-                        <input 
-                          type="text"
-                          placeholder="Type a message..."
-                          value={chatMessageBody}
-                          onChange={(e) => setChatMessageBody(e.target.value)}
-                          style={{ flex: 1, padding: '0.75rem 1rem', borderRadius: '1.5rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }}
-                        />
-                        <button type="submit" disabled={loading} style={{ background: '#6366f1', color: '#fff', border: 'none', width: '42px', height: '42px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
-                          <Send size={18} />
-                        </button>
+                          <button 
+                            type="button" 
+                            onClick={() => setShowSnippets(!showSnippets)}
+                            title="Quick message templates"
+                            style={{ background: 'transparent', border: 'none', color: showSnippets ? '#6366f1' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <Sparkles size={20} />
+                          </button>
+
+                          <input 
+                            type="text"
+                            placeholder="Type a message..."
+                            value={chatMessageBody}
+                            onChange={(e) => setChatMessageBody(e.target.value)}
+                            style={{ flex: 1, padding: '0.65rem 1rem', borderRadius: '1.5rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                          />
+                          <button type="submit" disabled={loading} style={{ background: '#6366f1', color: '#fff', border: 'none', width: '42px', height: '42px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
+                            <Send size={18} />
+                          </button>
+                        </div>
                       </form>
                     </>
                   ) : (
