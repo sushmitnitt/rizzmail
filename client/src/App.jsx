@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
 import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera } from 'lucide-react';
@@ -74,6 +74,18 @@ function App() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef(null);
+
+  // Close profile menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -111,7 +123,6 @@ function App() {
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatInput, setNewChatInput] = useState('');
   
-  // Traditional View Modals & Locking State
   const [showTraditionalModal, setShowTraditionalModal] = useState(false);
   const [traditionalTo, setTraditionalTo] = useState('');
   const [isTraditionalLocked, setIsTraditionalLocked] = useState(false);
@@ -740,7 +751,7 @@ function App() {
           </div>
           
           {user && step === 6 && !isLoggingOut && (
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} ref={profileMenuRef}>
               <button 
                 onClick={() => setShowProfileMenu(!showProfileMenu)} 
                 className="theme-toggle-btn"
@@ -1331,14 +1342,13 @@ function App() {
                         </div>
                       )}
 
-                      {/* CHAT COMPOSER BAR (WITH WHATSAPP-STYLE CAMERA TAB REPLACED BY TRADITIONAL COMPOSE) */}
+                      {/* CHAT COMPOSER BAR */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                         <label title="Attach image or file" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Paperclip size={20} />
                           <input type="file" accept="image/*" onChange={handleAttachmentUpload} style={{ display: 'none' }} />
                         </label>
                         
-                        {/* TRADITIONAL COMPOSE BUTTON REPLACING CAMERA TAB SPACE */}
                         <button 
                           type="button" 
                           onClick={() => {
@@ -1397,7 +1407,6 @@ function App() {
           </div>
         )}
 
-        {/* CHAT VIEW COMPOSE MODAL */}
         {showNewChatModal && (
           <div className="modal-overlay" onClick={() => setShowNewChatModal(false)}>
             <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'left', padding: '1.75rem' }} onClick={(e) => e.stopPropagation()}>
@@ -1433,7 +1442,6 @@ function App() {
           </div>
         )}
 
-        {/* TRADITIONAL VIEW COMPOSE MODAL (WITH LOCKED/PRE-FILLED TO FIELD) */}
         {showTraditionalModal && (
           <div className="modal-overlay" onClick={() => setShowTraditionalModal(false)}>
             <div className="modal-content" style={{ maxWidth: '520px', textAlign: 'left', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
@@ -1485,7 +1493,6 @@ function App() {
           </div>
         )}
 
-        {/* TRADITIONAL EMAIL READER MODAL (TAPPING ANY EMAIL / LONG MESSAGE) */}
         {traditionalEmailReader && (
           <div className="modal-overlay" onClick={() => setTraditionalEmailReader(null)}>
             <div className="modal-content" style={{ maxWidth: '560px', textAlign: 'left', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
@@ -1516,7 +1523,6 @@ function App() {
           </div>
         )}
 
-        {/* CALL SIMULATION MODAL */}
         {activeCall && (
           <div className="modal-overlay" onClick={() => setActiveCall(null)}>
             <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center', padding: '2.5rem 1.5rem', background: 'var(--card-bg)' }} onClick={(e) => e.stopPropagation()}>
