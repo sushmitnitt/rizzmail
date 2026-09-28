@@ -126,7 +126,7 @@ function App() {
   const [showChatInfo, setShowChatInfo] = useState(false);
   const [chatMessageBody, setChatMessageBody] = useState('');
   const [chatSubject, setChatSubject] = useState('');
-  const [quotedMessage, setQuotedMessage] = useState(null); // Tagged original message for replies
+  const [quotedMessage, setQuotedMessage] = useState(null);
   
   const [showTraditionalModal, setShowTraditionalModal] = useState(false);
   const [traditionalTo, setTraditionalTo] = useState('');
@@ -138,6 +138,9 @@ function App() {
   const [attachmentPreview, setAttachmentPreview] = useState(null);
   const [activeCall, setActiveCall] = useState(null);
   const [showSnippets, setShowSnippets] = useState(false);
+
+  // Swipe touch tracking states
+  const [touchStartX, setTouchStartX] = useState(0);
 
   const quickSnippetsList = [
     "Got it, thanks!",
@@ -1351,7 +1354,7 @@ function App() {
                         </div>
                       </div>
 
-                      {/* MESSAGES WITH SINGLE-REPLY ENFORCEMENT */}
+                      {/* MESSAGES WITH SWIPE-RIGHT & TAP TO OPEN TRADITIONAL VIEW */}
                       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
@@ -1366,7 +1369,18 @@ function App() {
                             const hasBeenRepliedTo = activeThread.messages.some(m => m.quotedMessage && (m.quotedMessage.id === msgId));
 
                             return (
-                              <div key={msgId || idx} style={{ display: 'flex', justifyContent: isOutbound ? 'flex-end' : 'flex-start', width: '100%', position: 'relative' }}>
+                              <div 
+                                key={msgId || idx} 
+                                style={{ display: 'flex', justifyContent: isOutbound ? 'flex-end' : 'flex-start', width: '100%', position: 'relative' }}
+                                onTouchStart={(e) => setTouchStartX(e.touches[0].clientX)}
+                                onTouchEnd={(e) => {
+                                  const touchEndX = e.changedTouches[0].clientX;
+                                  if (touchEndX - touchStartX > 80) {
+                                    // Swipe right gesture triggered -> open traditional view for this message
+                                    setTraditionalEmailReader(msg);
+                                  }
+                                }}
+                              >
                                 <div 
                                   onClick={() => setTraditionalEmailReader(msg)}
                                   style={{
@@ -1380,7 +1394,7 @@ function App() {
                                     position: 'relative',
                                     cursor: 'pointer'
                                   }}
-                                  title="Tap to open in traditional view & reply"
+                                  title="Swipe right or tap to open in traditional view"
                                 >
                                   {msg.subject && (
                                     <div style={{ fontSize: '0.75rem', fontWeight: '700', opacity: 0.95, marginBottom: '0.35rem', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -1406,6 +1420,17 @@ function App() {
                                     </div>
                                   )}
                                   <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+                                    <button 
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        setTraditionalEmailReader(msg); 
+                                      }}
+                                      title="Open in Traditional View"
+                                      style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.65rem', fontWeight: '600', marginRight: 'auto' }}
+                                    >
+                                      <Camera size={12} /> Traditional View
+                                    </button>
+
                                     {hasBeenRepliedTo ? (
                                       <span style={{ fontSize: '0.65rem', opacity: 0.7, fontStyle: 'italic' }}>✓ Replied</span>
                                     ) : (
@@ -1465,7 +1490,7 @@ function App() {
                         </div>
                       )}
 
-                      {/* CHAT COMPOSER BAR */}
+                      {/* CHAT COMPOSER BAR WITH TRADITIONAL VIEW CAMERA TAB */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem', flexShrink: 0 }}>
                         {quotedMessage && (
                           <div style={{ background: 'rgba(99, 102, 241, 0.1)', borderLeft: '3px solid #6366f1', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1496,6 +1521,7 @@ function App() {
                             <input type="file" accept="image/*" onChange={handleAttachmentUpload} style={{ display: 'none' }} />
                           </label>
                           
+                          {/* WhatsApp Camera tab button -> opens traditional view compose with prefilled locked To field */}
                           <button 
                             type="button" 
                             onClick={() => {
@@ -1505,7 +1531,7 @@ function App() {
                               setIsTraditionalLocked(true);
                               setShowTraditionalModal(true);
                             }}
-                            title="Open in Traditional View"
+                            title="Compose in Traditional View (To field locked)"
                             style={{ background: 'transparent', border: 'none', color: '#6366f1', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <Camera size={20} />
