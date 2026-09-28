@@ -1020,65 +1020,68 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* SIDEBAR & CHAT LIST (NO FOLDERS) */}
+                {/* SIDEBAR WITH FULL-WIDTH SEARCH BAR AT THE TOP */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
-                  <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <div className="search-bar-container" style={{ margin: 0, flex: 1 }}>
-                        <Search size={16} className="search-icon" />
-                        <input 
-                          type="text" 
-                          placeholder="Search or enter phone number & press Enter..." 
-                          value={searchQuery} 
-                          onChange={(e) => setSearchQuery(e.target.value)} 
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && searchQuery.trim()) {
-                              let target = searchQuery.trim().toLowerCase();
-                              if (!target.includes('@')) {
-                                const pure = target.replace(/[^0-9]/g, '').slice(-10);
-                                if (pure.length >= 5) {
-                                  target = `${pure}@rizzmail.me`;
-                                }
+                  <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>
+                    {/* FULL-WIDTH SEARCH BAR */}
+                    <div className="search-bar-container" style={{ margin: 0, width: '100%' }}>
+                      <Search size={16} className="search-icon" />
+                      <input 
+                        type="text" 
+                        placeholder="Search chats or enter phone & press Enter..." 
+                        value={searchQuery} 
+                        onChange={(e) => setSearchQuery(e.target.value)} 
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && searchQuery.trim()) {
+                            let target = searchQuery.trim().toLowerCase();
+                            if (!target.includes('@')) {
+                              const pure = target.replace(/[^0-9]/g, '').slice(-10);
+                              if (pure.length >= 5) {
+                                target = `${pure}@rizzmail.me`;
                               }
-                              setActiveChatSender(target);
-                              setSearchQuery('');
                             }
-                          }}
-                          className="search-input" 
-                        />
-                      </div>
-
-                      <button onClick={handleSimulateIncomingEmail} className="refresh-btn" title="Simulate incoming chat">
-                        <Zap size={14} />
-                      </button>
-                      <button onClick={() => loadInbox(getUserPhone())} className="refresh-btn" title="Refresh inbox">
-                        <RefreshCw size={14} />
-                      </button>
+                            setActiveChatSender(target);
+                            setSearchQuery('');
+                          }
+                        }}
+                        className="search-input" 
+                        style={{ width: '100%' }}
+                      />
                     </div>
 
-                    {/* FILTER CHIPS */}
-                    <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px' }}>
-                      {['all', 'unread', 'attachments', 'favorites'].map((chip) => (
-                        <button 
-                          key={chip}
-                          onClick={() => setChatFilter(chip)} 
-                          style={{ 
-                            background: chatFilter === chip ? '#6366f1' : 'var(--input-bg)', 
-                            color: chatFilter === chip ? '#fff' : 'var(--text-muted)', 
-                            border: '1px solid var(--input-border)', 
-                            padding: '0.25rem 0.6rem', 
-                            borderRadius: '1rem', 
-                            fontSize: '0.7rem', 
-                            fontWeight: '600', 
-                            cursor: 'pointer',
-                            textTransform: 'capitalize',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          {chip}
+                    {/* FILTER CHIPS & UTILITY ACTIONS */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px', flex: 1 }}>
+                        {['all', 'unread', 'attachments', 'favorites'].map((chip) => (
+                          <button 
+                            key={chip}
+                            onClick={() => setChatFilter(chip)} 
+                            style={{ 
+                              background: chatFilter === chip ? '#6366f1' : 'var(--input-bg)', 
+                              color: chatFilter === chip ? '#fff' : 'var(--text-muted)', 
+                              border: '1px solid var(--input-border)', 
+                              padding: '0.25rem 0.6rem', 
+                              borderRadius: '1rem', 
+                              fontSize: '0.7rem', 
+                              fontWeight: '600', 
+                              cursor: 'pointer',
+                              textTransform: 'capitalize',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {chip}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
+                        <button onClick={handleSimulateIncomingEmail} className="refresh-btn" title="Simulate incoming chat">
+                          <Zap size={14} />
                         </button>
-                      ))}
+                        <button onClick={() => loadInbox(getUserPhone())} className="refresh-btn" title="Refresh inbox">
+                          <RefreshCw size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
