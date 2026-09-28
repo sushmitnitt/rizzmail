@@ -106,9 +106,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
   const [activeFolder, setActiveFolder] = useState('home');
   const [chatFilter, setChatFilter] = useState('all');
   const [favoritesMap, setFavoritesMap] = useState(() => JSON.parse(localStorage.getItem('rizzmail_favs') || '{}'));
@@ -223,7 +221,6 @@ function App() {
     reader.readAsDataURL(file);
   };
 
-  // Up to 5MB attachment support with validation
   const handleAttachmentUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -724,7 +721,7 @@ function App() {
   const activeThread = activeChatSender ? chatThreadsMap[normalizeContactIdentifier(activeChatSender)] : null;
 
   return (
-    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
+    <div className="app-container">
       <header className="app-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           {user && step === 6 && (
@@ -745,7 +742,7 @@ function App() {
           </div>
         </div>
         
-        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative' }}>
+        <div className="header-right">
           <div className="status-pill">
             <span className="pulse-dot"></span> System Online
           </div>
@@ -815,11 +812,11 @@ function App() {
         </div>
       </header>
 
-      <main className="main-content" style={{ padding: step === 6 && !isEditingProfile ? '0' : '2rem 1rem', width: '100%', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-        {error && <div className="error-banner" style={{ width: '100%', maxWidth: '440px', marginBottom: '1rem' }}>{error}</div>}
+      <main className="main-content">
+        {error && <div className="error-banner" style={{ width: '100%', maxWidth: '440px', margin: '1rem auto' }}>{error}</div>}
 
         {isLoggingOut && (
-          <div className="card-wrapper" style={{ textAlign: 'center', margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
             <div className="card" style={{ padding: '3.5rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
               <Lock size={32} style={{ color: '#818cf8', animation: 'spin 1.5s linear infinite', marginBottom: '1rem' }} />
               <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Signing Out...</h2>
@@ -828,7 +825,7 @@ function App() {
         )}
 
         {!isLoggingOut && step === 1 && (
-          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', padding: '1rem' }}>
             <form onSubmit={handleSendOTP} className="card" style={{ width: '100%' }}>
               <div className="badge-pill"><Shield size={12} /> Secure Authentication</div>
               <h2>Welcome to RizzMail</h2>
@@ -861,7 +858,7 @@ function App() {
         )}
 
         {!isLoggingOut && step === 2 && (
-          <div className="card-wrapper" style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', padding: '1rem' }}>
             <form onSubmit={handleVerifyOtp} className="card" style={{ width: '100%' }}>
               <div className="badge-pill"><Lock size={12} /> Verification</div>
               <h2>Enter Code</h2>
@@ -886,7 +883,7 @@ function App() {
         )}
 
         {!isLoggingOut && step === 3 && (
-          <div className="card-wrapper" style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', padding: '1rem' }}>
             <form onSubmit={handleSaveProfile} className="card" style={{ width: '100%' }}>
               <h2>Complete Profile</h2>
               <p className="subtitle">Provide your name, date of birth, and profile photo.</p>
@@ -929,7 +926,7 @@ function App() {
         )}
 
         {!isLoggingOut && step === 4 && (
-          <div className="card-wrapper" style={{ margin: 'auto', width: '100%', maxWidth: '520px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '520px', display: 'flex', justifyContent: 'center', padding: '1rem' }}>
             <div className="card" style={{ textAlign: 'left', width: '100%' }}>
               <h2>Terms of Service</h2>
               <p className="subtitle">Please agree to continue to your burner inbox.</p>
@@ -939,7 +936,7 @@ function App() {
         )}
 
         {!isLoggingOut && step === 5 && (
-          <div className="card-wrapper" style={{ textAlign: 'center', margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center', margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', padding: '1rem' }}>
             <div className="card" style={{ padding: '3.5rem 2rem', width: '100%' }}>
               <Cpu size={34} style={{ color: '#818cf8', animation: 'spin 2s linear infinite', marginBottom: '1rem' }} />
               <h2>{setupStepsList[setupStage]}</h2>
@@ -949,11 +946,11 @@ function App() {
 
         {/* STEP 6: MAIN DASHBOARD */}
         {!isLoggingOut && step === 6 && user && (
-          <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ width: '100%', height: '100%', display: 'flex', overflow: 'hidden' }}>
             
             {/* EDIT PROFILE & ALIAS SETTINGS VIEW */}
             {isEditingProfile ? (
-              <div className="card-wrapper" style={{ margin: '2rem auto', width: '100%', maxWidth: '560px', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ margin: 'auto', width: '100%', maxWidth: '560px', display: 'flex', justifyContent: 'center', overflowY: 'auto', maxHeight: '100%', padding: '2rem' }}>
                 <div className="card" style={{ textAlign: 'left', width: '100%' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                     <h3>Manage Account & Alias IDs</h3>
@@ -1024,10 +1021,10 @@ function App() {
                 </div>
               </div>
             ) : (
-              <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: 'calc(100vh - 70px)', background: 'var(--card-bg)', border: '1px solid var(--input-border)', borderRadius: '1rem', overflow: 'hidden', position: 'relative' }}>
+              <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden' }}>
                 
                 {/* SIDEBAR & FOLDERS */}
-                <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0 }}>
+                <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
                   {/* TOP-LEFT FOLDERS */}
                   <div style={{ display: 'flex', borderBottom: '1px solid var(--input-border)', background: 'var(--input-bg)' }}>
@@ -1179,10 +1176,10 @@ function App() {
                 </div>
 
                 {/* ACTIVE CHAT WINDOW PANE */}
-                <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)' }}>
+                <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', height: '100%', overflow: 'hidden' }}>
                   {activeThread ? (
                     <>
-                      <div style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => setShowChatInfo(true)}>
                           <button 
                             onClick={(e) => { e.stopPropagation(); setActiveChatSender(null); }}
@@ -1290,7 +1287,7 @@ function App() {
                       </div>
 
                       {showSubjectInput && (
-                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                           <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)' }}>Subject:</span>
                           <input 
                             type="text" 
@@ -1304,7 +1301,7 @@ function App() {
                       )}
 
                       {attachmentPreview && (
-                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
                           <div style={{ width: '40px', height: '40px', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid var(--input-border)' }}>
                             <img src={attachmentPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>
@@ -1314,7 +1311,7 @@ function App() {
                       )}
 
                       {showSnippets && (
-                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flexShrink: 0 }}>
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}><Sparkles size={12} /> Quick Replies:</span>
                           {quickSnippetsList.map((snip, i) => (
                             <button
@@ -1330,7 +1327,7 @@ function App() {
                       )}
 
                       {/* CHAT COMPOSER BAR */}
-                      <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                      <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.75rem', alignItems: 'center', flexShrink: 0 }}>
                         <label title="Attach image or file up to 5MB" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Paperclip size={20} />
                           <input type="file" accept="image/*" onChange={handleAttachmentUpload} style={{ display: 'none' }} />

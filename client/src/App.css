@@ -1157,36 +1157,64 @@ html, body {
   padding: 0;
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
   background-color: var(--bg-main);
   color: var(--text-primary);
-  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
-/* CRITICAL FIX: Ensure header and containers never clip dropdowns */
+/* Edge-to-edge fixed container */
+.app-container {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Fixed Top Banner */
 .app-header {
+  flex-shrink: 0;
   position: relative;
   z-index: 2000;
-  overflow: visible !important;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.875rem 1.5rem;
+  padding: 0.6rem 1.25rem;
   background: var(--card-bg);
   border-bottom: 1px solid var(--input-border);
 }
 
 .header-right {
   position: relative;
-  overflow: visible !important;
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
+/* Main Content takes remaining space without page scrolling */
+.main-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* WhatsApp Edge-to-Edge Layout */
 .whatsapp-layout {
-  overflow: visible !important;
+  height: 100% !important;
+  width: 100% !important;
+  border-radius: 0 !important;
+  border: none !important;
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
 /* Modal Stacking & Overlay */
@@ -1216,8 +1244,8 @@ body {
   background: var(--input-bg);
   border: 1px solid var(--input-border);
   color: var(--text-primary);
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   display: flex;
   align-items: center;
