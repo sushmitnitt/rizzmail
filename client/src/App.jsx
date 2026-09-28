@@ -509,7 +509,7 @@ function App() {
       subject: finalSubject,
       body: finalBody,
       attachment: attachmentPreview,
-      quotedMessage: quotedMessage, // Linked original message reference
+      quotedMessage: quotedMessage,
       direction: 'outbound',
       createdAt: new Date().toISOString(),
       isOptimistic: true,
@@ -742,6 +742,7 @@ function App() {
   });
 
   const activeThread = activeChatSender ? chatThreadsMap[normalizeContactIdentifier(activeChatSender)] : null;
+  const isReplying = activeThread && activeThread.messages && activeThread.messages.length > 0;
 
   return (
     <div className="app-container">
@@ -1459,7 +1460,7 @@ function App() {
                         </div>
                       )}
 
-                      {/* CHAT COMPOSER BAR WITH SUBJECT FIELD & QUOTED REPLY PREVIEW */}
+                      {/* CHAT COMPOSER BAR */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem', flexShrink: 0 }}>
                         {/* Tagged / Quoted Original Message Preview Banner */}
                         {quotedMessage && (
@@ -1472,17 +1473,19 @@ function App() {
                           </div>
                         )}
 
-                        {/* Compact Subject Field right above the message box */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', width: '50px' }}>Subject</span>
-                          <input 
-                            type="text"
-                            placeholder="Add a subject (optional)..."
-                            value={chatSubject}
-                            onChange={(e) => setChatSubject(e.target.value)}
-                            style={{ flex: 1, padding: '0.4rem 0.75rem', borderRadius: '0.5rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: '0.8rem', outline: 'none' }}
-                          />
-                        </div>
+                        {/* Subject field is shown for new emails/chats, hidden when replying */}
+                        {!isReplying && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', width: '50px' }}>Subject</span>
+                            <input 
+                              type="text"
+                              placeholder="Add a subject (optional)..."
+                              value={chatSubject}
+                              onChange={(e) => setChatSubject(e.target.value)}
+                              style={{ flex: 1, padding: '0.4rem 0.75rem', borderRadius: '0.5rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: '0.8rem', outline: 'none' }}
+                            />
+                          </div>
+                        )}
 
                         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                           <label title="Attach image or file up to 5MB" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
