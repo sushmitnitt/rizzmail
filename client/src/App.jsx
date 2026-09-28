@@ -96,7 +96,7 @@ function App() {
   
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [chatFilter, setChatFilter] = useState('all'); // all, unread
+  const [chatFilter, setChatFilter] = useState('all');
   const [toast, setToast] = useState(null);
 
   // Chat Navigation & Feature Modals
@@ -108,7 +108,7 @@ function App() {
   
   // Extra Interactive Features State
   const [attachmentPreview, setAttachmentPreview] = useState(null);
-  const [activeCall, setActiveCall] = useState(null); // { type: 'voice' | 'video', name: '' }
+  const [activeCall, setActiveCall] = useState(null);
   const [showSnippets, setShowSnippets] = useState(false);
 
   const quickSnippetsList = [
@@ -632,7 +632,7 @@ function App() {
       (thread.lastMessage && thread.lastMessage.body.toLowerCase().includes(searchQuery.toLowerCase()));
     
     if (chatFilter === 'unread') {
-      return matchesSearch && thread.messages.some(m => m.direction === 'inbound'); // example unread heuristic
+      return matchesSearch && thread.messages.some(m => m.direction === 'inbound');
     }
     return matchesSearch;
   });
@@ -681,47 +681,54 @@ function App() {
                 )}
               </button>
 
-              {/* PROFILE DROPDOWN MENU WITH LOGOUT */}
+              {/* FIXED FUNCTIONAL PROFILE DROPDOWN MENU */}
               {showProfileMenu && (
                 <div style={{
                   position: 'absolute',
                   right: 0,
-                  top: 'calc(100% + 8px)',
+                  top: 'calc(100% + 12px)',
                   background: 'var(--card-bg)',
                   border: '1px solid var(--input-border)',
-                  borderRadius: '0.875rem',
-                  boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
-                  width: '240px',
-                  zIndex: 1000,
-                  padding: '0.75rem',
-                  textAlign: 'left'
+                  borderRadius: '1rem',
+                  boxShadow: '0 15px 35px rgba(0,0,0,0.4)',
+                  width: '260px',
+                  zIndex: 9999,
+                  padding: '1rem',
+                  textAlign: 'left',
+                  backdropFilter: 'blur(20px)'
                 }}>
-                  <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--input-border)', marginBottom: '0.5rem' }}>
-                    <div style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{user.firstName} {user.lastName}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all' }}>{getEmailPhone(getUserPhone())}@rizzmail.me</div>
+                  <div style={{ padding: '0.5rem 0.5rem 0.75rem 0.5rem', borderBottom: '1px solid var(--input-border)', marginBottom: '0.5rem' }}>
+                    <div style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '1rem' }}>{user.firstName} {user.lastName}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all', marginTop: '0.2rem' }}>{getEmailPhone(getUserPhone())}@rizzmail.me</div>
                   </div>
                   
                   <button 
                     onClick={() => { setShowProfileMenu(false); handleCopyEmail(); }}
-                    style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.6rem 0.75rem', borderRadius: '0.5rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}
+                    style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.65rem 0.75rem', borderRadius: '0.65rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500', transition: 'background 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--pill-bg)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
-                    <Copy size={15} /> {copied ? 'Copied Address!' : 'Copy Burner Email'}
+                    <Copy size={16} style={{ color: '#818cf8' }} /> {copied ? 'Copied Address!' : 'Copy Burner Email'}
                   </button>
 
                   <button 
                     onClick={() => { setShowProfileMenu(false); setIsEditingProfile(true); }}
-                    style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.6rem 0.75rem', borderRadius: '0.5rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}
+                    style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.65rem 0.75rem', borderRadius: '0.65rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500', transition: 'background 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--pill-bg)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
-                    <Edit3 size={15} /> Edit Profile Settings
+                    <Edit3 size={16} style={{ color: '#818cf8' }} /> Edit Profile Settings
                   </button>
 
                   <div style={{ height: '1px', background: 'var(--input-border)', margin: '0.5rem 0' }}></div>
 
                   <button 
                     onClick={() => { setShowProfileMenu(false); setShowLogoutConfirm(true); }}
-                    style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', border: 'none', padding: '0.6rem 0.75rem', borderRadius: '0.5rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
+                    style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '0.65rem 0.75rem', borderRadius: '0.65rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', transition: 'background 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
                   >
-                    <LogOut size={15} /> Sign Out / Logout
+                    <LogOut size={16} /> Sign Out / Logout
                   </button>
                 </div>
               )}
