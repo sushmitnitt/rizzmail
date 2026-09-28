@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera, ShieldAlert } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera, ShieldAlert, Globe } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -19,6 +19,15 @@ const countriesList = [
   { name: 'Japan', code: '81', label: 'JP (+81)' },
   { name: 'Singapore', code: '65', label: 'SG (+65)' },
   { name: 'Saudi Arabia', code: '966', label: 'SA (+966)' }
+];
+
+const languagesList = [
+  { code: 'en', label: 'English' },
+  { code: 'hi', label: 'Hindi (हिंदी)' },
+  { code: 'ta', label: 'Tamil (தமிழ்)' },
+  { code: 'es', label: 'Spanish (Español)' },
+  { code: 'fr', label: 'French (Français)' },
+  { code: 'de', label: 'German (Deutsch)' }
 ];
 
 const normalizeContactIdentifier = (input) => {
@@ -96,6 +105,7 @@ function App() {
   const [editFirstName, setEditFirstName] = useState(user?.firstName || '');
   const [editLastName, setEditLastName] = useState(user?.lastName || '');
   const [editProfilePhoto, setEditProfilePhoto] = useState(user?.profilePhoto || '');
+  const [selectedLanguage, setSelectedLanguage] = useState(() => localStorage.getItem('rizzmail_lang') || 'en');
   const [aliases, setAliases] = useState(() => JSON.parse(localStorage.getItem('rizzmail_aliases') || '[]'));
   const [newAliasInput, setNewAliasInput] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
@@ -380,6 +390,7 @@ function App() {
     }
 
     try {
+      localStorage.setItem('rizzmail_lang', selectedLanguage);
       const activePhone = getUserPhone();
       const res = await updateProfileAPI({
         phone: activePhone,
@@ -405,7 +416,7 @@ function App() {
       };
       setUser(updatedUser);
       localStorage.setItem('rizzmail_user', JSON.stringify(updatedUser));
-      setProfileSuccess('Profile updated successfully!');
+      setProfileSuccess('Profile and settings updated successfully!');
       setTimeout(() => {
         setProfileSuccess('');
         setIsEditingProfile(false);
@@ -701,7 +712,6 @@ function App() {
   });
 
   const filteredThreads = chatThreadsList.filter(thread => {
-    // Folder matching logic
     if (currentFolder === 'home') {
       // Home unifies Inbox and Sent
     } else if (currentFolder === 'drafts') {
@@ -757,12 +767,13 @@ function App() {
             <span className="pulse-dot"></span> System Online
           </div>
           
+          {/* PROFILE ICON IN TOP-RIGHT PROVIDING ACCESS TO ACCOUNT SETTINGS */}
           {user && step === 6 && !isLoggingOut && (
             <div style={{ position: 'relative', overflow: 'visible' }} ref={profileMenuRef}>
               <button 
                 onClick={() => setShowProfileMenu(!showProfileMenu)} 
                 className="theme-toggle-btn"
-                title={`${user.firstName || 'User Account'}`}
+                title={`${user.firstName || 'User Account'} - Account Settings`}
                 style={{ background: showProfileMenu ? 'rgba(99, 102, 241, 0.25)' : undefined, overflow: 'hidden', padding: 0, cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%' }}
               >
                 {user.profilePhoto ? (
@@ -796,7 +807,7 @@ function App() {
                     onClick={() => { setShowProfileMenu(false); setIsEditingProfile(true); }}
                     style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.65rem 0.75rem', borderRadius: '0.65rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500' }}
                   >
-                    <Edit3 size={16} style={{ color: '#818cf8' }} /> Edit Profile Settings
+                    <Edit3 size={16} style={{ color: '#818cf8' }} /> Account Settings & Aliases
                   </button>
 
                   <div style={{ height: '1px', background: 'var(--input-border)', margin: '0.5rem 0' }}></div>
@@ -1066,12 +1077,12 @@ function App() {
               </div>
             )}
 
-            {/* EDIT PROFILE & ALIAS SETTINGS VIEW */}
+            {/* ACCOUNT SETTINGS & ALIAS MANAGEMENT VIEW */}
             {isEditingProfile ? (
               <div style={{ margin: 'auto', width: '100%', maxWidth: '560px', display: 'flex', justifyContent: 'center', overflowY: 'auto', maxHeight: '100%', padding: '2rem' }}>
                 <div className="card" style={{ textAlign: 'left', width: '100%' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                    <h3>Manage Account & Alias IDs</h3>
+                    <h3>Account Settings & Profile</h3>
                     <button onClick={() => setIsEditingProfile(false)} className="text-btn">Back to Chat</button>
                   </div>
                   {profileSuccess && <div className="success-banner">{profileSuccess}</div>}
@@ -1103,12 +1114,28 @@ function App() {
                           style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
                         />
                       </div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Change profile photo</label>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Change profile picture</label>
                     </div>
 
                     <div className="input-group-stack"><label>First Name</label><input type="text" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} required /></div>
                     <div className="input-group-stack"><label>Last Name</label><input type="text" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} required /></div>
                     
+                    {/* LANGUAGE PREFERENCE */}
+                    <div className="input-group-stack">
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Globe size={14} /> Language Preference
+                      </label>
+                      <select 
+                        value={selectedLanguage} 
+                        onChange={(e) => setSelectedLanguage(e.target.value)}
+                        style={{ padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                      >
+                        {languagesList.map(lang => (
+                          <option key={lang.code} value={lang.code}>{lang.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
                     {/* ALIAS MANAGEMENT */}
                     <div style={{ background: 'var(--input-bg)', padding: '1rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)' }}>
                       <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.5rem' }}>Manage Alias IDs</label>
