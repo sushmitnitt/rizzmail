@@ -107,7 +107,6 @@ function App() {
   const [error, setError] = useState('');
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFolder, setActiveFolder] = useState('home');
   const [chatFilter, setChatFilter] = useState('all');
   const [favoritesMap, setFavoritesMap] = useState(() => JSON.parse(localStorage.getItem('rizzmail_favs') || '{}'));
   const [toast, setToast] = useState(null);
@@ -1021,37 +1020,9 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* SIDEBAR & FOLDERS */}
+                {/* SIDEBAR & CHAT LIST (NO FOLDERS) */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
-                  {/* TOP-LEFT FOLDERS */}
-                  <div style={{ display: 'flex', borderBottom: '1px solid var(--input-border)', background: 'var(--input-bg)' }}>
-                    <button 
-                      onClick={() => setActiveFolder('home')}
-                      style={{ flex: 1, padding: '0.6rem 0.2rem', background: activeFolder === 'home' ? 'var(--card-bg)' : 'transparent', border: 'none', borderBottom: activeFolder === 'home' ? '2px solid #6366f1' : 'none', color: activeFolder === 'home' ? '#6366f1' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
-                    >
-                      <Mail size={12} /> Home
-                    </button>
-                    <button 
-                      onClick={() => setActiveFolder('drafts')}
-                      style={{ flex: 1, padding: '0.6rem 0.2rem', background: activeFolder === 'drafts' ? 'var(--card-bg)' : 'transparent', border: 'none', borderBottom: activeFolder === 'drafts' ? '2px solid #6366f1' : 'none', color: activeFolder === 'drafts' ? '#6366f1' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
-                    >
-                      <Folder size={12} /> Drafts
-                    </button>
-                    <button 
-                      onClick={() => setActiveFolder('spam')}
-                      style={{ flex: 1, padding: '0.6rem 0.2rem', background: activeFolder === 'spam' ? 'var(--card-bg)' : 'transparent', border: 'none', borderBottom: activeFolder === 'spam' ? '2px solid #6366f1' : 'none', color: activeFolder === 'spam' ? '#6366f1' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
-                    >
-                      <AlertOctagon size={12} /> Spam
-                    </button>
-                    <button 
-                      onClick={() => setActiveFolder('trash')}
-                      style={{ flex: 1, padding: '0.6rem 0.2rem', background: activeFolder === 'trash' ? 'var(--card-bg)' : 'transparent', border: 'none', borderBottom: activeFolder === 'trash' ? '2px solid #6366f1' : 'none', color: activeFolder === 'trash' ? '#6366f1' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
-                    >
-                      <Trash2 size={12} /> Trash
-                    </button>
-                  </div>
-
                   <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <div className="search-bar-container" style={{ margin: 0, flex: 1 }}>
@@ -1112,12 +1083,7 @@ function App() {
                   </div>
 
                   <div style={{ flex: 1, overflowY: 'auto' }}>
-                    {activeFolder !== 'home' ? (
-                      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
-                        <Folder size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
-                        <p>{activeFolder.charAt(0).toUpperCase() + activeFolder.slice(1)} folder is empty.</p>
-                      </div>
-                    ) : filteredThreads.length === 0 ? (
+                    {filteredThreads.length === 0 ? (
                       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
                         <Mail size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
                         <p>No active chats</p>
