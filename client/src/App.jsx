@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Image as ImageIcon } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -74,6 +74,7 @@ function App() {
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -418,7 +419,15 @@ function App() {
     }
   };
 
-  // Instant Optimistic Message Sending with Reconciliation (Rule 8, 9, 10)
+  const handleCopyEmail = () => {
+    const activePhone = getUserPhone();
+    const emailStr = `${getEmailPhone(activePhone)}@rizzmail.me`;
+    navigator.clipboard.writeText(emailStr);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Instant Optimistic Message Sending with Reconciliation
   const handleSendReplySubmit = async (e) => {
     e.preventDefault();
     if (!chatMessageBody.trim() || !activeChatSender) return;
@@ -514,10 +523,12 @@ function App() {
       setMessages([]);
       setActiveChatSender(null);
       setIsEditingProfile(false);
-    }, 2400);
+      setShowProfileMenu(false);
+      setShowLogoutConfirm(false);
+    }, 1500);
   };
 
-  // STRICT UNIFIED CANONICAL THREAD MAPPING (Rule 1, 3, 5, 11, 12)
+  // STRICT UNIFIED CANONICAL THREAD MAPPING
   const chatThreadsMap = {};
 
   messages.forEach((msg) => {
@@ -625,24 +636,71 @@ function App() {
           </div>
         </div>
         
-        <div className="header-right">
+        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative' }}>
           <div className="status-pill">
             <span className="pulse-dot"></span> System Online
           </div>
           
           {user && step === 6 && !isLoggingOut && (
-            <button 
-              onClick={() => setIsEditingProfile(!isEditingProfile)} 
-              className="theme-toggle-btn"
-              title={`${user.firstName || 'User'}`}
-              style={{ background: isEditingProfile ? 'rgba(99, 102, 241, 0.25)' : undefined, overflow: 'hidden', padding: 0 }}
-            >
-              {user.profilePhoto ? (
-                <img src={user.profilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <User size={18} />
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setShowProfileMenu(!showProfileMenu)} 
+                className="theme-toggle-btn"
+                title={`${user.firstName || 'User Account'}`}
+                style={{ background: showProfileMenu ? 'rgba(99, 102, 241, 0.25)' : undefined, overflow: 'hidden', padding: 0, cursor: 'pointer' }}
+              >
+                {user.profilePhoto ? (
+                  <img src={user.profilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <User size={18} />
+                )}
+              </button>
+
+              {/* PROFILE DROPDOWN MENU WITH LOGOUT */}
+              {showProfileMenu && (
+                <div style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 'calc(100% + 8px)',
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--input-border)',
+                  borderRadius: '0.875rem',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+                  width: '240px',
+                  zIndex: 1000,
+                  padding: '0.75rem',
+                  textAlign: 'left'
+                }}>
+                  <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--input-border)', marginBottom: '0.5rem' }}>
+                    <div style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem' }}>{user.firstName} {user.lastName}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all' }}>{getEmailPhone(getUserPhone())}@rizzmail.me</div>
+                  </div>
+                  
+                  <button 
+                    onClick={() => { setShowProfileMenu(false); handleCopyEmail(); }}
+                    style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.6rem 0.75rem', borderRadius: '0.5rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}
+                  >
+                    <Copy size={15} /> {copied ? 'Copied Address!' : 'Copy Burner Email'}
+                  </button>
+
+                  <button 
+                    onClick={() => { setShowProfileMenu(false); setIsEditingProfile(true); }}
+                    style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.6rem 0.75rem', borderRadius: '0.5rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}
+                  >
+                    <Edit3 size={15} /> Edit Profile Settings
+                  </button>
+
+                  <div style={{ height: '1px', background: 'var(--input-border)', margin: '0.5rem 0' }}></div>
+
+                  <button 
+                    onClick={() => { setShowProfileMenu(false); setShowLogoutConfirm(true); }}
+                    style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', border: 'none', padding: '0.6rem 0.75rem', borderRadius: '0.5rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
+                  >
+                    <LogOut size={15} /> Sign Out / Logout
+                  </button>
+                </div>
               )}
-            </button>
+            </div>
           )}
 
           <button 
@@ -932,6 +990,7 @@ function App() {
                 <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)' }}>
                   {activeThread ? (
                     <>
+                      {/* CHAT HEADER WITH CALL BUTTONS & INFO */}
                       <div style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => setShowChatInfo(true)}>
                           <button 
@@ -950,18 +1009,36 @@ function App() {
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeThread.name}</h3>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Tap here for contact info</span>
+                            <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span> online
+                            </span>
                           </div>
                         </div>
 
-                        {/* DELETE CHAT BUTTON */}
-                        <button 
-                          onClick={() => handleDeleteChatThread(activeThread.canonicalKey)}
-                          title="Delete Chat Thread"
-                          style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: 'none', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: '600' }}
-                        >
-                          <Trash size={15} /> Delete Chat
-                        </button>
+                        {/* CHAT HEADER ACTION BUTTONS */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button 
+                            onClick={() => alert(`Initiating encrypted voice call with ${activeThread.name}...`)}
+                            title="Voice Call"
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <PhoneCall size={18} />
+                          </button>
+                          <button 
+                            onClick={() => alert(`Initiating encrypted video call with ${activeThread.name}...`)}
+                            title="Video Call"
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <Video size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteChatThread(activeThread.canonicalKey)}
+                            title="Delete Chat Thread"
+                            style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: 'none', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: '600' }}
+                          >
+                            <Trash size={15} /> Delete
+                          </button>
+                        </div>
                       </div>
 
                       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
@@ -988,7 +1065,7 @@ function App() {
                                   <div style={{ fontSize: '0.9rem', wordBreak: 'break-word', lineHeight: '1.4' }}>{msg.body}</div>
                                   <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                                     {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    {isOutbound && (msg.isOptimistic ? ' ◌' : ' ✓')}
+                                    {isOutbound && (msg.isOptimistic ? ' ◌' : ' ✓✓')}
                                   </div>
                                 </div>
                               </div>
@@ -997,7 +1074,25 @@ function App() {
                         )}
                       </div>
 
+                      {/* COMPOSER BAR WITH ATTACHMENT & EMOJI BUTTONS */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <button 
+                          type="button" 
+                          onClick={() => alert("Media/File attachment feature ready. Select any image or document.")}
+                          title="Attach file or photo"
+                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <Paperclip size={20} />
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setChatMessageBody(prev => prev + ' 😊')}
+                          title="Add emoji"
+                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <Smile size={20} />
+                        </button>
+
                         <input 
                           type="text"
                           placeholder="Type a message..."
@@ -1118,15 +1213,16 @@ function App() {
         )}
       </main>
 
+      {/* LOGOUT CONFIRMATION MODAL */}
       {showLogoutConfirm && (
         <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
           <div className="card-wrapper" style={{ maxWidth: '400px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
             <div className="card" style={{ textAlign: 'left', width: '100%' }}>
               <h3>Sign Out Confirmation</h3>
-              <p className="subtitle" style={{ margin: '1rem 0' }}>Are you sure you want to log out?</p>
+              <p className="subtitle" style={{ margin: '1rem 0' }}>Are you sure you want to sign out of your account?</p>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button onClick={() => setShowLogoutConfirm(false)} style={{ flex: 1, background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer' }}>Cancel</button>
-                <button onClick={() => { setShowLogoutConfirm(false); handleLogout(); }} style={{ flex: 1, background: '#6366f1', color: '#fff', border: 'none', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600' }}>Sign Out</button>
+                <button onClick={handleLogout} style={{ flex: 1, background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600' }}>Sign Out</button>
               </div>
             </div>
           </div>
