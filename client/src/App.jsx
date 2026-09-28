@@ -117,7 +117,7 @@ function App() {
   const [activeChatSender, setActiveChatSender] = useState(null);
   const [showChatInfo, setShowChatInfo] = useState(false);
   const [chatMessageBody, setChatMessageBody] = useState('');
-  const [chatSubject, setChatSubject] = useState(''); // Cleaned default subject
+  const [chatSubject, setChatSubject] = useState('');
   const [showSubjectInput, setShowSubjectInput] = useState(false);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatInput, setNewChatInput] = useState('');
@@ -223,9 +223,15 @@ function App() {
     reader.readAsDataURL(file);
   };
 
+  // Up to 5MB attachment support with validation
   const handleAttachmentUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Attachment file size must be less than 5MB.');
+      return;
+    }
+    setError('');
     const reader = new FileReader();
     reader.onloadend = () => {
       setAttachmentPreview(reader.result);
@@ -480,14 +486,6 @@ function App() {
     }
   };
 
-  const handleCopyEmail = () => {
-    const activePhone = getUserPhone();
-    const emailStr = `${getEmailPhone(activePhone)}@rizzmail.me`;
-    navigator.clipboard.writeText(emailStr);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const handleSendReplySubmit = async (e) => {
     e.preventDefault();
     if ((!chatMessageBody.trim() && !attachmentPreview) || !activeChatSender) return;
@@ -495,8 +493,8 @@ function App() {
     const tempClientMessageId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
     const activePhone = getUserPhone();
     const recipientTarget = activeChatSender;
-    const finalBody = attachmentPreview ? `[Attachment] ${chatMessageBody.trim()}` : chatMessageBody.trim();
-    const finalSubject = showSubjectInput ? (chatSubject.trim() || '') : ''; // Avoid Re: prefix
+    const finalBody = chatMessageBody.trim();
+    const finalSubject = showSubjectInput ? (chatSubject.trim() || '') : '';
 
     const optimisticMsg = {
       clientMessageId: tempClientMessageId,
@@ -520,7 +518,8 @@ function App() {
         senderPhone: activePhone,
         recipientEmail: recipientTarget,
         subject: finalSubject,
-        body: optimisticMsg.body,
+        body: finalBody,
+        attachment: attachmentPreview,
         clientMessageId: tempClientMessageId
       });
       
@@ -554,7 +553,8 @@ function App() {
           senderPhone: activePhone,
           recipientEmail: target,
           subject: traditionalSubject.trim() || '',
-          body: traditionalBody.trim()
+          body: traditionalBody.trim(),
+          attachment: attachmentPreview
         });
       } catch (err) {
         console.error('Failed to send traditional email to', target);
@@ -565,6 +565,7 @@ function App() {
     setTraditionalTo('');
     setTraditionalSubject('');
     setTraditionalBody('');
+    setAttachmentPreview(null);
     setIsTraditionalLocked(false);
     loadInbox(activePhone);
   };
@@ -712,7 +713,7 @@ function App() {
       return matchesSearch && thread.messages.some(m => m.direction === 'inbound');
     }
     if (chatFilter === 'attachments') {
-      return matchesSearch && thread.messages.some(m => m.attachment || (m.body && m.body.includes('[Attachment]')));
+      return matchesSearch && thread.messages.some(m => m.attachment);
     }
     if (chatFilter === 'favorites') {
       return matchesSearch && thread.isFavorite;
@@ -773,7 +774,7 @@ function App() {
                   border: '1px solid var(--input-border)',
                   borderRadius: '1rem',
                   boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
-                  width: '260px',
+                  width: '240px',
                   zIndex: 99999,
                   padding: '1rem',
                   textAlign: 'left',
@@ -783,13 +784,6 @@ function App() {
                     <div style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '1rem' }}>{user.firstName} {user.lastName}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all', marginTop: '0.2rem' }}>{getEmailPhone(getUserPhone())}@rizzmail.me</div>
                   </div>
-                  
-                  <button 
-                    onClick={() => { setShowProfileMenu(false); handleCopyEmail(); }}
-                    style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.65rem 0.75rem', borderRadius: '0.65rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500' }}
-                  >
-                    <Copy size={16} style={{ color: '#818cf8' }} /> {copied ? 'Copied Address!' : 'Copy Burner Email'}
-                  </button>
 
                   <button 
                     onClick={() => { setShowProfileMenu(false); setIsEditingProfile(true); }}
@@ -1102,13 +1096,6 @@ function App() {
                       ))}
                     </div>
 
-                    <div style={{ background: 'var(--input-bg)', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', border: '1px solid var(--input-border)' }}>
-                      <span style={{ color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getEmailPhone(getUserPhone())}@rizzmail.me</span>
-                      <button onClick={handleCopyEmail} style={{ background: 'transparent', border: 'none', color: '#6366f1', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: '600', fontSize: '0.75rem', flexShrink: 0 }}>
-                        <Copy size={12} /> {copied ? 'Copied' : 'Copy'}
-                      </button>
-                    </div>
-
                     <button 
                       onClick={() => setShowNewChatModal(true)} 
                       style={{
@@ -1175,7 +1162,7 @@ function App() {
                                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{thread.lastMessage ? new Date(thread.lastMessage.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                               </div>
                               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>
-                                {thread.lastMessage ? thread.lastMessage.body : 'New conversation'}
+                                {thread.lastMessage ? (thread.lastMessage.attachment ? '📷 [Attachment]' : thread.lastMessage.body) : 'New conversation'}
                               </p>
                             </div>
                             <button 
@@ -1244,7 +1231,7 @@ function App() {
                         </div>
                       </div>
 
-                      {/* MESSAGES */}
+                      {/* MESSAGES WITH VISUAL ATTACHMENT PREVIEWS */}
                       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
@@ -1272,19 +1259,16 @@ function App() {
                                   }}
                                   title="Tap to open in traditional view & reply"
                                 >
-                                  {msg.subject && msg.subject.trim() !== '' && (
-                                    <div style={{ fontSize: '0.75rem', opacity: 0.8, marginBottom: '0.25rem', fontWeight: '600' }}>
-                                      {msg.subject.replace(/^Re:\s*/i, '')}
-                                    </div>
-                                  )}
                                   {msg.attachment && (
-                                    <div style={{ marginBottom: '0.5rem', borderRadius: '0.5rem', overflow: 'hidden' }}>
-                                      <img src={msg.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover' }} />
+                                    <div style={{ marginBottom: msg.body ? '0.5rem' : 0, borderRadius: '0.5rem', overflow: 'hidden' }}>
+                                      <img src={msg.attachment} alt="Attachment Preview" style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', borderRadius: '0.5rem', display: 'block' }} />
                                     </div>
                                   )}
-                                  <div style={{ fontSize: '0.9rem', wordBreak: 'break-word', lineHeight: '1.4' }}>
-                                    {isLong ? `${msg.body.substring(0, 180)}... (Tap to read full email)` : msg.body}
-                                  </div>
+                                  {msg.body && (
+                                    <div style={{ fontSize: '0.9rem', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                                      {isLong ? `${msg.body.substring(0, 180)}... (Tap to read full email)` : msg.body}
+                                    </div>
+                                  )}
                                   <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                                     {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     {isOutbound && (msg.isOptimistic ? ' ◌' : ' ✓✓')}
@@ -1324,7 +1308,7 @@ function App() {
                           <div style={{ width: '40px', height: '40px', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid var(--input-border)' }}>
                             <img src={attachmentPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', flex: 1 }}>Image attached ready to send</span>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', flex: 1 }}>Attachment ready (max 5MB)</span>
                           <button onClick={() => setAttachmentPreview(null)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}><X size={16} /></button>
                         </div>
                       )}
@@ -1347,7 +1331,7 @@ function App() {
 
                       {/* CHAT COMPOSER BAR */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                        <label title="Attach image or file" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <label title="Attach image or file up to 5MB" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Paperclip size={20} />
                           <input type="file" accept="image/*" onChange={handleAttachmentUpload} style={{ display: 'none' }} />
                         </label>
@@ -1476,7 +1460,6 @@ function App() {
                     value={traditionalSubject} 
                     onChange={(e) => setTraditionalSubject(e.target.value)}
                     placeholder="Email Subject..."
-                    required 
                   />
                 </div>
                 <div className="input-group-stack">
@@ -1501,11 +1484,16 @@ function App() {
             <div className="modal-content" style={{ maxWidth: '560px', textAlign: 'left', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--input-border)', paddingBottom: '0.75rem' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>{traditionalEmailReader.subject ? traditionalEmailReader.subject.replace(/^Re:\s*/i, '') : 'Traditional Email View'}</h3>
+                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>{traditionalEmailReader.subject || 'Traditional Email View'}</h3>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>From: {traditionalEmailReader.sender}</span>
                 </div>
                 <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
               </div>
+              {traditionalEmailReader.attachment && (
+                <div style={{ marginBottom: '1rem', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                  <img src={traditionalEmailReader.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '280px', objectFit: 'cover', borderRadius: '0.5rem' }} />
+                </div>
+              )}
               <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto' }}>
                 {traditionalEmailReader.body}
               </div>
@@ -1516,7 +1504,7 @@ function App() {
                   const subj = traditionalEmailReader.subject;
                   setTraditionalEmailReader(null);
                   setTraditionalTo(sender);
-                  setTraditionalSubject(subj ? subj.replace(/^Re:\s*/i, '') : '');
+                  setTraditionalSubject(subj || '');
                   setTraditionalBody('');
                   setIsTraditionalLocked(true);
                   setShowTraditionalModal(true);
