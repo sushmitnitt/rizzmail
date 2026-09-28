@@ -76,7 +76,6 @@ function App() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef(null);
 
-  // Outside click listener to cleanly close profile menu
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
@@ -118,7 +117,7 @@ function App() {
   const [activeChatSender, setActiveChatSender] = useState(null);
   const [showChatInfo, setShowChatInfo] = useState(false);
   const [chatMessageBody, setChatMessageBody] = useState('');
-  const [chatSubject, setChatSubject] = useState('Re: Conversation');
+  const [chatSubject, setChatSubject] = useState(''); // Cleaned default subject
   const [showSubjectInput, setShowSubjectInput] = useState(false);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatInput, setNewChatInput] = useState('');
@@ -497,7 +496,7 @@ function App() {
     const activePhone = getUserPhone();
     const recipientTarget = activeChatSender;
     const finalBody = attachmentPreview ? `[Attachment] ${chatMessageBody.trim()}` : chatMessageBody.trim();
-    const finalSubject = showSubjectInput ? (chatSubject.trim() || 'Re: Conversation') : 'Re: Conversation';
+    const finalSubject = showSubjectInput ? (chatSubject.trim() || '') : ''; // Avoid Re: prefix
 
     const optimisticMsg = {
       clientMessageId: tempClientMessageId,
@@ -554,7 +553,7 @@ function App() {
         await sendEmailAPI({
           senderPhone: activePhone,
           recipientEmail: target,
-          subject: traditionalSubject.trim() || 'New Message',
+          subject: traditionalSubject.trim() || '',
           body: traditionalBody.trim()
         });
       } catch (err) {
@@ -660,7 +659,7 @@ function App() {
       chatThreadsMap[canonicalKey] = {
         canonicalKey: canonicalKey,
         sender: counterpartyRaw,
-        name: msg.counterpartyName || counterpartyRaw.split('@')[0],
+        name: msg.counterpartyName && !msg.counterpartyName.includes('@') ? msg.counterpartyName : counterpartyRaw.split('@')[0],
         avatar: msg.counterpartyPhoto || '',
         messages: [],
         isFavorite: !!favoritesMap[canonicalKey]
@@ -670,7 +669,7 @@ function App() {
     if (msg.counterpartyPhoto && !chatThreadsMap[canonicalKey].avatar) {
       chatThreadsMap[canonicalKey].avatar = msg.counterpartyPhoto;
     }
-    if (msg.counterpartyName && chatThreadsMap[canonicalKey].name.includes('@')) {
+    if (msg.counterpartyName && !msg.counterpartyName.includes('@')) {
       chatThreadsMap[canonicalKey].name = msg.counterpartyName;
     }
 
@@ -1176,7 +1175,7 @@ function App() {
                                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{thread.lastMessage ? new Date(thread.lastMessage.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                               </div>
                               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>
-                                {thread.lastMessage ? (thread.lastMessage.subject ? `${thread.lastMessage.subject}: ` : '') + thread.lastMessage.body : 'New conversation'}
+                                {thread.lastMessage ? thread.lastMessage.body : 'New conversation'}
                               </p>
                             </div>
                             <button 
@@ -1273,7 +1272,11 @@ function App() {
                                   }}
                                   title="Tap to open in traditional view & reply"
                                 >
-                                  {msg.subject && <div style={{ fontSize: '0.75rem', opacity: 0.8, marginBottom: '0.25rem', fontWeight: '600' }}>{msg.subject}</div>}
+                                  {msg.subject && msg.subject.trim() !== '' && (
+                                    <div style={{ fontSize: '0.75rem', opacity: 0.8, marginBottom: '0.25rem', fontWeight: '600' }}>
+                                      {msg.subject.replace(/^Re:\s*/i, '')}
+                                    </div>
+                                  )}
                                   {msg.attachment && (
                                     <div style={{ marginBottom: '0.5rem', borderRadius: '0.5rem', overflow: 'hidden' }}>
                                       <img src={msg.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover' }} />
@@ -1353,7 +1356,7 @@ function App() {
                           type="button" 
                           onClick={() => {
                             setTraditionalTo(activeChatSender);
-                            setTraditionalSubject('Re: Conversation');
+                            setTraditionalSubject('');
                             setTraditionalBody('');
                             setIsTraditionalLocked(true);
                             setShowTraditionalModal(true);
@@ -1498,7 +1501,7 @@ function App() {
             <div className="modal-content" style={{ maxWidth: '560px', textAlign: 'left', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--input-border)', paddingBottom: '0.75rem' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>{traditionalEmailReader.subject || 'Traditional Email View'}</h3>
+                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>{traditionalEmailReader.subject ? traditionalEmailReader.subject.replace(/^Re:\s*/i, '') : 'Traditional Email View'}</h3>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>From: {traditionalEmailReader.sender}</span>
                 </div>
                 <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
@@ -1513,7 +1516,7 @@ function App() {
                   const subj = traditionalEmailReader.subject;
                   setTraditionalEmailReader(null);
                   setTraditionalTo(sender);
-                  setTraditionalSubject(`Re: ${subj ? subj.replace(/^Re:\s*/i, '') : 'Conversation'}`);
+                  setTraditionalSubject(subj ? subj.replace(/^Re:\s*/i, '') : '');
                   setTraditionalBody('');
                   setIsTraditionalLocked(true);
                   setShowTraditionalModal(true);
