@@ -3,6 +3,7 @@ const router = express.Router();
 const Email = require('../models/Email');
 const User = require('../models/User');
 const axios = require('axios');
+const { simpleParser } = require('mailparser');
 
 // Helper to normalize phone numbers into pure 10 digits and standard aliases
 const normalizePhone = (input) => {
@@ -88,7 +89,48 @@ router.get('/:emailAddress', async (req, res) => {
     res.status(500).json({ error: 'Server error fetching emails' });
   }
 });
+app.post('/api/email/inbound', async (req, res) => {
+  try {
+    // Depending on your provider, raw email source might be in req.body.email, req.body.raw_email, etc.
+    const rawEmailSource = req.body.email || req.body.text || req.rawEmail;
+    
+    let parsedBody = '';
+    let parsedHtml = '';
+    let subject = req.body.subject || '';
+    let sender = req.body.from || req.body.sender || '';
 
+    if (rawEmailSource && typeof rawEmailSource === 'string' && rawEmailSource.includes('Content-Type')) {
+      // Parse raw MIME email using mailparser
+      const parsed = await simpleParser(rawEmailSource);
+      parsedBody = parsed.text || '';
+      parsedHtml = parsed.html || '';
+      subject = parsed.subject || subject;
+      sender = parsed.from?.text || sender;
+    } else {
+      // Fallback for JSON webhooks
+      parsedBody = req.body.body || req.body.text || '';
+      parsedHtml = req.body.html || '';
+    }
+
+    // Save to your database with both text and html fields
+    const newMessage = {
+      sender,
+      recipient: req.body.recipient,
+      subject,
+      body: parsedBody,
+      htmlBody: parsedHtml, // Store HTML version for rich rendering
+      createdAt: new Date()
+    };
+    
+    // await db.collection('messages').insertOne(newMessage);
+    // socket.to(recipientPhone).emit('new_message', newMessage);
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('Email parsing error:', err);
+    res.status(500).json({ error: 'Failed to parse incoming email' });
+  }
+});
 // POST send email and emit via Socket.io with sender profile data
 router.post('/email/send', async (req, res) => {
   try {

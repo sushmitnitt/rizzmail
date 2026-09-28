@@ -1675,41 +1675,59 @@ function App() {
           </div>
         )}
 
-        {traditionalEmailReader && (
-          <div className="modal-overlay" onClick={() => setTraditionalEmailReader(null)}>
-            <div className="modal-content" style={{ maxWidth: '560px', textAlign: 'left', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--input-border)', paddingBottom: '0.75rem' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>{traditionalEmailReader.subject || 'Traditional Email View'}</h3>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>From: {traditionalEmailReader.sender}</span>
-                </div>
-                <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
-              </div>
-              {traditionalEmailReader.attachment && (
-                <div style={{ marginBottom: '1rem', borderRadius: '0.5rem', overflow: 'hidden' }}>
-                  <img src={traditionalEmailReader.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '280px', objectFit: 'cover', borderRadius: '0.5rem' }} />
-                </div>
-              )}
-              <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto' }}>
-                {traditionalEmailReader.body}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.6rem 1.25rem', borderRadius: '0.75rem', cursor: 'pointer' }}>Close</button>
-                <button onClick={() => {
-                  const sender = traditionalEmailReader.sender;
-                  const subj = traditionalEmailReader.subject;
-                  setTraditionalEmailReader(null);
-                  setTraditionalTo(sender);
-                  setTraditionalCc('');
-                  setTraditionalSubject(subj || '');
-                  setTraditionalBody('');
-                  setIsTraditionalLocked(true);
-                  setShowTraditionalModal(true);
-                }} className="primary-btn" style={{ width: 'auto' }}>Reply in Traditional View ➔</button>
-              </div>
-            </div>
+ {traditionalEmailReader && (
+  <div className="modal-overlay" onClick={() => setTraditionalEmailReader(null)}>
+    <div className="modal-content" style={{ maxWidth: '600px', textAlign: 'left', padding: '2rem', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+      
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--input-border)', paddingBottom: '0.75rem', flexShrink: 0 }}>
+        <div>
+          <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>{traditionalEmailReader.subject || 'Traditional Email View'}</h3>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>From: {traditionalEmailReader.sender}</span>
+        </div>
+        <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
+      </div>
+
+      {/* Attachment if present */}
+      {traditionalEmailReader.attachment && (
+        <div style={{ marginBottom: '1rem', borderRadius: '0.5rem', overflow: 'hidden', flexShrink: 0 }}>
+          <img src={traditionalEmailReader.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', borderRadius: '0.5rem' }} />
+        </div>
+      )}
+
+      {/* Email Body: Renders rich HTML from external emails or clean plain text fallback */}
+      <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: '1.5rem', overflowY: 'auto', flex: 1, paddingRight: '0.5rem' }}>
+        {traditionalEmailReader.htmlBody ? (
+          <div 
+            dangerouslySetInnerHTML={{ __html: traditionalEmailReader.htmlBody }} 
+            style={{ wordBreak: 'break-word', overflowX: 'auto' }}
+          />
+        ) : (
+          <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {traditionalEmailReader.body || 'No message content available.'}
           </div>
         )}
+      </div>
+
+      {/* Footer Actions */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexShrink: 0, borderTop: '1px solid var(--input-border)', paddingTop: '1rem' }}>
+        <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.6rem 1.25rem', borderRadius: '0.75rem', cursor: 'pointer' }}>Close</button>
+        <button onClick={() => {
+          const sender = traditionalEmailReader.sender;
+          const subj = traditionalEmailReader.subject;
+          setTraditionalEmailReader(null);
+          setTraditionalTo(sender);
+          setTraditionalCc('');
+          setTraditionalSubject(subj ? `Re: ${subj.replace(/^Re:\s*/i, '')}` : '');
+          setTraditionalBody('');
+          setIsTraditionalLocked(true);
+          setShowTraditionalModal(true);
+        }} className="primary-btn" style={{ width: 'auto' }}>Reply in Traditional View ➔</button>
+      </div>
+
+    </div>
+  </div>
+)}
 
         {activeCall && (
           <div className="modal-overlay" onClick={() => setActiveCall(null)}>
