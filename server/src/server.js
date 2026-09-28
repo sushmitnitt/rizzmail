@@ -17,7 +17,7 @@ const io = new Server(server, {
     methods: ["GET", "POST", "PUT", "DELETE"]
   }
 });
-app.use("/api/ivr", require("./routes/ivr"));
+
 // Configure Express CORS middleware to prevent blocking requests from frontend
 app.use(cors({
   origin: (origin, callback) => {
