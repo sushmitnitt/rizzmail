@@ -89,6 +89,56 @@ router.get('/:emailAddress', async (req, res) => {
   }
 });
 
+// POST send email and emit via Socket.io with sender profile data
+router.post('/email/send', async (req, res) => {
+  try {
+    const { senderPhone, recipientEmail, subject, body, clientMessageId } = req.body;
+
+    // 1. Save the message to your database
+    const newMessage = new Message({
+      sender: `${senderPhone.replace(/^\+/, '')}@rizzmail.me`,
+      recipient: recipientEmail,
+      subject: subject || 'Re: Conversation',
+      body: body,
+      clientMessageId: clientMessageId || null,
+      direction: 'outbound',
+      createdAt: new Date()
+    });
+    const savedMessage = await newMessage.save();
+
+    // 2. Fetch the sender's profile details to attach to the payload
+    const cleanSenderPhone = senderPhone.replace(/^\+/, '');
+    const senderUser = await User.findOne({ 
+      $or: [
+        { phoneNumber: cleanSenderPhone }, 
+        { phone: cleanSenderPhone }, 
+        { phoneNumber: `+${cleanSenderPhone}` }
+      ] 
+    });
+
+    const senderPhoto = senderUser?.profilePhoto || senderUser?.photo || '';
+    const senderName = `${senderUser?.firstName || ''} ${senderUser?.lastName || ''}`.trim() || cleanSenderPhone;
+
+    // 3. Construct the enriched payload for real-time delivery
+    const messagePayload = {
+      ...savedMessage.toObject(),
+      counterpartyPhoto: senderPhoto,
+      counterpartyName: senderName
+    };
+
+    // 4. Emit real-time message via Socket.io to the recipient's room
+    const recipientIdentifier = recipientEmail.split('@')[0];
+    if (req.io) {
+      req.io.to(recipientIdentifier).emit('new_message', messagePayload);
+    }
+
+    res.status(201).json({ success: true, message: messagePayload });
+  } catch (err) {
+    console.error('Error sending email:', err);
+    res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
 // Fetch messages by phone number or alias with live profile photo injection
 router.get('/messages/:phone', async (req, res) => {
   try {
@@ -245,6 +295,52 @@ router.post('/webhook', async (req, res) => {
   } catch (err) {
     console.error('❌ Webhook error:', err);
     return res.status(500).json({ success: false, error: err.message });
+  }
+});
+// GET messages for a user phone number and enrich with sender profiles
+router.get('/email/:phone', async (req, res) => {
+  try {
+    const userPhone = req.params.phone;
+    
+    // Find messages where the user is either the sender or recipient
+    const messages = await Message.find({
+      $or: [
+        { sender: new RegExp(userPhone, 'i') }, 
+        { recipient: new RegExp(userPhone, 'i') }
+      ]
+    }).sort({ createdAt: -1 });
+
+    // Enrich every message with the sender's current profile picture & name
+    const enrichedMessages = await Promise.all(messages.map(async (msg) => {
+      // Extract clean phone/identifier from sender string (e.g., "9876543210@rizzmail.me" -> "9876543210")
+      let senderIdentifier = msg.sender.split('@')[0];
+      
+      // Look up the user in your User collection
+      const senderUser = await User.findOne({ 
+        $or: [
+          { phoneNumber: senderIdentifier }, 
+          { phone: senderIdentifier }, 
+          { phoneNumber: `+${senderIdentifier}` }
+        ] 
+      });
+
+      const msgObj = msg.toObject ? msg.toObject() : { ...msg };
+      
+      if (senderUser) {
+        msgObj.counterpartyPhoto = senderUser.profilePhoto || senderUser.photo || '';
+        msgObj.counterpartyName = `${senderUser.firstName || ''} ${senderUser.lastName || ''}`.trim() || senderIdentifier;
+      } else {
+        msgObj.counterpartyPhoto = '';
+        msgObj.counterpartyName = senderIdentifier;
+      }
+
+      return msgObj;
+    }));
+
+    res.json(enrichedMessages);
+  } catch (err) {
+    console.error('Error fetching messages:', err);
+    res.status(500).json({ error: 'Failed to fetch messages' });
   }
 });
 
