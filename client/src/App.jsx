@@ -1351,7 +1351,7 @@ function App() {
                         </div>
                       </div>
 
-                      {/* MESSAGES WITH SUBJECTS & TAGGED REPLY QUOTES */}
+                      {/* MESSAGES WITH SINGLE-REPLY ENFORCEMENT */}
                       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
@@ -1362,8 +1362,11 @@ function App() {
                           activeThread.messages.map((msg, idx) => {
                             const isOutbound = msg.direction === 'outbound';
                             const isLong = msg.body && msg.body.length > 180;
+                            const msgId = msg._id || msg.clientMessageId;
+                            const hasBeenRepliedTo = activeThread.messages.some(m => m.quotedMessage && (m.quotedMessage.id === msgId));
+
                             return (
-                              <div key={msg._id || msg.clientMessageId || idx} style={{ display: 'flex', justifyContent: isOutbound ? 'flex-end' : 'flex-start', width: '100%', position: 'relative' }}>
+                              <div key={msgId || idx} style={{ display: 'flex', justifyContent: isOutbound ? 'flex-end' : 'flex-start', width: '100%', position: 'relative' }}>
                                 <div 
                                   onClick={() => setTraditionalEmailReader(msg)}
                                   style={{
@@ -1379,14 +1382,12 @@ function App() {
                                   }}
                                   title="Tap to open in traditional view & reply"
                                 >
-                                  {/* Subject prominently displayed at the top */}
                                   {msg.subject && (
                                     <div style={{ fontSize: '0.75rem', fontWeight: '700', opacity: 0.95, marginBottom: '0.35rem', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                       <Mail size={12} /> Subject: {msg.subject}
                                     </div>
                                   )}
 
-                                  {/* Render Quoted/Tagged original message if present */}
                                   {msg.quotedMessage && (
                                     <div style={{ background: 'rgba(0,0,0,0.15)', borderLeft: '3px solid #818cf8', padding: '0.35rem 0.5rem', borderRadius: '0.35rem', marginBottom: '0.5rem', fontSize: '0.8rem', opacity: 0.9 }}>
                                       <div style={{ fontWeight: '600', fontSize: '0.7rem' }}>Replying to {msg.quotedMessage.sender.split('@')[0]}</div>
@@ -1405,16 +1406,20 @@ function App() {
                                     </div>
                                   )}
                                   <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
-                                    <button 
-                                      onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        setQuotedMessage({ id: msg._id || msg.clientMessageId, sender: msg.sender, body: msg.body || '[Attachment]' }); 
-                                      }}
-                                      title="Tag/Quote this message to reply"
-                                      style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.65rem' }}
-                                    >
-                                      <MessageSquareReply size={12} /> Reply
-                                    </button>
+                                    {hasBeenRepliedTo ? (
+                                      <span style={{ fontSize: '0.65rem', opacity: 0.7, fontStyle: 'italic' }}>✓ Replied</span>
+                                    ) : (
+                                      <button 
+                                        onClick={(e) => { 
+                                          e.stopPropagation(); 
+                                          setQuotedMessage({ id: msgId, sender: msg.sender, body: msg.body || '[Attachment]' }); 
+                                        }}
+                                        title="Tag/Quote this message to reply"
+                                        style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.65rem' }}
+                                      >
+                                        <MessageSquareReply size={12} /> Reply
+                                      </button>
+                                    )}
                                     {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     {isOutbound && (msg.isOptimistic ? ' ◌' : ' ✓✓')}
                                     {msg._id && (
@@ -1462,7 +1467,6 @@ function App() {
 
                       {/* CHAT COMPOSER BAR */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem', flexShrink: 0 }}>
-                        {/* Tagged / Quoted Original Message Preview Banner */}
                         {quotedMessage && (
                           <div style={{ background: 'rgba(99, 102, 241, 0.1)', borderLeft: '3px solid #6366f1', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>
@@ -1473,7 +1477,6 @@ function App() {
                           </div>
                         )}
 
-                        {/* Subject field is shown for new emails/chats, hidden when replying */}
                         {!isReplying && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', width: '50px' }}>Subject</span>
