@@ -1020,7 +1020,7 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* SIDEBAR WITH FULL-WIDTH SEARCH BAR AT THE TOP */}
+                {/* SIDEBAR WITH FULL-WIDTH SEARCH BAR & FILTER CHIPS */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
                   <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>
@@ -1050,7 +1050,7 @@ function App() {
                       />
                     </div>
 
-                    {/* FILTER CHIPS & UTILITY ACTIONS */}
+                    {/* FILTER CHIPS (ALL, UNREAD, ATTACHMENTS, FAVORITES) BELOW SEARCH BAR */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                       <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px', flex: 1 }}>
                         {['all', 'unread', 'attachments', 'favorites'].map((chip) => (
