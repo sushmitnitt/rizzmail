@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera, ShieldAlert, Globe } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera, ShieldAlert, Globe, MessageSquareReply } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -126,6 +126,7 @@ function App() {
   const [showChatInfo, setShowChatInfo] = useState(false);
   const [chatMessageBody, setChatMessageBody] = useState('');
   const [chatSubject, setChatSubject] = useState('');
+  const [quotedMessage, setQuotedMessage] = useState(null); // Tagged original message for replies
   
   const [showTraditionalModal, setShowTraditionalModal] = useState(false);
   const [traditionalTo, setTraditionalTo] = useState('');
@@ -508,6 +509,7 @@ function App() {
       subject: finalSubject,
       body: finalBody,
       attachment: attachmentPreview,
+      quotedMessage: quotedMessage, // Linked original message reference
       direction: 'outbound',
       createdAt: new Date().toISOString(),
       isOptimistic: true,
@@ -517,6 +519,7 @@ function App() {
     setMessages((prev) => [optimisticMsg, ...prev]);
     setChatMessageBody('');
     setChatSubject('');
+    setQuotedMessage(null);
     setAttachmentPreview(null);
 
     try {
@@ -526,6 +529,7 @@ function App() {
         subject: finalSubject,
         body: finalBody,
         attachment: attachmentPreview,
+        quotedMessage: quotedMessage,
         clientMessageId: tempClientMessageId
       });
       
@@ -1346,7 +1350,7 @@ function App() {
                         </div>
                       </div>
 
-                      {/* MESSAGES WITH VISUAL ATTACHMENT PREVIEWS & SUBJECTS */}
+                      {/* MESSAGES WITH SUBJECTS & TAGGED REPLY QUOTES */}
                       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
@@ -1358,7 +1362,7 @@ function App() {
                             const isOutbound = msg.direction === 'outbound';
                             const isLong = msg.body && msg.body.length > 180;
                             return (
-                              <div key={msg._id || msg.clientMessageId || idx} style={{ display: 'flex', justifyContent: isOutbound ? 'flex-end' : 'flex-start', width: '100%' }}>
+                              <div key={msg._id || msg.clientMessageId || idx} style={{ display: 'flex', justifyContent: isOutbound ? 'flex-end' : 'flex-start', width: '100%', position: 'relative' }}>
                                 <div 
                                   onClick={() => setTraditionalEmailReader(msg)}
                                   style={{
@@ -1374,11 +1378,21 @@ function App() {
                                   }}
                                   title="Tap to open in traditional view & reply"
                                 >
+                                  {/* Subject prominently displayed at the top */}
                                   {msg.subject && (
-                                    <div style={{ fontSize: '0.75rem', fontWeight: '700', opacity: 0.9, marginBottom: '0.25rem', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.15rem' }}>
-                                      Subject: {msg.subject}
+                                    <div style={{ fontSize: '0.75rem', fontWeight: '700', opacity: 0.95, marginBottom: '0.35rem', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      <Mail size={12} /> Subject: {msg.subject}
                                     </div>
                                   )}
+
+                                  {/* Render Quoted/Tagged original message if present */}
+                                  {msg.quotedMessage && (
+                                    <div style={{ background: 'rgba(0,0,0,0.15)', borderLeft: '3px solid #818cf8', padding: '0.35rem 0.5rem', borderRadius: '0.35rem', marginBottom: '0.5rem', fontSize: '0.8rem', opacity: 0.9 }}>
+                                      <div style={{ fontWeight: '600', fontSize: '0.7rem' }}>Replying to {msg.quotedMessage.sender.split('@')[0]}</div>
+                                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{msg.quotedMessage.body}</div>
+                                    </div>
+                                  )}
+
                                   {msg.attachment && (
                                     <div style={{ marginBottom: msg.body ? '0.5rem' : 0, borderRadius: '0.5rem', overflow: 'hidden' }}>
                                       <img src={msg.attachment} alt="Attachment Preview" style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', borderRadius: '0.5rem', display: 'block' }} />
@@ -1389,14 +1403,24 @@ function App() {
                                       {isLong ? `${msg.body.substring(0, 180)}... (Tap to read full email)` : msg.body}
                                     </div>
                                   )}
-                                  <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                                  <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+                                    <button 
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        setQuotedMessage({ id: msg._id || msg.clientMessageId, sender: msg.sender, body: msg.body || '[Attachment]' }); 
+                                      }}
+                                      title="Tag/Quote this message to reply"
+                                      style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.65rem' }}
+                                    >
+                                      <MessageSquareReply size={12} /> Reply
+                                    </button>
                                     {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     {isOutbound && (msg.isOptimistic ? ' ◌' : ' ✓✓')}
                                     {msg._id && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); handleDeleteSingleMessage(msg._id); }}
                                         title="Delete message"
-                                        style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.6, padding: '0 2px', marginLeft: '4px' }}
+                                        style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.6, padding: '0 2px' }}
                                       >
                                         <Trash2 size={11} />
                                       </button>
@@ -1435,8 +1459,19 @@ function App() {
                         </div>
                       )}
 
-                      {/* CHAT COMPOSER BAR WITH COMPACT SUBJECT FIELD ABOVE MESSAGE BOX */}
+                      {/* CHAT COMPOSER BAR WITH SUBJECT FIELD & QUOTED REPLY PREVIEW */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem', flexShrink: 0 }}>
+                        {/* Tagged / Quoted Original Message Preview Banner */}
+                        {quotedMessage && (
+                          <div style={{ background: 'rgba(99, 102, 241, 0.1)', borderLeft: '3px solid #6366f1', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+                              <span style={{ fontWeight: '600', color: '#6366f1' }}>Replying to {quotedMessage.sender.split('@')[0]}: </span>
+                              <span style={{ opacity: 0.8 }}>{quotedMessage.body}</span>
+                            </div>
+                            <button type="button" onClick={() => setQuotedMessage(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={14} /></button>
+                          </div>
+                        )}
+
                         {/* Compact Subject Field right above the message box */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', width: '50px' }}>Subject</span>
