@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Users, Eye } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -80,10 +80,13 @@ function App() {
   const [dob, setDob] = useState('');
   const [profilePhoto, setProfilePhoto] = useState('');
 
+  // Account Settings & Alias Management
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editFirstName, setEditFirstName] = useState(user?.firstName || '');
   const [editLastName, setEditLastName] = useState(user?.lastName || '');
   const [editProfilePhoto, setEditProfilePhoto] = useState(user?.profilePhoto || '');
+  const [aliases, setAliases] = useState(() => JSON.parse(localStorage.getItem('rizzmail_aliases') || '[]'));
+  const [newAliasInput, setNewAliasInput] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
 
   const [deleteOtp, setDeleteOtp] = useState('');
@@ -96,19 +99,31 @@ function App() {
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Buildathon Navigation & Filter Chips States
+  // Navigation & Filter States
   const [activeFolder, setActiveFolder] = useState('home'); // home, drafts, spam, trash
-  const [chatFilter, setChatFilter] = useState('all'); // all, unread, attachments, favorites[cite: 2]
+  const [chatFilter, setChatFilter] = useState('all'); // all, unread, attachments, favorites
+  const [favoritesMap, setFavoritesMap] = useState(() => JSON.parse(localStorage.getItem('rizzmail_favs') || '{}'));
   const [toast, setToast] = useState(null);
 
+  // Chat & Traditional Compose States
   const [activeChatSender, setActiveChatSender] = useState(null);
   const [showChatInfo, setShowChatInfo] = useState(false);
   const [chatMessageBody, setChatMessageBody] = useState('');
-  const [chatSubject, setChatSubject] = useState('Re: Conversation'); // Compact subject field[cite: 2]
+  const [chatSubject, setChatSubject] = useState('Re: Conversation');
   const [showSubjectInput, setShowSubjectInput] = useState(false);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatInput, setNewChatInput] = useState('');
   
+  // Traditional View Compose Modal State
+  const [showTraditionalModal, setShowTraditionalModal] = useState(false);
+  const [traditionalTo, setTraditionalTo] = useState('');
+  const [traditionalSubject, setTraditionalSubject] = useState('');
+  const [traditionalBody, setTraditionalBody] = useState('');
+
+  // Traditional View Full Email Reader Modal
+  const [traditionalEmailReader, setTraditionalEmailReader] = useState(null);
+
+  // Extra Interactive Features
   const [attachmentPreview, setAttachmentPreview] = useState(null);
   const [activeCall, setActiveCall] = useState(null);
   const [showSnippets, setShowSnippets] = useState(false);
@@ -394,6 +409,21 @@ function App() {
     }
   };
 
+  const handleAddAlias = () => {
+    if (!newAliasInput.trim()) return;
+    const cleanAlias = newAliasInput.trim().toLowerCase().split('@')[0];
+    const updated = [...aliases, `${cleanAlias}@rizzmail.me`];
+    setAliases(updated);
+    localStorage.setItem('rizzmail_aliases', JSON.stringify(updated));
+    setNewAliasInput('');
+  };
+
+  const handleRemoveAlias = (aliasToRemove) => {
+    const updated = aliases.filter(a => a !== aliasToRemove);
+    setAliases(updated);
+    localStorage.setItem('rizzmail_aliases', JSON.stringify(updated));
+  };
+
   const handleOpenDeletionWarning = () => {
     setError('');
     setStep(7);
@@ -453,15 +483,16 @@ function App() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSendReplySubmit = async (e) => {
-    e.preventDefault();
-    if ((!chatMessageBody.trim() && !attachmentPreview) || !activeChatSender) return;
+  const handleSendReplySubmit = async (e, customBody = null, customSubject = null) => {
+    if (e) e.preventDefault();
+    const bodyToSend = customBody !== null ? customBody : chatMessageBody;
+    if ((!bodyToSend.trim() && !attachmentPreview) || !activeChatSender) return;
 
     const tempClientMessageId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
     const activePhone = getUserPhone();
     const recipientTarget = activeChatSender;
-    const finalBody = attachmentPreview ? `[Attachment] ${chatMessageBody.trim()}` : chatMessageBody.trim();
-    const finalSubject = showSubjectInput ? (chatSubject.trim() || 'Re: Conversation') : 'Re: Conversation';
+    const finalBody = attachmentPreview ? `[Attachment] ${bodyToSend.trim()}` : bodyToSend.trim();
+    const finalSubject = customSubject || (showSubjectInput ? (chatSubject.trim() || 'Re: Conversation') : 'Re: Conversation');
 
     const optimisticMsg = {
       clientMessageId: tempClientMessageId,
@@ -501,6 +532,38 @@ function App() {
     }
   };
 
+  const handleSendTraditionalSubmit = async (e) => {
+    e.preventDefault();
+    if (!traditionalTo.trim() || !traditionalBody.trim()) return;
+
+    const recipients = traditionalTo.split(',').map(r => r.trim()).filter(Boolean);
+    const activePhone = getUserPhone();
+
+    for (const rec of recipients) {
+      let target = rec.toLowerCase();
+      if (!target.includes('@')) {
+        const pure = target.replace(/[^0-9]/g, '').slice(-10);
+        target = `${pure}@rizzmail.me`;
+      }
+      try {
+        await sendEmailAPI({
+          senderPhone: activePhone,
+          recipientEmail: target,
+          subject: traditionalSubject.trim() || 'New Message',
+          body: traditionalBody.trim()
+        });
+      } catch (err) {
+        console.error('Failed to send traditional email to', target);
+      }
+    }
+
+    setShowTraditionalModal(false);
+    setTraditionalTo('');
+    setTraditionalSubject('');
+    setTraditionalBody('');
+    loadInbox(activePhone);
+  };
+
   const handleSimulateIncomingEmail = async () => {
     try {
       const activePhone = getEmailPhone(getUserPhone());
@@ -511,8 +574,8 @@ function App() {
         body: JSON.stringify({
           phone: activePhone,
           sender: "evaluator@rizzmail.me",
-          subject: "Test Message with Attachment",
-          body: "Hello! Testing buildathon requirements."
+          subject: "Project Milestone Update",
+          body: "Hello! Reviewing the buildathon requirements and checking the chat integration."
         })
       });
       loadInbox(getUserPhone());
@@ -544,6 +607,13 @@ function App() {
     } catch (e) {
       setError('Failed to delete message.');
     }
+  };
+
+  const handleToggleFavorite = (canonicalKey, e) => {
+    if (e) e.stopPropagation();
+    const updated = { ...favoritesMap, [canonicalKey]: !favoritesMap[canonicalKey] };
+    setFavoritesMap(updated);
+    localStorage.setItem('rizzmail_favs', JSON.stringify(updated));
   };
 
   const handleLogout = () => {
@@ -586,7 +656,8 @@ function App() {
         sender: counterpartyRaw,
         name: msg.counterpartyName || counterpartyRaw.split('@')[0],
         avatar: msg.counterpartyPhoto || '',
-        messages: []
+        messages: [],
+        isFavorite: !!favoritesMap[canonicalKey]
       };
     }
     
@@ -608,7 +679,8 @@ function App() {
         sender: activeChatSender,
         name: activeChatSender.split('@')[0],
         avatar: '',
-        messages: []
+        messages: [],
+        isFavorite: !!favoritesMap[activeCanonical]
       };
     }
   }
@@ -622,6 +694,7 @@ function App() {
     thread.messages = Array.from(uniqueMap.values());
     thread.messages.sort((a, b) => new Date(a.createdAt || a.date || 0) - new Date(b.createdAt || b.date || 0));
     thread.lastMessage = thread.messages[thread.messages.length - 1];
+    thread.isFavorite = !!favoritesMap[thread.canonicalKey];
     return thread;
   });
 
@@ -875,15 +948,17 @@ function App() {
           </div>
         )}
 
-        {/* STEP 6: CHAT DASHBOARD */}
+        {/* STEP 6: MAIN DASHBOARD */}
         {!isLoggingOut && step === 6 && user && (
           <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', justifyContent: 'center' }}>
+            
+            {/* EDIT PROFILE & ALIAS SETTINGS VIEW */}
             {isEditingProfile ? (
-              <div className="card-wrapper" style={{ margin: '2rem auto', width: '100%', maxWidth: '520px', display: 'flex', justifyContent: 'center' }}>
+              <div className="card-wrapper" style={{ margin: '2rem auto', width: '100%', maxWidth: '560px', display: 'flex', justifyContent: 'center' }}>
                 <div className="card" style={{ textAlign: 'left', width: '100%' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                    <h3>Manage Account</h3>
-                    <button onClick={() => setIsEditingProfile(false)} className="text-btn">Back</button>
+                    <h3>Manage Account & Alias IDs</h3>
+                    <button onClick={() => setIsEditingProfile(false)} className="text-btn">Back to Chat</button>
                   </div>
                   {profileSuccess && <div className="success-banner">{profileSuccess}</div>}
 
@@ -919,18 +994,43 @@ function App() {
 
                     <div className="input-group-stack"><label>First Name</label><input type="text" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} required /></div>
                     <div className="input-group-stack"><label>Last Name</label><input type="text" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} required /></div>
+                    
+                    {/* ALIAS MANAGEMENT SECTION */}
+                    <div style={{ background: 'var(--input-bg)', padding: '1rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)' }}>
+                      <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.5rem' }}>Manage Alias IDs</label>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. support or work" 
+                          value={newAliasInput} 
+                          onChange={(e) => setNewAliasInput(e.target.value)}
+                          style={{ flex: 1, padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid var(--input-border)', background: 'var(--card-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                        />
+                        <button type="button" onClick={handleAddAlias} style={{ background: '#6366f1', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: '600' }}>Add Alias</button>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>• {getEmailPhone(getUserPhone())}@rizzmail.me (Primary)</div>
+                        {aliases.map((al, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-primary)' }}>
+                            <span>• {al}</span>
+                            <button type="button" onClick={() => handleRemoveAlias(al)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={13} /></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                     <button type="submit" className="primary-btn">Save Changes</button>
                   </form>
                   <button onClick={handleOpenDeletionWarning} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem', borderRadius: '0.75rem', marginTop: '1.5rem', cursor: 'pointer', width: '100%', fontWeight: '600' }}>Delete Account 🗑️</button>
                 </div>
               </div>
             ) : (
-              <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: 'calc(100vh - 70px)', background: 'var(--card-bg)', border: '1px solid var(--input-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+              <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: 'calc(100vh - 70px)', background: 'var(--card-bg)', border: '1px solid var(--input-border)', borderRadius: '1rem', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* BUILDATHON TOP-LEFT FOLDERS MENU DRAWER / SIDEBAR */}
+                {/* SIDEBAR & FOLDERS */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0 }}>
                   
-                  {/* TOP-LEFT FOLDERS MENU BAR */}
+                  {/* TOP-LEFT FOLDER TABS */}
                   <div style={{ display: 'flex', borderBottom: '1px solid var(--input-border)', background: 'var(--input-bg)' }}>
                     <button 
                       onClick={() => setActiveFolder('home')}
@@ -973,7 +1073,7 @@ function App() {
                       </button>
                     </div>
 
-                    {/* BUILDATHON 4 FILTER CHIPS: All, Unread, Attachments, Favorites[cite: 2] */}
+                    {/* FILTER CHIPS */}
                     <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px' }}>
                       {['all', 'unread', 'attachments', 'favorites'].map((chip) => (
                         <button 
@@ -1023,7 +1123,7 @@ function App() {
                         boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
                       }}
                     >
-                      <Plus size={18} /> Compose New Chat
+                      <Plus size={18} /> Chat View Compose
                     </button>
                   </div>
 
@@ -1037,7 +1137,7 @@ function App() {
                       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
                         <Mail size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
                         <p>No active chats</p>
-                        <small>Click <b>Compose New Chat</b> above to text someone new.</small>
+                        <small>Click <b>Chat View Compose</b> or the traditional button below.</small>
                       </div>
                     ) : (
                       filteredThreads.map((thread) => {
@@ -1073,6 +1173,12 @@ function App() {
                                 {thread.lastMessage ? (thread.lastMessage.subject ? `${thread.lastMessage.subject}: ` : '') + thread.lastMessage.body : 'New conversation'}
                               </p>
                             </div>
+                            <button 
+                              onClick={(e) => handleToggleFavorite(thread.canonicalKey, e)}
+                              style={{ background: 'transparent', border: 'none', color: thread.isFavorite ? '#f59e0b' : 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
+                            >
+                              <Star size={16} fill={thread.isFavorite ? '#f59e0b' : 'none'} />
+                            </button>
                           </div>
                         );
                       })
@@ -1133,6 +1239,7 @@ function App() {
                         </div>
                       </div>
 
+                      {/* MESSAGES LIST */}
                       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
@@ -1142,31 +1249,39 @@ function App() {
                         ) : (
                           activeThread.messages.map((msg, idx) => {
                             const isOutbound = msg.direction === 'outbound';
+                            const isLong = msg.body && msg.body.length > 180;
                             return (
                               <div key={msg._id || msg.clientMessageId || idx} style={{ display: 'flex', justifyContent: isOutbound ? 'flex-end' : 'flex-start', width: '100%' }}>
-                                <div style={{
-                                  maxWidth: '70%',
-                                  background: isOutbound ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' : 'var(--card-bg)',
-                                  color: isOutbound ? '#ffffff' : 'var(--text-primary)',
-                                  padding: '0.75rem 1rem',
-                                  borderRadius: isOutbound ? '1rem 1rem 0 1rem' : '1rem 1rem 1rem 0',
-                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                  border: isOutbound ? 'none' : '1px solid var(--input-border)',
-                                  position: 'relative'
-                                }}>
+                                <div 
+                                  onClick={() => isLong && setTraditionalEmailReader(msg)}
+                                  style={{
+                                    maxWidth: '70%',
+                                    background: isOutbound ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' : 'var(--card-bg)',
+                                    color: isOutbound ? '#ffffff' : 'var(--text-primary)',
+                                    padding: '0.75rem 1rem',
+                                    borderRadius: isOutbound ? '1rem 1rem 0 1rem' : '1rem 1rem 1rem 0',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                    border: isOutbound ? 'none' : '1px solid var(--input-border)',
+                                    position: 'relative',
+                                    cursor: isLong ? 'pointer' : 'default'
+                                  }}
+                                  title={isLong ? "Tap to open in traditional view" : undefined}
+                                >
                                   {msg.subject && <div style={{ fontSize: '0.75rem', opacity: 0.8, marginBottom: '0.25rem', fontWeight: '600' }}>{msg.subject}</div>}
                                   {msg.attachment && (
                                     <div style={{ marginBottom: '0.5rem', borderRadius: '0.5rem', overflow: 'hidden' }}>
                                       <img src={msg.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover' }} />
                                     </div>
                                   )}
-                                  <div style={{ fontSize: '0.9rem', wordBreak: 'break-word', lineHeight: '1.4' }}>{msg.body}</div>
+                                  <div style={{ fontSize: '0.9rem', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                                    {isLong ? `${msg.body.substring(0, 180)}... (Tap to read full email)` : msg.body}
+                                  </div>
                                   <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                                     {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     {isOutbound && (msg.isOptimistic ? ' ◌' : ' ✓✓')}
                                     {msg._id && (
                                       <button 
-                                        onClick={() => handleDeleteSingleMessage(msg._id)}
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteSingleMessage(msg._id); }}
                                         title="Delete message"
                                         style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.6, padding: '0 2px', marginLeft: '4px' }}
                                       >
@@ -1181,7 +1296,7 @@ function App() {
                         )}
                       </div>
 
-                      {/* COMPACT SUBJECT FIELD ABOVE MESSAGE BOX AS SPECIFIED[cite: 2] */}
+                      {/* COMPACT SUBJECT FIELD ABOVE MESSAGE BOX */}
                       {showSubjectInput && (
                         <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)' }}>Subject:</span>
@@ -1222,6 +1337,7 @@ function App() {
                         </div>
                       )}
 
+                      {/* CHAT COMPOSER BAR */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                         <label title="Attach image or file" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Paperclip size={20} />
@@ -1260,21 +1376,52 @@ function App() {
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', padding: '2rem', textAlign: 'center' }}>
                       <Mail size={56} style={{ opacity: 0.3, marginBottom: '1rem' }} />
                       <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Secure Chat Portal</h3>
-                      <p style={{ maxWidth: '320px', fontSize: '0.9rem' }}>Select a conversation from the left panel or click <b>Compose New Chat</b> to message someone new.</p>
+                      <p style={{ maxWidth: '320px', fontSize: '0.9rem' }}>Select a conversation from the left panel or click <b>Chat View Compose</b> to message someone new.</p>
                     </div>
                   )}
                 </div>
+
+                {/* BOTTOM-RIGHT TRADITIONAL COMPOSE FLOATING ACTION BUTTON */}
+                <button
+                  onClick={() => {
+                    setTraditionalTo(activeChatSender ? activeChatSender : '');
+                    setTraditionalSubject('');
+                    setTraditionalBody('');
+                    setShowTraditionalModal(true);
+                  }}
+                  title="Traditional Email View"
+                  style={{
+                    position: 'absolute',
+                    bottom: '24px',
+                    right: '24px',
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                    color: '#fff',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 8px 24px rgba(99,102,241,0.5)',
+                    zIndex: 100
+                  }}
+                >
+                  <Edit3 size={24} />
+                </button>
 
               </div>
             )}
           </div>
         )}
 
+        {/* CHAT VIEW COMPOSE MODAL (SEARCH NUMBER) */}
         {showNewChatModal && (
           <div className="modal-overlay" onClick={() => setShowNewChatModal(false)}>
             <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'left', padding: '1.75rem' }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>Compose New Message</h3>
+                <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>Chat View Compose</h3>
                 <button onClick={() => setShowNewChatModal(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
               </div>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Enter anyone's 10-digit phone number or full @rizzmail.me address to start chatting.</p>
@@ -1305,6 +1452,84 @@ function App() {
           </div>
         )}
 
+        {/* TRADITIONAL VIEW COMPOSE MODAL (LOCKED TO/CC FIELDS) */}
+        {showTraditionalModal && (
+          <div className="modal-overlay" onClick={() => setShowTraditionalModal(false)}>
+            <div className="modal-content" style={{ maxWidth: '520px', textAlign: 'left', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Mail size={20} style={{ color: '#6366f1' }} />
+                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>Traditional Email View</h3>
+                </div>
+                <button onClick={() => setShowTraditionalModal(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
+              </div>
+
+              <form onSubmit={handleSendTraditionalSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="input-group-stack">
+                  <label>To (Locked / Pre-filled)</label>
+                  <input 
+                    type="text" 
+                    value={traditionalTo} 
+                    onChange={(e) => setTraditionalTo(e.target.value)}
+                    placeholder="e.g. 9876543210@rizzmail.me (Comma separate for group chat)"
+                    required
+                    style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.85rem' }}
+                  />
+                </div>
+                <div className="input-group-stack">
+                  <label>Subject</label>
+                  <input 
+                    type="text" 
+                    value={traditionalSubject} 
+                    onChange={(e) => setTraditionalSubject(e.target.value)}
+                    placeholder="Email Subject..."
+                    required 
+                  />
+                </div>
+                <div className="input-group-stack">
+                  <label>Body</label>
+                  <textarea 
+                    value={traditionalBody} 
+                    onChange={(e) => setTraditionalBody(e.target.value)}
+                    placeholder="Write your email in traditional format..."
+                    rows={6}
+                    required
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none', resize: 'vertical' }}
+                  />
+                </div>
+                <button type="submit" className="primary-btn">Send Traditional Email ➔</button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* TRADITIONAL EMAIL READER MODAL (FOR LONG EMAILS) */}
+        {traditionalEmailReader && (
+          <div className="modal-overlay" onClick={() => setTraditionalEmailReader(null)}>
+            <div className="modal-content" style={{ maxWidth: '560px', textAlign: 'left', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--input-border)', paddingBottom: '0.75rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>{traditionalEmailReader.subject || 'Traditional Email View'}</h3>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>From: {traditionalEmailReader.sender}</span>
+                </div>
+                <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
+              </div>
+              <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+                {traditionalEmailReader.body}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.6rem 1.25rem', borderRadius: '0.75rem', cursor: 'pointer' }}>Close</button>
+                <button onClick={() => {
+                  const sender = traditionalEmailReader.sender;
+                  setTraditionalEmailReader(null);
+                  setActiveChatSender(sender);
+                }} className="primary-btn" style={{ width: 'auto' }}>Reply in Chat ➔</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ACTIVE CALL SIMULATION MODAL */}
         {activeCall && (
           <div className="modal-overlay" onClick={() => setActiveCall(null)}>
             <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center', padding: '2.5rem 1.5rem', background: 'var(--card-bg)' }} onClick={(e) => e.stopPropagation()}>
