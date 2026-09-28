@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera, ShieldAlert } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -62,6 +62,7 @@ function App() {
   
   const [step, setStep] = useState(() => (user ? 6 : 1));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentFolder, setCurrentFolder] = useState('home'); // 'home', 'drafts', 'spam', 'trash'
 
   const [setupStage, setSetupStage] = useState(0);
   const setupStepsList = [
@@ -499,7 +500,8 @@ function App() {
       attachment: attachmentPreview,
       direction: 'outbound',
       createdAt: new Date().toISOString(),
-      isOptimistic: true
+      isOptimistic: true,
+      folder: 'home'
     };
 
     setMessages((prev) => [optimisticMsg, ...prev]);
@@ -699,6 +701,17 @@ function App() {
   });
 
   const filteredThreads = chatThreadsList.filter(thread => {
+    // Folder matching logic
+    if (currentFolder === 'home') {
+      // Home unifies Inbox and Sent
+    } else if (currentFolder === 'drafts') {
+      if (!thread.messages.some(m => m.folder === 'drafts')) return false;
+    } else if (currentFolder === 'spam') {
+      if (!thread.messages.some(m => m.folder === 'spam')) return false;
+    } else if (currentFolder === 'trash') {
+      if (!thread.messages.some(m => m.folder === 'trash')) return false;
+    }
+
     const matchesSearch = thread.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
       thread.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (thread.lastMessage && thread.lastMessage.body.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -945,6 +958,114 @@ function App() {
         {!isLoggingOut && step === 6 && user && (
           <div style={{ width: '100%', height: '100%', display: 'flex', overflow: 'hidden', position: 'relative' }}>
             
+            {/* TOP-LEFT MENU DRAWER / MODAL */}
+            {mobileMenuOpen && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '280px',
+                height: '100%',
+                background: 'var(--card-bg)',
+                borderRight: '1px solid var(--input-border)',
+                zIndex: 99999,
+                boxShadow: '10px 0 30px rgba(0,0,0,0.5)',
+                display: 'flex',
+                flexDirection: 'column',
+                padding: '1.25rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--input-border)', paddingBottom: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Menu size={20} style={{ color: '#6366f1' }} />
+                    <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', margin: 0 }}>Navigation Menu</h3>
+                  </div>
+                  <button onClick={() => setMobileMenuOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <button 
+                    onClick={() => { setCurrentFolder('home'); setMobileMenuOpen(false); }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '0.75rem',
+                      background: currentFolder === 'home' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                      color: currentFolder === 'home' ? '#6366f1' : 'var(--text-primary)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <Mail size={18} /> Home (Inbox & Sent Unified)
+                  </button>
+
+                  <button 
+                    onClick={() => { setCurrentFolder('drafts'); setMobileMenuOpen(false); }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '0.75rem',
+                      background: currentFolder === 'drafts' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                      color: currentFolder === 'drafts' ? '#6366f1' : 'var(--text-primary)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <Edit3 size={18} /> Drafts
+                  </button>
+
+                  <button 
+                    onClick={() => { setCurrentFolder('spam'); setMobileMenuOpen(false); }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '0.75rem',
+                      background: currentFolder === 'spam' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                      color: currentFolder === 'spam' ? '#f59e0b' : 'var(--text-primary)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <ShieldAlert size={18} /> Spam
+                  </button>
+
+                  <button 
+                    onClick={() => { setCurrentFolder('trash'); setMobileMenuOpen(false); }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '0.75rem',
+                      background: currentFolder === 'trash' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                      color: currentFolder === 'trash' ? '#ef4444' : 'var(--text-primary)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <Trash2 size={18} /> Trash
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* EDIT PROFILE & ALIAS SETTINGS VIEW */}
             {isEditingProfile ? (
               <div style={{ margin: 'auto', width: '100%', maxWidth: '560px', display: 'flex', justifyContent: 'center', overflowY: 'auto', maxHeight: '100%', padding: '2rem' }}>
@@ -1024,6 +1145,14 @@ function App() {
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
                   <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>
+                    {/* CURRENT FOLDER HEADER LABEL */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#818cf8', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <span>Folder: {currentFolder}</span>
+                      <button onClick={() => setMobileMenuOpen(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
+                        <Menu size={14} /> Menu
+                      </button>
+                    </div>
+
                     {/* FULL-WIDTH SEARCH BAR */}
                     <div className="search-bar-container" style={{ margin: 0, width: '100%' }}>
                       <Search size={16} className="search-icon" />
@@ -1089,7 +1218,7 @@ function App() {
                     {filteredThreads.length === 0 ? (
                       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
                         <Mail size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
-                        <p>No active chats</p>
+                        <p>No active chats in {currentFolder}</p>
                         <small>Type a phone number in the search bar above & press Enter to start chatting.</small>
                       </div>
                     ) : (
