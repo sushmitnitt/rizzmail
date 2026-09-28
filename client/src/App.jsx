@@ -130,6 +130,7 @@ function App() {
   
   const [showTraditionalModal, setShowTraditionalModal] = useState(false);
   const [traditionalTo, setTraditionalTo] = useState('');
+  const [traditionalCc, setTraditionalCc] = useState('');
   const [isTraditionalLocked, setIsTraditionalLocked] = useState(false);
   const [traditionalSubject, setTraditionalSubject] = useState('');
   const [traditionalBody, setTraditionalBody] = useState('');
@@ -576,6 +577,7 @@ function App() {
 
     setShowTraditionalModal(false);
     setTraditionalTo('');
+    setTraditionalCc('');
     setTraditionalSubject('');
     setTraditionalBody('');
     setAttachmentPreview(null);
@@ -1354,7 +1356,7 @@ function App() {
                         </div>
                       </div>
 
-                      {/* MESSAGES WITH SWIPE-RIGHT & TAP TO OPEN TRADITIONAL VIEW */}
+                      {/* MESSAGES WITH SWIPE-RIGHT & TRADITIONAL VIEW ACCESS */}
                       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
@@ -1376,7 +1378,11 @@ function App() {
                                 onTouchEnd={(e) => {
                                   const touchEndX = e.changedTouches[0].clientX;
                                   if (touchEndX - touchStartX > 80) {
-                                    // Swipe right gesture triggered -> open traditional view for this message
+                                    setTraditionalTo(activeChatSender);
+                                    setTraditionalCc('');
+                                    setTraditionalSubject(msg.subject || '');
+                                    setTraditionalBody('');
+                                    setIsTraditionalLocked(true);
                                     setTraditionalEmailReader(msg);
                                   }
                                 }}
@@ -1521,17 +1527,18 @@ function App() {
                             <input type="file" accept="image/*" onChange={handleAttachmentUpload} style={{ display: 'none' }} />
                           </label>
                           
-                          {/* WhatsApp Camera tab button -> opens traditional view compose with prefilled locked To field */}
+                          {/* Camera button opens traditional view with locked To/CC fields */}
                           <button 
                             type="button" 
                             onClick={() => {
                               setTraditionalTo(activeChatSender);
+                              setTraditionalCc('');
                               setTraditionalSubject(chatSubject);
                               setTraditionalBody(chatMessageBody);
                               setIsTraditionalLocked(true);
                               setShowTraditionalModal(true);
                             }}
-                            title="Compose in Traditional View (To field locked)"
+                            title="Compose in Traditional View (To/CC locked)"
                             style={{ background: 'transparent', border: 'none', color: '#6366f1', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <Camera size={20} />
@@ -1573,11 +1580,12 @@ function App() {
           </div>
         )}
 
-        {/* TRADITIONAL COMPOSE FLOATING BUTTON (BOTTOM-RIGHT) */}
+        {/* HOME SCREEN COMPOSE FLOATING BUTTON (ALLOWS MULTIPLE RECIPIENTS) */}
         {user && step === 6 && !isEditingProfile && (
           <button
             onClick={() => {
               setTraditionalTo('');
+              setTraditionalCc('');
               setTraditionalSubject('');
               setTraditionalBody('');
               setIsTraditionalLocked(false);
@@ -1600,7 +1608,7 @@ function App() {
               boxShadow: '0 8px 24px rgba(99, 102, 241, 0.4)',
               zIndex: 9999
             }}
-            title="Traditional View Compose"
+            title="Compose New Email (Multi-recipient supported)"
           >
             <Edit3 size={22} />
           </button>
@@ -1619,7 +1627,7 @@ function App() {
 
               <form onSubmit={handleSendTraditionalSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="input-group-stack">
-                  <label>To {isTraditionalLocked ? '(Locked)' : '(Multi-recipient supported)'}</label>
+                  <label>To {isTraditionalLocked ? '(Locked in conversation)' : '(Multi-recipient supported, comma separated)'}</label>
                   <input 
                     type="text" 
                     value={traditionalTo} 
@@ -1627,6 +1635,17 @@ function App() {
                     disabled={isTraditionalLocked}
                     placeholder="e.g. 9876543210@rizzmail.me"
                     required
+                    style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.85rem', opacity: isTraditionalLocked ? 0.7 : 1 }}
+                  />
+                </div>
+                <div className="input-group-stack">
+                  <label>CC {isTraditionalLocked ? '(Locked in conversation)' : '(Optional, comma separated)'}</label>
+                  <input 
+                    type="text" 
+                    value={traditionalCc} 
+                    onChange={(e) => !isTraditionalLocked && setTraditionalCc(e.target.value)}
+                    disabled={isTraditionalLocked}
+                    placeholder="cc@rizzmail.me..."
                     style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.85rem', opacity: isTraditionalLocked ? 0.7 : 1 }}
                   />
                 </div>
@@ -1681,6 +1700,7 @@ function App() {
                   const subj = traditionalEmailReader.subject;
                   setTraditionalEmailReader(null);
                   setTraditionalTo(sender);
+                  setTraditionalCc('');
                   setTraditionalSubject(subj || '');
                   setTraditionalBody('');
                   setIsTraditionalLocked(true);
