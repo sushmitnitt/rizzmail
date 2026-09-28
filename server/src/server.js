@@ -17,7 +17,7 @@ const io = new Server(server, {
     methods: ["GET", "POST", "PUT", "DELETE"]
   }
 });
-
+app.use("/api/ivr", require("./routes/ivr"));
 // Configure Express CORS middleware to prevent blocking requests from frontend
 app.use(cors({
   origin: (origin, callback) => {
@@ -46,6 +46,7 @@ app.set("io", io);
 
 // Register API Routes
 app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/ivr", require("./routes/ivr"));
 app.use("/api/email", require("./routes/emailRoutes"));
 
 // Socket.io Connection Handler
