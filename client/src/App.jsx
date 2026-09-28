@@ -117,8 +117,6 @@ function App() {
   const [chatMessageBody, setChatMessageBody] = useState('');
   const [chatSubject, setChatSubject] = useState('');
   const [showSubjectInput, setShowSubjectInput] = useState(false);
-  const [showNewChatModal, setShowNewChatModal] = useState(false);
-  const [newChatInput, setNewChatInput] = useState('');
   
   const [showTraditionalModal, setShowTraditionalModal] = useState(false);
   const [traditionalTo, setTraditionalTo] = useState('');
@@ -946,7 +944,7 @@ function App() {
 
         {/* STEP 6: MAIN DASHBOARD */}
         {!isLoggingOut && step === 6 && user && (
-          <div style={{ width: '100%', height: '100%', display: 'flex', overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: '100%', display: 'flex', overflow: 'hidden', position: 'relative' }}>
             
             {/* EDIT PROFILE & ALIAS SETTINGS VIEW */}
             {isEditingProfile ? (
@@ -1021,7 +1019,7 @@ function App() {
                 </div>
               </div>
             ) : (
-              <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden' }}>
+              <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
                 {/* SIDEBAR & FOLDERS */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
@@ -1058,7 +1056,26 @@ function App() {
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <div className="search-bar-container" style={{ margin: 0, flex: 1 }}>
                         <Search size={16} className="search-icon" />
-                        <input type="text" placeholder="Search chats..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="search-input" />
+                        <input 
+                          type="text" 
+                          placeholder="Search or enter phone number & press Enter..." 
+                          value={searchQuery} 
+                          onChange={(e) => setSearchQuery(e.target.value)} 
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && searchQuery.trim()) {
+                              let target = searchQuery.trim().toLowerCase();
+                              if (!target.includes('@')) {
+                                const pure = target.replace(/[^0-9]/g, '').slice(-10);
+                                if (pure.length >= 5) {
+                                  target = `${pure}@rizzmail.me`;
+                                }
+                              }
+                              setActiveChatSender(target);
+                              setSearchQuery('');
+                            }
+                          }}
+                          className="search-input" 
+                        />
                       </div>
 
                       <button onClick={handleSimulateIncomingEmail} className="refresh-btn" title="Simulate incoming chat">
@@ -1092,28 +1109,6 @@ function App() {
                         </button>
                       ))}
                     </div>
-
-                    <button 
-                      onClick={() => setShowNewChatModal(true)} 
-                      style={{
-                        width: '100%',
-                        background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
-                        color: '#fff',
-                        border: 'none',
-                        padding: '0.75rem',
-                        borderRadius: '0.75rem',
-                        fontWeight: '600',
-                        fontSize: '0.9rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem',
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
-                      }}
-                    >
-                      <Plus size={18} /> Chat View Compose
-                    </button>
                   </div>
 
                   <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -1126,7 +1121,7 @@ function App() {
                       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
                         <Mail size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
                         <p>No active chats</p>
-                        <small>Click <b>Chat View Compose</b> to text someone new.</small>
+                        <small>Type a phone number in the search bar above & press Enter to start chatting.</small>
                       </div>
                     ) : (
                       filteredThreads.map((thread) => {
@@ -1381,7 +1376,7 @@ function App() {
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', padding: '2rem', textAlign: 'center' }}>
                       <Mail size={56} style={{ opacity: 0.3, marginBottom: '1rem' }} />
                       <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Secure Chat Portal</h3>
-                      <p style={{ maxWidth: '320px', fontSize: '0.9rem' }}>Select a conversation from the left panel or click <b>Chat View Compose</b> to message someone new.</p>
+                      <p style={{ maxWidth: '320px', fontSize: '0.9rem' }}>Search a phone number in the left panel and press Enter to start chatting.</p>
                     </div>
                   )}
                 </div>
@@ -1391,39 +1386,37 @@ function App() {
           </div>
         )}
 
-        {showNewChatModal && (
-          <div className="modal-overlay" onClick={() => setShowNewChatModal(false)}>
-            <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'left', padding: '1.75rem' }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>Chat View Compose</h3>
-                <button onClick={() => setShowNewChatModal(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
-              </div>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Enter anyone's 10-digit phone number or full @rizzmail.me address to start chatting.</p>
-              
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                if (!newChatInput.trim()) return;
-                let target = newChatInput.trim().toLowerCase();
-                if (!target.includes('@')) {
-                  const pure = target.replace(/[^0-9]/g, '').slice(-10);
-                  target = `${pure}@rizzmail.me`;
-                }
-                setActiveChatSender(target);
-                setShowNewChatModal(false);
-                setNewChatInput('');
-              }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <input 
-                  type="text" 
-                  placeholder="e.g. 9876543210 or user@rizzmail.me" 
-                  value={newChatInput} 
-                  onChange={(e) => setNewChatInput(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }}
-                />
-                <button type="submit" className="primary-btn">Start Chat ➔</button>
-              </form>
-            </div>
-          </div>
+        {/* TRADITIONAL COMPOSE FLOATING BUTTON (BOTTOM-RIGHT) */}
+        {user && step === 6 && !isEditingProfile && (
+          <button
+            onClick={() => {
+              setTraditionalTo('');
+              setTraditionalSubject('');
+              setTraditionalBody('');
+              setIsTraditionalLocked(false);
+              setShowTraditionalModal(true);
+            }}
+            style={{
+              position: 'fixed',
+              bottom: '28px',
+              right: '28px',
+              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              color: '#fff',
+              border: 'none',
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 8px 24px rgba(99, 102, 241, 0.4)',
+              zIndex: 9999
+            }}
+            title="Traditional View Compose"
+          >
+            <Edit3 size={22} />
+          </button>
         )}
 
         {showTraditionalModal && (
