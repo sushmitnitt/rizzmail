@@ -76,7 +76,7 @@ function App() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef(null);
 
-  // Close profile menu on outside click
+  // Outside click listener to cleanly close profile menu
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
@@ -751,12 +751,12 @@ function App() {
           </div>
           
           {user && step === 6 && !isLoggingOut && (
-            <div style={{ position: 'relative' }} ref={profileMenuRef}>
+            <div style={{ position: 'relative', overflow: 'visible' }} ref={profileMenuRef}>
               <button 
                 onClick={() => setShowProfileMenu(!showProfileMenu)} 
                 className="theme-toggle-btn"
                 title={`${user.firstName || 'User Account'}`}
-                style={{ background: showProfileMenu ? 'rgba(99, 102, 241, 0.25)' : undefined, overflow: 'hidden', padding: 0, cursor: 'pointer' }}
+                style={{ background: showProfileMenu ? 'rgba(99, 102, 241, 0.25)' : undefined, overflow: 'hidden', padding: 0, cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%' }}
               >
                 {user.profilePhoto ? (
                   <img src={user.profilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -773,9 +773,9 @@ function App() {
                   background: 'var(--card-bg)',
                   border: '1px solid var(--input-border)',
                   borderRadius: '1rem',
-                  boxShadow: '0 15px 35px rgba(0,0,0,0.4)',
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
                   width: '260px',
-                  zIndex: 9999,
+                  zIndex: 99999,
                   padding: '1rem',
                   textAlign: 'left',
                   backdropFilter: 'blur(20px)'
