@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Image as ImageIcon } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Image as ImageIcon, CheckCheck } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -98,12 +98,16 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState(null);
 
-  // Chat Navigation & Compose New Chat States
+  // Chat Navigation & Feature Modals
   const [activeChatSender, setActiveChatSender] = useState(null);
   const [showChatInfo, setShowChatInfo] = useState(false);
   const [chatMessageBody, setChatMessageBody] = useState('');
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatInput, setNewChatInput] = useState('');
+  
+  // Extra Interactive Features State
+  const [attachmentPreview, setAttachmentPreview] = useState(null);
+  const [activeCall, setActiveCall] = useState(null); // { type: 'voice' | 'video', name: '' }
 
   useEffect(() => {
     let timer;
@@ -183,6 +187,16 @@ function App() {
     reader.onloadend = () => {
       if (isEdit) setEditProfilePhoto(reader.result);
       else setProfilePhoto(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAttachmentUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAttachmentPreview(reader.result);
     };
     reader.readAsDataURL(file);
   };
@@ -430,18 +444,20 @@ function App() {
   // Instant Optimistic Message Sending with Reconciliation
   const handleSendReplySubmit = async (e) => {
     e.preventDefault();
-    if (!chatMessageBody.trim() || !activeChatSender) return;
+    if ((!chatMessageBody.trim() && !attachmentPreview) || !activeChatSender) return;
 
     const tempClientMessageId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
     const activePhone = getUserPhone();
     const recipientTarget = activeChatSender;
+    const finalBody = attachmentPreview ? `[Attachment] ${chatMessageBody.trim()}` : chatMessageBody.trim();
 
     const optimisticMsg = {
       clientMessageId: tempClientMessageId,
       sender: `${normalizeContactIdentifier(activePhone)}@rizzmail.me`,
       recipient: recipientTarget,
       subject: 'Re: Conversation',
-      body: chatMessageBody.trim(),
+      body: finalBody,
+      attachment: attachmentPreview,
       direction: 'outbound',
       createdAt: new Date().toISOString(),
       isOptimistic: true
@@ -449,6 +465,7 @@ function App() {
 
     setMessages((prev) => [optimisticMsg, ...prev]);
     setChatMessageBody('');
+    setAttachmentPreview(null);
 
     try {
       const res = await sendEmailAPI({
@@ -503,6 +520,16 @@ function App() {
       setActiveChatSender(null);
     } catch (e) {
       setError('Failed to delete chat thread.');
+    }
+  };
+
+  const handleDeleteSingleMessage = async (msgId) => {
+    if (!msgId) return;
+    try {
+      await deleteMessageAPI(msgId);
+      setMessages(prev => prev.filter(m => m._id !== msgId));
+    } catch (e) {
+      setError('Failed to delete message.');
     }
   };
 
@@ -914,6 +941,14 @@ function App() {
                       </button>
                     </div>
 
+                    {/* QUICK COPY BURNER EMAIL BADGE */}
+                    <div style={{ background: 'var(--input-bg)', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', border: '1px solid var(--input-border)' }}>
+                      <span style={{ color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getEmailPhone(getUserPhone())}@rizzmail.me</span>
+                      <button onClick={handleCopyEmail} style={{ background: 'transparent', border: 'none', color: '#6366f1', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: '600', fontSize: '0.75rem', flexShrink: 0 }}>
+                        <Copy size={12} /> {copied ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+
                     {/* PROMINENT COMPOSE / NEW CHAT BUTTON */}
                     <button 
                       onClick={() => setShowNewChatModal(true)} 
@@ -1018,14 +1053,14 @@ function App() {
                         {/* CHAT HEADER ACTION BUTTONS */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <button 
-                            onClick={() => alert(`Initiating encrypted voice call with ${activeThread.name}...`)}
+                            onClick={() => setActiveCall({ type: 'Voice Call', name: activeThread.name })}
                             title="Voice Call"
                             style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <PhoneCall size={18} />
                           </button>
                           <button 
-                            onClick={() => alert(`Initiating encrypted video call with ${activeThread.name}...`)}
+                            onClick={() => setActiveCall({ type: 'Video Call', name: activeThread.name })}
                             title="Video Call"
                             style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
@@ -1041,6 +1076,7 @@ function App() {
                         </div>
                       </div>
 
+                      {/* MESSAGES CONTAINER */}
                       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
@@ -1059,13 +1095,28 @@ function App() {
                                   padding: '0.75rem 1rem',
                                   borderRadius: isOutbound ? '1rem 1rem 0 1rem' : '1rem 1rem 1rem 0',
                                   boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                                  border: isOutbound ? 'none' : '1px solid var(--input-border)'
+                                  border: isOutbound ? 'none' : '1px solid var(--input-border)',
+                                  position: 'relative'
                                 }}>
                                   {msg.subject && <div style={{ fontSize: '0.75rem', opacity: 0.8, marginBottom: '0.25rem', fontWeight: '600' }}>{msg.subject}</div>}
+                                  {msg.attachment && (
+                                    <div style={{ marginBottom: '0.5rem', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                                      <img src={msg.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover' }} />
+                                    </div>
+                                  )}
                                   <div style={{ fontSize: '0.9rem', wordBreak: 'break-word', lineHeight: '1.4' }}>{msg.body}</div>
                                   <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                                     {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     {isOutbound && (msg.isOptimistic ? ' ◌' : ' ✓✓')}
+                                    {msg._id && (
+                                      <button 
+                                        onClick={() => handleDeleteSingleMessage(msg._id)}
+                                        title="Delete message"
+                                        style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.6, padding: '0 2px', marginLeft: '4px' }}
+                                      >
+                                        <Trash2 size={11} />
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -1074,16 +1125,23 @@ function App() {
                         )}
                       </div>
 
+                      {/* ATTACHMENT PREVIEW BAR IF UPLOADED */}
+                      {attachmentPreview && (
+                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{ width: '40px', height: '40px', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid var(--input-border)' }}>
+                            <img src={attachmentPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', flex: 1 }}>Image attached ready to send</span>
+                          <button onClick={() => setAttachmentPreview(null)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}><X size={16} /></button>
+                        </div>
+                      )}
+
                       {/* COMPOSER BAR WITH ATTACHMENT & EMOJI BUTTONS */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                        <button 
-                          type="button" 
-                          onClick={() => alert("Media/File attachment feature ready. Select any image or document.")}
-                          title="Attach file or photo"
-                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
+                        <label title="Attach image or file" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Paperclip size={20} />
-                        </button>
+                          <input type="file" accept="image/*" onChange={handleAttachmentUpload} style={{ display: 'none' }} />
+                        </label>
                         <button 
                           type="button" 
                           onClick={() => setChatMessageBody(prev => prev + ' 😊')}
@@ -1151,6 +1209,20 @@ function App() {
                 />
                 <button type="submit" className="primary-btn">Start Chat ➔</button>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* ACTIVE CALL SIMULATION MODAL */}
+        {activeCall && (
+          <div className="modal-overlay" onClick={() => setActiveCall(null)}>
+            <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center', padding: '2.5rem 1.5rem', background: 'var(--card-bg)' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#6366f1', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '2rem', fontWeight: 'bold', animation: 'pulse 1.5s infinite' }}>
+                {activeCall.name.charAt(0).toUpperCase()}
+              </div>
+              <h3 style={{ fontSize: '1.3rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{activeCall.name}</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '2rem' }}>Calling via secure {activeCall.type}...</p>
+              <button onClick={() => setActiveCall(null)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem 2rem', borderRadius: '2rem', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)' }}>End Call</button>
             </div>
           </div>
         )}
