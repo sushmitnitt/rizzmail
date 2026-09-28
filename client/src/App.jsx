@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -21,7 +21,6 @@ const countriesList = [
   { name: 'Saudi Arabia', code: '966', label: 'SA (+966)' }
 ];
 
-// Single unified normalization function to guarantee 1 contact = 1 conversation
 const normalizeContactIdentifier = (input) => {
   if (!input) return '';
   const str = input.toString().toLowerCase().trim();
@@ -96,17 +95,20 @@ function App() {
   
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [chatFilter, setChatFilter] = useState('all');
+  
+  // Buildathon Navigation & Filter Chips States
+  const [activeFolder, setActiveFolder] = useState('home'); // home, drafts, spam, trash
+  const [chatFilter, setChatFilter] = useState('all'); // all, unread, attachments, favorites[cite: 2]
   const [toast, setToast] = useState(null);
 
-  // Chat Navigation & Feature Modals
   const [activeChatSender, setActiveChatSender] = useState(null);
   const [showChatInfo, setShowChatInfo] = useState(false);
   const [chatMessageBody, setChatMessageBody] = useState('');
+  const [chatSubject, setChatSubject] = useState('Re: Conversation'); // Compact subject field[cite: 2]
+  const [showSubjectInput, setShowSubjectInput] = useState(false);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatInput, setNewChatInput] = useState('');
   
-  // Extra Interactive Features State
   const [attachmentPreview, setAttachmentPreview] = useState(null);
   const [activeCall, setActiveCall] = useState(null);
   const [showSnippets, setShowSnippets] = useState(false);
@@ -451,7 +453,6 @@ function App() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Instant Optimistic Message Sending with Reconciliation
   const handleSendReplySubmit = async (e) => {
     e.preventDefault();
     if ((!chatMessageBody.trim() && !attachmentPreview) || !activeChatSender) return;
@@ -460,12 +461,13 @@ function App() {
     const activePhone = getUserPhone();
     const recipientTarget = activeChatSender;
     const finalBody = attachmentPreview ? `[Attachment] ${chatMessageBody.trim()}` : chatMessageBody.trim();
+    const finalSubject = showSubjectInput ? (chatSubject.trim() || 'Re: Conversation') : 'Re: Conversation';
 
     const optimisticMsg = {
       clientMessageId: tempClientMessageId,
       sender: `${normalizeContactIdentifier(activePhone)}@rizzmail.me`,
       recipient: recipientTarget,
-      subject: 'Re: Conversation',
+      subject: finalSubject,
       body: finalBody,
       attachment: attachmentPreview,
       direction: 'outbound',
@@ -476,12 +478,13 @@ function App() {
     setMessages((prev) => [optimisticMsg, ...prev]);
     setChatMessageBody('');
     setAttachmentPreview(null);
+    setShowSubjectInput(false);
 
     try {
       const res = await sendEmailAPI({
         senderPhone: activePhone,
         recipientEmail: recipientTarget,
-        subject: 'Re: Conversation',
+        subject: finalSubject,
         body: optimisticMsg.body,
         clientMessageId: tempClientMessageId
       });
@@ -508,8 +511,8 @@ function App() {
         body: JSON.stringify({
           phone: activePhone,
           sender: "evaluator@rizzmail.me",
-          subject: "Test Message",
-          body: "Hello! Testing live profile picture and name display."
+          subject: "Test Message with Attachment",
+          body: "Hello! Testing buildathon requirements."
         })
       });
       loadInbox(getUserPhone());
@@ -565,16 +568,12 @@ function App() {
     }, 1500);
   };
 
-  // STRICT UNIFIED CANONICAL THREAD MAPPING
   const chatThreadsMap = {};
 
   messages.forEach((msg) => {
     if (msg.isDeleted) return;
-    const isOutbound = msg.direction === 'outbound';
-    
     const myPhoneNorm = normalizeContactIdentifier(getUserPhone());
     const senderNorm = normalizeContactIdentifier(msg.sender);
-    const recipientNorm = normalizeContactIdentifier(msg.recipient);
 
     const counterpartyRaw = (senderNorm === myPhoneNorm) ? msg.recipient : msg.sender;
     if (!counterpartyRaw) return;
@@ -634,6 +633,12 @@ function App() {
     if (chatFilter === 'unread') {
       return matchesSearch && thread.messages.some(m => m.direction === 'inbound');
     }
+    if (chatFilter === 'attachments') {
+      return matchesSearch && thread.messages.some(m => m.attachment || (m.body && m.body.includes('[Attachment]')));
+    }
+    if (chatFilter === 'favorites') {
+      return matchesSearch && thread.isFavorite;
+    }
     return matchesSearch;
   });
 
@@ -647,7 +652,7 @@ function App() {
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="theme-toggle-btn mobile-hamburger-btn" 
-              style={{ display: 'none' }}
+              style={{ display: 'flex' }}
               title="Toggle Menu"
             >
               <Menu size={20} />
@@ -681,7 +686,6 @@ function App() {
                 )}
               </button>
 
-              {/* FIXED FUNCTIONAL PROFILE DROPDOWN MENU */}
               {showProfileMenu && (
                 <div style={{
                   position: 'absolute',
@@ -704,18 +708,14 @@ function App() {
                   
                   <button 
                     onClick={() => { setShowProfileMenu(false); handleCopyEmail(); }}
-                    style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.65rem 0.75rem', borderRadius: '0.65rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500', transition: 'background 0.2s' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--pill-bg)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.65rem 0.75rem', borderRadius: '0.65rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500' }}
                   >
                     <Copy size={16} style={{ color: '#818cf8' }} /> {copied ? 'Copied Address!' : 'Copy Burner Email'}
                   </button>
 
                   <button 
                     onClick={() => { setShowProfileMenu(false); setIsEditingProfile(true); }}
-                    style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.65rem 0.75rem', borderRadius: '0.65rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500', transition: 'background 0.2s' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--pill-bg)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.65rem 0.75rem', borderRadius: '0.65rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500' }}
                   >
                     <Edit3 size={16} style={{ color: '#818cf8' }} /> Edit Profile Settings
                   </button>
@@ -724,9 +724,7 @@ function App() {
 
                   <button 
                     onClick={() => { setShowProfileMenu(false); setShowLogoutConfirm(true); }}
-                    style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '0.65rem 0.75rem', borderRadius: '0.65rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', transition: 'background 0.2s' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                    style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '0.65rem 0.75rem', borderRadius: '0.65rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
                   >
                     <LogOut size={16} /> Sign Out / Logout
                   </button>
@@ -929,8 +927,37 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: 'calc(100vh - 70px)', background: 'var(--card-bg)', border: '1px solid var(--input-border)', borderRadius: '1rem', overflow: 'hidden' }}>
                 
-                {/* CHAT LIST PANE */}
+                {/* BUILDATHON TOP-LEFT FOLDERS MENU DRAWER / SIDEBAR */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0 }}>
+                  
+                  {/* TOP-LEFT FOLDERS MENU BAR */}
+                  <div style={{ display: 'flex', borderBottom: '1px solid var(--input-border)', background: 'var(--input-bg)' }}>
+                    <button 
+                      onClick={() => setActiveFolder('home')}
+                      style={{ flex: 1, padding: '0.6rem 0.2rem', background: activeFolder === 'home' ? 'var(--card-bg)' : 'transparent', border: 'none', borderBottom: activeFolder === 'home' ? '2px solid #6366f1' : 'none', color: activeFolder === 'home' ? '#6366f1' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
+                    >
+                      <Mail size={12} /> Home
+                    </button>
+                    <button 
+                      onClick={() => setActiveFolder('drafts')}
+                      style={{ flex: 1, padding: '0.6rem 0.2rem', background: activeFolder === 'drafts' ? 'var(--card-bg)' : 'transparent', border: 'none', borderBottom: activeFolder === 'drafts' ? '2px solid #6366f1' : 'none', color: activeFolder === 'drafts' ? '#6366f1' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
+                    >
+                      <Folder size={12} /> Drafts
+                    </button>
+                    <button 
+                      onClick={() => setActiveFolder('spam')}
+                      style={{ flex: 1, padding: '0.6rem 0.2rem', background: activeFolder === 'spam' ? 'var(--card-bg)' : 'transparent', border: 'none', borderBottom: activeFolder === 'spam' ? '2px solid #6366f1' : 'none', color: activeFolder === 'spam' ? '#6366f1' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
+                    >
+                      <AlertOctagon size={12} /> Spam
+                    </button>
+                    <button 
+                      onClick={() => setActiveFolder('trash')}
+                      style={{ flex: 1, padding: '0.6rem 0.2rem', background: activeFolder === 'trash' ? 'var(--card-bg)' : 'transparent', border: 'none', borderBottom: activeFolder === 'trash' ? '2px solid #6366f1' : 'none', color: activeFolder === 'trash' ? '#6366f1' : 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
+                    >
+                      <Trash2 size={12} /> Trash
+                    </button>
+                  </div>
+
                   <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <div className="search-bar-container" style={{ margin: 0, flex: 1 }}>
@@ -946,23 +973,30 @@ function App() {
                       </button>
                     </div>
 
-                    {/* QUICK FILTER TABS */}
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button 
-                        onClick={() => setChatFilter('all')} 
-                        style={{ background: chatFilter === 'all' ? '#6366f1' : 'var(--input-bg)', color: chatFilter === 'all' ? '#fff' : 'var(--text-muted)', border: '1px solid var(--input-border)', padding: '0.3rem 0.75rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
-                      >
-                        All Chats
-                      </button>
-                      <button 
-                        onClick={() => setChatFilter('unread')} 
-                        style={{ background: chatFilter === 'unread' ? '#6366f1' : 'var(--input-bg)', color: chatFilter === 'unread' ? '#fff' : 'var(--text-muted)', border: '1px solid var(--input-border)', padding: '0.3rem 0.75rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
-                      >
-                        Unread
-                      </button>
+                    {/* BUILDATHON 4 FILTER CHIPS: All, Unread, Attachments, Favorites[cite: 2] */}
+                    <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px' }}>
+                      {['all', 'unread', 'attachments', 'favorites'].map((chip) => (
+                        <button 
+                          key={chip}
+                          onClick={() => setChatFilter(chip)} 
+                          style={{ 
+                            background: chatFilter === chip ? '#6366f1' : 'var(--input-bg)', 
+                            color: chatFilter === chip ? '#fff' : 'var(--text-muted)', 
+                            border: '1px solid var(--input-border)', 
+                            padding: '0.25rem 0.6rem', 
+                            borderRadius: '1rem', 
+                            fontSize: '0.7rem', 
+                            fontWeight: '600', 
+                            cursor: 'pointer',
+                            textTransform: 'capitalize',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {chip}
+                        </button>
+                      ))}
                     </div>
 
-                    {/* QUICK COPY BURNER EMAIL BADGE */}
                     <div style={{ background: 'var(--input-bg)', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', border: '1px solid var(--input-border)' }}>
                       <span style={{ color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getEmailPhone(getUserPhone())}@rizzmail.me</span>
                       <button onClick={handleCopyEmail} style={{ background: 'transparent', border: 'none', color: '#6366f1', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: '600', fontSize: '0.75rem', flexShrink: 0 }}>
@@ -970,7 +1004,6 @@ function App() {
                       </button>
                     </div>
 
-                    {/* PROMINENT COMPOSE / NEW CHAT BUTTON */}
                     <button 
                       onClick={() => setShowNewChatModal(true)} 
                       style={{
@@ -995,7 +1028,12 @@ function App() {
                   </div>
 
                   <div style={{ flex: 1, overflowY: 'auto' }}>
-                    {filteredThreads.length === 0 ? (
+                    {activeFolder !== 'home' ? (
+                      <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
+                        <Folder size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
+                        <p>{activeFolder.charAt(0).toUpperCase() + activeFolder.slice(1)} folder is empty.</p>
+                      </div>
+                    ) : filteredThreads.length === 0 ? (
                       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
                         <Mail size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
                         <p>No active chats</p>
@@ -1046,7 +1084,6 @@ function App() {
                 <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)' }}>
                   {activeThread ? (
                     <>
-                      {/* CHAT HEADER WITH CALL BUTTONS & INFO */}
                       <div style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => setShowChatInfo(true)}>
                           <button 
@@ -1071,7 +1108,6 @@ function App() {
                           </div>
                         </div>
 
-                        {/* CHAT HEADER ACTION BUTTONS */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <button 
                             onClick={() => setActiveCall({ type: 'Voice Call', name: activeThread.name })}
@@ -1097,7 +1133,6 @@ function App() {
                         </div>
                       </div>
 
-                      {/* MESSAGES CONTAINER */}
                       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
@@ -1146,7 +1181,21 @@ function App() {
                         )}
                       </div>
 
-                      {/* ATTACHMENT PREVIEW BAR IF UPLOADED */}
+                      {/* COMPACT SUBJECT FIELD ABOVE MESSAGE BOX AS SPECIFIED[cite: 2] */}
+                      {showSubjectInput && (
+                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)' }}>Subject:</span>
+                          <input 
+                            type="text" 
+                            placeholder="Enter email subject..."
+                            value={chatSubject}
+                            onChange={(e) => setChatSubject(e.target.value)}
+                            style={{ flex: 1, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: '0.5rem', padding: '0.4rem 0.75rem', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }}
+                          />
+                          <button onClick={() => setShowSubjectInput(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={14} /></button>
+                        </div>
+                      )}
+
                       {attachmentPreview && (
                         <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <div style={{ width: '40px', height: '40px', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid var(--input-border)' }}>
@@ -1157,7 +1206,6 @@ function App() {
                         </div>
                       )}
 
-                      {/* QUICK SNIPPETS POPUP MENU */}
                       {showSnippets && (
                         <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}><Sparkles size={12} /> Quick Replies:</span>
@@ -1174,7 +1222,6 @@ function App() {
                         </div>
                       )}
 
-                      {/* COMPOSER BAR WITH ATTACHMENT, EMOJI & SNIPPET BUTTONS */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                         <label title="Attach image or file" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Paperclip size={20} />
@@ -1182,19 +1229,19 @@ function App() {
                         </label>
                         <button 
                           type="button" 
+                          onClick={() => setShowSubjectInput(!showSubjectInput)}
+                          title="Toggle Subject Field"
+                          style={{ background: 'transparent', border: 'none', color: showSubjectInput ? '#6366f1' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '600' }}
+                        >
+                          Subject
+                        </button>
+                        <button 
+                          type="button" 
                           onClick={() => setShowSnippets(!showSnippets)}
                           title="Quick message templates"
                           style={{ background: 'transparent', border: 'none', color: showSnippets ? '#6366f1' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
                           <Sparkles size={20} />
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => setChatMessageBody(prev => prev + ' 😊')}
-                          title="Add emoji"
-                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <Smile size={20} />
                         </button>
 
                         <input 
@@ -1223,7 +1270,6 @@ function App() {
           </div>
         )}
 
-        {/* COMPOSE NEW CHAT MODAL */}
         {showNewChatModal && (
           <div className="modal-overlay" onClick={() => setShowNewChatModal(false)}>
             <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'left', padding: '1.75rem' }} onClick={(e) => e.stopPropagation()}>
@@ -1259,7 +1305,6 @@ function App() {
           </div>
         )}
 
-        {/* ACTIVE CALL SIMULATION MODAL */}
         {activeCall && (
           <div className="modal-overlay" onClick={() => setActiveCall(null)}>
             <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center', padding: '2.5rem 1.5rem', background: 'var(--card-bg)' }} onClick={(e) => e.stopPropagation()}>
@@ -1331,7 +1376,6 @@ function App() {
         )}
       </main>
 
-      {/* LOGOUT CONFIRMATION MODAL */}
       {showLogoutConfirm && (
         <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
           <div className="card-wrapper" style={{ maxWidth: '400px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
