@@ -6,6 +6,14 @@ const User = require("../models/User");
 
 const MESSAGE_CENTRAL_BASE_URL = "https://cpaas.messagecentral.com";
 
+// Helper to normalize phone numbers to a consistent format (e.g. +91XXXXXXXXXX)
+const normalizePhone = (input) => {
+    if (!input) return "";
+    const digits = input.toString().replace(/[^0-9]/g, '');
+    const tenDigits = digits.slice(-10);
+    return `+91${tenDigits}`;
+};
+
 // Helper function to generate Message Central Auth Token
 async function getMessageCentralToken() {
     const customerId = process.env.MESSAGE_CENTRAL_CUSTOMER_ID;
@@ -30,23 +38,23 @@ async function getMessageCentralToken() {
     return response.data.token || response.data.data?.token;
 }
 
-// 1. Send OTP Route (Triggers 6-digit SMS to physical device via Message Central)
+// 1. Send OTP Route
 router.post("/send-otp", async (req, res) => {
     try {
         const { phone, phoneNumber } = req.body || {};
-        const targetPhone = phone || phoneNumber;
+        const rawPhone = phone || phoneNumber;
 
-        if (!targetPhone || targetPhone === 'undefined' || targetPhone === 'null') {
+        if (!rawPhone || rawPhone === 'undefined' || rawPhone === 'null') {
             return res.status(400).json({ success: false, message: "Valid phone number is required" });
         }
 
-        // Clean phone number: Message Central requires strictly 10 digits for India (countryCode=91)
-        const cleanNumber = targetPhone.replace(/^\+91/, '').replace(/^91/, '').slice(-10);
+        const targetPhone = normalizePhone(rawPhone);
+        const cleanNumber = targetPhone.replace("+91", "");
 
         // Get live auth token from Message Central
         const authToken = await getMessageCentralToken();
 
-        // Call Message Central V3 Send API with 6-digit configuration
+        // Call Message Central V3 Send API
         const mcResponse = await axios.post(
             `${MESSAGE_CENTRAL_BASE_URL}/verification/v3/send`,
             null,
@@ -55,7 +63,7 @@ router.post("/send-otp", async (req, res) => {
                     countryCode: "91",
                     flowType: "SMS",
                     mobileNumber: cleanNumber,
-                    otpLength: 6 // 👈 Forces a 6-digit OTP to match your frontend
+                    otpLength: 6
                 },
                 headers: {
                     'authToken': authToken
@@ -63,20 +71,23 @@ router.post("/send-otp", async (req, res) => {
             }
         );
 
-        const verificationId = mcResponse.data.data?.verificationId;
+        // Debug response to see what Message Central returns
+        console.log("MC Send Response:", JSON.stringify(mcResponse.data));
+
+        const verificationId = mcResponse.data.data?.verificationId || mcResponse.data.verificationId;
 
         if (!verificationId) {
             throw new Error("Failed to retrieve verification ID from Message Central response.");
         }
 
-        // Store the verificationId in MongoDB
+        // Store the verificationId in MongoDB using the normalized phone key
         await Otp.findOneAndUpdate(
             { phone: targetPhone },
             { verificationId, createdAt: new Date() },
             { upsert: true, new: true }
         );
 
-        console.log(`📱 Message Central successfully dispatched 6-digit OTP to physical device for +91${cleanNumber}`);
+        console.log(`📱 Message Central successfully dispatched 6-digit OTP to physical device for ${targetPhone}`);
 
         return res.json({ 
             success: true, 
@@ -94,19 +105,22 @@ router.post("/send-otp", async (req, res) => {
     }
 });
 
-// 2. Verify OTP Route (Validates user input against Message Central API)
+// 2. Verify OTP Route
 router.post("/verify-otp", async (req, res) => {
     try {
         const { phone, phoneNumber, otp, code } = req.body || {};
-        const targetPhone = phone || phoneNumber;
+        const rawPhone = phone || phoneNumber;
         const otpCode = otp || code;
 
-        if (!targetPhone || targetPhone === 'undefined' || targetPhone === 'null' || !otpCode) {
+        if (!rawPhone || rawPhone === 'undefined' || rawPhone === 'null' || !otpCode) {
             return res.status(400).json({ success: false, message: "Valid phone and otp code are required" });
         }
 
+        const targetPhone = normalizePhone(rawPhone);
+
         const record = await Otp.findOne({ phone: targetPhone });
         if (!record || !record.verificationId) {
+            console.warn(`⚠️ No verification record found in MongoDB for normalized phone: ${targetPhone}`);
             return res.status(400).json({ success: false, message: "No active verification found. Please request a new OTP." });
         }
 
@@ -126,7 +140,9 @@ router.post("/verify-otp", async (req, res) => {
             }
         );
 
-        const verificationStatus = validateResponse.data.data?.verificationStatus;
+        console.log("MC Validate Response:", JSON.stringify(validateResponse.data));
+
+        const verificationStatus = validateResponse.data.data?.verificationStatus || validateResponse.data.verificationStatus;
 
         if (verificationStatus !== "VERIFICATION_COMPLETED") {
             return res.status(400).json({ success: false, message: "Invalid or expired OTP code" });
@@ -161,7 +177,7 @@ router.post("/verify-otp", async (req, res) => {
     }
 });
 
-// 3. Robust Profile Update Handler (Supports all field variations)
+// 3. Robust Profile Update Handler
 const handleProfileUpdate = async (req, res) => {
     try {
         const { 
@@ -178,11 +194,12 @@ const handleProfileUpdate = async (req, res) => {
             agreedToTerms 
         } = req.body || {};
         
-        const targetPhone = phone || phoneNumber;
-        if (!targetPhone || targetPhone === 'undefined' || targetPhone === 'null') {
+        const rawPhone = phone || phoneNumber;
+        if (!rawPhone || rawPhone === 'undefined' || rawPhone === 'null') {
             return res.status(400).json({ success: false, message: "Valid phone number is required" });
         }
 
+        const targetPhone = normalizePhone(rawPhone);
         const finalBirthdate = birthdate || dob;
 
         // Validate Age >= 13
@@ -261,9 +278,9 @@ router.put("/profile", handleProfileUpdate);
 // 4. Delete Account Route
 router.delete("/account/:phone", async (req, res) => {
     try {
-        const targetPhone = req.params.phone;
+        const targetPhone = normalizePhone(req.params.phone);
         await User.findOneAndDelete({ phoneNumber: targetPhone });
-        console.log(`🗑️️ Account successfully deleted for: ${targetPhone}`);
+        console.log(`🗑 Account successfully deleted for: ${targetPhone}`);
         return res.json({ success: true, message: "Account successfully deleted" });
     } catch (err) {
         console.error("❌ Account deletion error:", err);
