@@ -4,8 +4,8 @@ import axios from 'axios';
 const router = express.Router();
 
 const MESSAGE_CENTRAL_BASE_URL = 'https://cpaas.messagecentral.com';
-const CUSTOMER_ID = process.env.MESSAGE_CENTRAL_CUSTOMER_ID || 'YOUR_CUSTOMER_ID';
-const API_KEY = process.env.MESSAGE_CENTRAL_KEY || 'YOUR_BASE64_KEY';
+const CUSTOMER_ID = process.env.MESSAGE_CENTRAL_CUSTOMER_ID || 'C-1D2F967287424E7';
+const API_KEY = process.env.MESSAGE_CENTRAL_KEY || 'S3JhdG9zQDIwMDQ=';
 
 // 1. Helper function to generate authentication token
 async function getAuthToken() {
@@ -16,7 +16,7 @@ async function getAuthToken() {
                 key: API_KEY,
                 scope: 'NEW',
                 country: '91',
-                email: process.env.MESSAGE_CENTRAL_EMAIL || 'your-email@domain.com'
+                email: process.env.MESSAGE_CENTRAL_EMAIL || 'opshubhamop29@gmail.com'
             },
             headers: { 'accept': '*/*' }
         });
@@ -31,16 +31,20 @@ async function getAuthToken() {
 
 // 2. Route to Send OTP
 router.post('/send-otp', async (req, res) => {
-    const { phoneNumber } = req.body; // e.g., 9876543210 (without +91 prefix for countryCode=91)
-    
+    const { phoneNumber } = req.body; // e.g. +917007012049 or 7007012049
+
     if (!phoneNumber) {
         return res.status(400).json({ error: 'Phone number is required' });
     }
 
     try {
-        const authToken = await getAuthToken();
-        const cleanNumber = phoneNumber.replace(/^\+91/, '').replace(/^91/, '');
+        // Clean number: Message Central expects strictly 10 digits for India (countryCode=91)
+        const cleanNumber = phoneNumber.replace(/^\+91/, '').replace(/^91/, '').slice(-10);
 
+        // Get authentication token from Message Central
+        const authToken = await getAuthToken();
+
+        // Call Message Central V3 API to send SMS to the physical device
         const response = await axios.post(
             `${MESSAGE_CENTRAL_BASE_URL}/verification/v3/send`, 
             null, 
