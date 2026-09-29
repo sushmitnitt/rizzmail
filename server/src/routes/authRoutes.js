@@ -77,11 +77,11 @@ router.post("/send-otp", async (req, res) => {
             throw new Error("Failed to retrieve verification ID from Message Central response.");
         }
 
-        // Store the verificationId in MongoDB saving BOTH field variations to prevent mismatch
+        // Store the verificationId in MongoDB with strict: false to bypass schema field mismatch errors
         await Otp.findOneAndUpdate(
-            { $or: [{ phone: targetPhone }, { phoneNumber: targetPhone }] },
-            { phone: targetPhone, phoneNumber: targetPhone, verificationId, createdAt: new Date() },
-            { upsert: true, new: true }
+            { phone: targetPhone },
+            { phone: targetPhone, verificationId, createdAt: new Date() },
+            { upsert: true, new: true, strict: false }
         );
 
         console.log(`📱 Message Central successfully dispatched 6-digit OTP to physical device for ${targetPhone}`);
@@ -115,10 +115,7 @@ router.post("/verify-otp", async (req, res) => {
 
         const targetPhone = normalizePhone(rawPhone);
 
-        // Query checking both possible schema field names
-        const record = await Otp.findOne({ 
-            $or: [{ phone: targetPhone }, { phoneNumber: targetPhone }] 
-        });
+        const record = await Otp.findOne({ phone: targetPhone });
 
         if (!record || !record.verificationId) {
             console.warn(`⚠️ No verification record found in MongoDB for normalized phone: ${targetPhone}`);
@@ -148,9 +145,7 @@ router.post("/verify-otp", async (req, res) => {
         }
 
         // Clear verification record after success
-        await Otp.deleteMany({ 
-            $or: [{ phone: targetPhone }, { phoneNumber: targetPhone }] 
-        });
+        await Otp.deleteMany({ phone: targetPhone });
 
         let user = await User.findOne({ phoneNumber: targetPhone });
         if (!user) {
