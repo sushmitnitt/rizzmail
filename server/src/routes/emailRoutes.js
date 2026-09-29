@@ -395,6 +395,7 @@ router.delete('/thread/:identifier', async (req, res) => {
 // Delete single message
 // Delete entire chat thread
 // Delete entire chat thread
+// Delete entire chat thread
 router.delete('/thread/:identifier', async (req, res) => {
   try {
     const identifier = req.params.identifier;
