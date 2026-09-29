@@ -77,14 +77,20 @@ router.post("/send-otp", async (req, res) => {
             throw new Error("Failed to retrieve verification ID from Message Central response.");
         }
 
-        // Store the verificationId in MongoDB updating both field variations with strict: false
+        // Store the verificationId in MongoDB safely using strict: false
+        // Saving both variants (phone and phoneNumber) ensures compatibility with any model schema
         await Otp.findOneAndUpdate(
-            { $or: [{ phone: targetPhone }, { phoneNumber: targetPhone }] },
-            { phone: targetPhone, phoneNumber: targetPhone, verificationId, createdAt: new Date() },
+            { phone: targetPhone },
+            { 
+                phone: targetPhone, 
+                phoneNumber: targetPhone, 
+                verificationId, 
+                createdAt: new Date() 
+            },
             { upsert: true, new: true, strict: false }
         );
 
-        console.log(`📱 Message Central successfully dispatched 6-digit OTP to physical device for ${targetPhone}`);
+        console.log(`📱 Message Central successfully dispatched 6-digit OTP & saved record for ${targetPhone}`);
 
         return res.json({ 
             success: true, 
@@ -115,7 +121,7 @@ router.post("/verify-otp", async (req, res) => {
 
         const targetPhone = normalizePhone(rawPhone);
 
-        // Check both field names during lookup
+        // Search checking both possible field names
         const record = await Otp.findOne({ 
             $or: [{ phone: targetPhone }, { phoneNumber: targetPhone }] 
         });
@@ -281,7 +287,7 @@ router.delete("/account/:phone", async (req, res) => {
     try {
         const targetPhone = normalizePhone(req.params.phone);
         await User.findOneAndDelete({ phoneNumber: targetPhone });
-        console.log(`🗑️ Account successfully deleted for: ${targetPhone}`);
+        console.log(`🗑️️ Account successfully deleted for: ${targetPhone}`);
         return res.json({ success: true, message: "Account successfully deleted" });
     } catch (err) {
         console.error("❌ Account deletion error:", err);
