@@ -30,17 +30,17 @@ const languagesList = [
   { code: 'de', label: 'German (Deutsch)' }
 ];
 
-// Multilingual welcome greetings array for the login screen fade effect
+// Pure native script greetings without English brackets
 const welcomeGreetings = [
-  { text: "Your personal email via phone.", lang: "English" },
-  { text: "आपका स्वागत है (Aapka swagat hai)", lang: "Hindi" },
-  { text: "તમારું સ્વાગત છે (Tamaru swagat chhe)", lang: "Gujarati" },
-  { text: "நல்வரவு (Nalvaravu)", lang: "Tamil" },
-  { text: "స్వాగతం (Swagatam)", lang: "Telugu" },
-  { text: "ಸುಸ್ವಾಗತ (Suswagatha)", lang: "Kannada" },
-  { text: "स्वागत आहे (Swagat aahe)", lang: "Marathi" },
-  { text: "സ്വാഗതം (Swagatham)", lang: "Malayalam" },
-  { text: "স্বাগতম (Shagotom)", lang: "Bengali" }
+  "Your personal email via phone.",
+  "आपका स्वागत है",
+  "તમારું સ્વાગત છે",
+  "நல்வரவு",
+  "స్వాగతం",
+  "ಸುಸ್ವಾಗತ",
+  "स्वागत आहे",
+  "സ്വാഗതം",
+  "স্বাগতম"
 ];
 
 const normalizeContactIdentifier = (input) => {
@@ -116,17 +116,16 @@ function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentFolder, setCurrentFolder] = useState('home');
 
-  // Dynamic greeting fade transition index state
   const [greetingIndex, setGreetingIndex] = useState(0);
   const [fadeAnim, setFadeAnim] = useState(true);
 
   useEffect(() => {
     if (step === 1) {
       const interval = setInterval(() => {
-        setFadeAnim(false); // Fade out
+        setFadeAnim(false);
         setTimeout(() => {
           setGreetingIndex((prev) => (prev + 1) % welcomeGreetings.length);
-          setFadeAnim(true); // Fade in
+          setFadeAnim(true);
         }, 400);
       }, 3200);
       return () => clearInterval(interval);
@@ -815,7 +814,17 @@ function App() {
 
   return (
     <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      {/* HEADER: LOGO ALWAYS VISIBLE, SEARCH BAR HIDDEN ON LOGIN */}
+      
+      {/* INJECTING DYNAMIC POPPING ANIMATION FOR THE HEART ICON */}
+      <style>{`
+        @keyframes heartPop {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.35); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
+
+      {/* HEADER: LOGO & TAGLINE ALWAYS VISIBLE, SEARCH BAR HIDDEN ON LOGIN */}
       <header className="app-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           {user && step === 6 && (
@@ -967,7 +976,7 @@ function App() {
               <div className="badge-pill"><Shield size={12} /> SECURE AUTHENTICATION</div>
               <h2>Welcome to RizzMail</h2>
               
-              {/* DYNAMIC MULTILINGUAL SUBTEXT WITH FADE TRANSITION */}
+              {/* DYNAMIC MULTILINGUAL SUBTEXT WITH FADE TRANSITION & NO ENGLISH BRACKETS */}
               <p 
                 className="subtitle" 
                 style={{ 
@@ -978,7 +987,7 @@ function App() {
                   fontWeight: '500'
                 }}
               >
-                {welcomeGreetings[greetingIndex].text}
+                {welcomeGreetings[greetingIndex]}
               </p>
 
               <div style={{ marginBottom: '1.5rem' }}>
@@ -1884,9 +1893,11 @@ function App() {
         )}
       </main>
 
-      {/* FOOTER */}
+      {/* FOOTER WITH DYNAMIC POPPING HEART */}
       <footer style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', borderTop: '1px solid var(--input-border)', background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexShrink: 0 }}>
-        <span>Made with</span> <Heart size={13} style={{ color: '#ef4444', fill: '#ef4444' }} /> <span>in India • Secure Decentralized Email Protocol</span>
+        <span>Made with</span> 
+        <span style={{ display: 'inline-block', animation: 'heartPop 1.2s infinite ease-in-out' }}>❤️</span> 
+        <span>in India</span>
       </footer>
 
       {showLogoutConfirm && (
