@@ -44,14 +44,28 @@ const extractCleanBody = (rawText) => {
   if (!rawText) return '';
   let cleaned = rawText.toString();
 
-  // Decode common quoted-printable artifacts (e.g. =E2=80=AF -> space, =3D -> =)
-  cleaned = cleaned
-    .replace(/=E2=80=AF/g, ' ')
-    .replace(/=C2=A0/g, ' ')
-    .replace(/=3D/g, '=')
-    .replace(/\r\n/g, '\n');
+  // Strip raw email headers before double line-break if present
+  if (/^\s*(Received|Return-Path|DKIM-Signature|Authentication-Results|MIME-Version):/i.test(cleaned)) {
+    const doubleNewline = cleaned.search(/(\r?\n){2}/);
+    if (doubleNewline !== -1) {
+      cleaned = cleaned.substring(doubleNewline).trim();
+    }
+  }
 
-  // Strip out standard email reply threads (e.g. "On Tue, 29 Sep 2026... wrote:")
+  // Remove header lines
+  cleaned = cleaned.replace(/^(Received|Return-Path|DKIM-Signature|Authentication-Results|X-[a-zA-Z0-9-]+|Content-Type|Content-Transfer-Encoding|MIME-Version|Message-ID):.*$/gim, '');
+
+  // Remove MIME boundaries
+  cleaned = cleaned.replace(/--[a-zA-Z0-9_-]{10,}/g, '');
+
+  // Decode quoted-printable space artifacts
+  cleaned = cleaned
+    .replace(/=E2=80=AF/gi, ' ')
+    .replace(/=C2=A0/gi, ' ')
+    .replace(/=3D/gi, '=')
+    .replace(/=\r?\n/g, '');
+
+  // Strip out reply history chains
   const replyIndexPatterns = [
     /\n\s*on\s+.+wrote:/i,
     /\n\s*-----+\s*original message\s*-----+/i,
@@ -63,18 +77,6 @@ const extractCleanBody = (rawText) => {
     const match = cleaned.search(pattern);
     if (match !== -1) {
       cleaned = cleaned.substring(0, match);
-    }
-  }
-
-  // If it's a raw MIME block, try to isolate plain text
-  if (cleaned.includes('Content-Type: text/plain')) {
-    const plainIndex = cleaned.indexOf('Content-Type: text/plain');
-    const textSection = cleaned.slice(plainIndex);
-    const doubleNewline = textSection.indexOf('\n\n');
-    if (doubleNewline !== -1) {
-      const content = textSection.slice(doubleNewline + 2);
-      const endBoundary = content.indexOf('--');
-      cleaned = (endBoundary !== -1 ? content.slice(0, endBoundary) : content).trim();
     }
   }
 

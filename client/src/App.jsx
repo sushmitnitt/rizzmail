@@ -41,6 +41,42 @@ const normalizeContactIdentifier = (input) => {
   return localPart || str;
 };
 
+// Helper to clean raw incoming email bodies and strip backend transport routing headers
+const formatCleanBody = (bodyText) => {
+  if (!bodyText) return '';
+  let text = bodyText.toString();
+
+  // 1. If message starts with raw SMTP headers, drop everything up to the first double line-break
+  if (/^\s*(Received|Return-Path|DKIM-Signature|Authentication-Results|MIME-Version):/i.test(text)) {
+    const doubleNewline = text.search(/(\r?\n){2}/);
+    if (doubleNewline !== -1) {
+      text = text.substring(doubleNewline).trim();
+    }
+  }
+
+  // 2. Strip any lingering header metadata lines
+  text = text.replace(/^(Received|Return-Path|DKIM-Signature|Authentication-Results|X-[a-zA-Z0-9-]+|Content-Type|Content-Transfer-Encoding|MIME-Version|Message-ID):.*$/gim, '');
+
+  // 3. Strip MIME boundary lines
+  text = text.replace(/--[a-zA-Z0-9_-]{10,}/g, '');
+
+  // 4. Strip quoted reply headers (e.g. "On Tue, 29 Sep 2026... wrote:")
+  const replyIndexPatterns = [
+    /\n\s*on\s+.+wrote:/i,
+    /\n\s*-----+\s*original message\s*-----+/i,
+    /\n\s*from:\s*.+/i
+  ];
+
+  for (const pattern of replyIndexPatterns) {
+    const match = text.search(pattern);
+    if (match !== -1) {
+      text = text.substring(0, match);
+    }
+  }
+
+  return text.trim();
+};
+
 function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('rizzmail_theme') || 'dark');
 
@@ -732,7 +768,7 @@ function App() {
 
     const matchesSearch = thread.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
       thread.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (thread.lastMessage && thread.lastMessage.body.toLowerCase().includes(searchQuery.toLowerCase()));
+      (thread.lastMessage && formatCleanBody(thread.lastMessage.body).toLowerCase().includes(searchQuery.toLowerCase()));
     
     if (chatFilter === 'unread') {
       return matchesSearch && thread.messages.some(m => m.direction === 'inbound');
@@ -751,9 +787,8 @@ function App() {
 
   return (
     <div className="app-container">
-      {/* GMAIL-STYLE HEADER WITH BIG CENTER SEARCH BAR */}
+      {/* PERFECTLY ALIGNED GMAIL-STYLE HEADER */}
       <header className="app-header">
-        {/* Left: Menu, Logo, and Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           {user && step === 6 && (
             <button 
@@ -775,7 +810,7 @@ function App() {
           </div>
         </div>
 
-        {/* Center: Gmail-Style Big Search Bar */}
+        {/* CENTER GMAIL-STYLE BIG SEARCH BAR */}
         <div style={{ flex: 1, maxWidth: '640px', display: 'flex', alignItems: 'center' }}>
           <div style={{ width: '100%', position: 'relative', display: 'flex', alignItems: 'center' }}>
             <Search size={18} style={{ position: 'absolute', left: '1.15rem', color: 'var(--text-muted)', pointerEvents: 'none' }} />
@@ -812,7 +847,7 @@ function App() {
           </div>
         </div>
         
-        {/* Right: Status Pill, Profile, Theme Toggle */}
+        {/* RIGHT HEADER ACTIONS */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
           <div className="status-pill" style={{ display: 'flex', alignItems: 'center' }}>
             <span className="pulse-dot"></span> System Online
@@ -1269,6 +1304,7 @@ function App() {
                     ) : (
                       filteredThreads.map((thread) => {
                         const isSelected = activeChatSender === thread.sender;
+                        const snippetText = thread.lastMessage ? formatCleanBody(thread.lastMessage.body) : '';
                         return (
                           <div 
                             key={thread.canonicalKey}
@@ -1297,7 +1333,7 @@ function App() {
                                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{thread.lastMessage ? new Date(thread.lastMessage.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                               </div>
                               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>
-                                {thread.lastMessage ? (thread.lastMessage.attachment ? '📷 [Attachment]' : thread.lastMessage.body) : 'New conversation'}
+                                {thread.lastMessage ? (thread.lastMessage.attachment ? '📷 [Attachment]' : snippetText) : 'New conversation'}
                               </p>
                             </div>
                             <button 
@@ -1313,7 +1349,7 @@ function App() {
                   </div>
                 </div>
 
-                {/* ACTIVE CHAT WINDOW PANE WITH FRIENDLY EMPTY STATE */}
+                {/* ACTIVE CHAT WINDOW PANE WITH CLEAN FORMATTED BUBBLES */}
                 <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', height: '100%', overflow: 'hidden' }}>
                   {activeThread ? (
                     <>
@@ -1366,7 +1402,7 @@ function App() {
                         </div>
                       </div>
 
-                      {/* MESSAGES WITH ULTRA-FUTURISTIC CYBERPUNK/GLASS BUBBLES */}
+                      {/* MESSAGES WITH SANITIZED CLEAN TEXT BUBBLES */}
                       <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem', background: 'radial-gradient(circle at center, rgba(99,102,241,0.04) 0%, rgba(3,7,18,0.7) 100%)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
@@ -1377,7 +1413,8 @@ function App() {
                         ) : (
                           activeThread.messages.map((msg, idx) => {
                             const isOutbound = msg.direction === 'outbound';
-                            const isLong = msg.body && msg.body.length > 180;
+                            const cleanBodyText = formatCleanBody(msg.body);
+                            const isLong = cleanBodyText.length > 180;
                             const msgId = msg._id || msg.clientMessageId;
                             const hasBeenRepliedTo = activeThread.messages.some(m => m.quotedMessage && (m.quotedMessage.id === msgId));
 
@@ -1427,19 +1464,19 @@ function App() {
                                   {msg.quotedMessage && (
                                     <div style={{ background: 'rgba(0,0,0,0.3)', borderLeft: '3px solid #38bdf8', padding: '0.45rem 0.7rem', borderRadius: '0.5rem', marginBottom: '0.6rem', fontSize: '0.81rem', backdropFilter: 'blur(4px)' }}>
                                       <div style={{ fontWeight: '700', fontSize: '0.7rem', color: '#38bdf8', letterSpacing: '0.03em' }}>RE: {msg.quotedMessage.sender.split('@')[0].toUpperCase()}</div>
-                                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'rgba(255,255,255,0.9)' }}>{msg.quotedMessage.body}</div>
+                                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'rgba(255,255,255,0.9)' }}>{formatCleanBody(msg.quotedMessage.body)}</div>
                                     </div>
                                   )}
 
                                   {msg.attachment && (
-                                    <div style={{ marginBottom: msg.body ? '0.6rem' : 0, borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)' }}>
+                                    <div style={{ marginBottom: cleanBodyText ? '0.6rem' : 0, borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)' }}>
                                       <img src={msg.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', display: 'block' }} />
                                     </div>
                                   )}
 
-                                  {msg.body && (
+                                  {cleanBodyText && (
                                     <div style={{ fontSize: '0.92rem', wordBreak: 'break-word', lineHeight: '1.5' }}>
-                                      {isLong ? `${msg.body.substring(0, 180)}... (Tap to expand payload)` : msg.body}
+                                      {isLong ? `${cleanBodyText.substring(0, 180)}... (Tap to expand payload)` : cleanBodyText}
                                     </div>
                                   )}
 
@@ -1450,7 +1487,7 @@ function App() {
                                       <button 
                                         onClick={(e) => { 
                                           e.stopPropagation(); 
-                                          setQuotedMessage({ id: msgId, sender: msg.sender, body: msg.body || '[Attachment]' }); 
+                                          setQuotedMessage({ id: msgId, sender: msg.sender, body: cleanBodyText || '[Attachment]' }); 
                                         }}
                                         title="Quote payload"
                                         style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: '700', marginRight: 'auto' }}
@@ -1703,7 +1740,7 @@ function App() {
               {traditionalEmailReader.quotedMessage && (
                 <div style={{ background: 'var(--input-bg)', borderLeft: '3px solid #818cf8', padding: '0.5rem 0.75rem', borderRadius: '0.35rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
                   <div style={{ fontWeight: '600', fontSize: '0.75rem', color: '#818cf8' }}>Replying to {traditionalEmailReader.quotedMessage.sender.split('@')[0]}</div>
-                  <div>{traditionalEmailReader.quotedMessage.body}</div>
+                  <div>{formatCleanBody(traditionalEmailReader.quotedMessage.body)}</div>
                 </div>
               )}
 
@@ -1713,7 +1750,7 @@ function App() {
                 </div>
               )}
               <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto' }}>
-                {traditionalEmailReader.body}
+                {formatCleanBody(traditionalEmailReader.body)}
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
                 <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.6rem 1.25rem', borderRadius: '0.75rem', cursor: 'pointer' }}>Close</button>
