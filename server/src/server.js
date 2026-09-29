@@ -38,7 +38,17 @@ const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/rizzmail";
 console.log("Attempting to connect with MONGO_URI:", MONGO_URI);
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log("✅ Connected to MongoDB successfully!"))
+  .then(() => {
+    console.log("✅ Connected to MongoDB successfully!");
+    
+    // 🔍 ENVIRONMENT CHECK ON STARTUP
+    console.log("----------------------------------------");
+    console.log("🔍 Checking Message Central Credentials:");
+    console.log("• CUSTOMER_ID:", process.env.MESSAGE_CENTRAL_CUSTOMER_ID ? "Loaded ✅" : "Missing/Undefined ❌");
+    console.log("• API_KEY:", process.env.MESSAGE_CENTRAL_KEY ? "Loaded ✅" : "Missing/Undefined ❌");
+    console.log("• EMAIL:", process.env.MESSAGE_CENTRAL_EMAIL ? "Loaded ✅" : "Missing/Undefined ❌");
+    console.log("----------------------------------------");
+  })
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // Attach Socket.io instance to app for use inside routes
@@ -74,7 +84,7 @@ try {
     startSmtpServer(io);
   }
 } catch (e) {
-  console.log("ℹ️ SMTP local server bypassed.");
+  console.log("ℹ️️ SMTP local server bypassed.");
 }
 
 try {
