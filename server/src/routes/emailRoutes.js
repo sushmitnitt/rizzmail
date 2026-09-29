@@ -39,7 +39,6 @@ const getSenderDetails = async (phoneOrEmail) => {
 };
 
 // Robust cleaner to strip raw email headers and extract only plain text
-// Enhanced cleaner to strip email reply chains, quoted text, and MIME artifacts for clean chat view
 const extractCleanBody = (rawText) => {
   if (!rawText) return '';
   let cleaned = rawText.toString();
@@ -93,7 +92,7 @@ router.get('/:emailAddress', async (req, res) => {
         { recipient: emailAddress }
       ],
       isDeleted: { $ne: true }
-    }).sort({ date: -1, createdAt: -1 }).lean();
+    }).sort({ date: -1, createdAt: -1 }).allowDiskUse(true).lean();
 
     for (let email of emails) {
       if (email.sender) {
@@ -161,7 +160,7 @@ router.get('/messages/:phone', async (req, res) => {
         { phoneNumber: pureDigits }
       ],
       isDeleted: { $ne: true }
-    }).sort({ date: -1, createdAt: -1 }).lean();
+    }).sort({ date: -1, createdAt: -1 }).allowDiskUse(true).lean();
 
     for (let email of emails) {
       if (email.sender) {
@@ -193,22 +192,21 @@ router.post('/send', async (req, res) => {
 
     const senderDetails = await getSenderDetails(senderNorm.pureDigits);
 
- // (Inside router.post('/send', ...))
     const outboundEmail = new Email({
-    phoneNumber: senderNorm.pureDigits,
-    recipient: normalizedRecipient,
-    emailAddress: senderNorm.pureDigits,
-    sender: senderFullEmail,
-    subject: subject || 'No Subject',
-    body: body,
-    quotedMessage: req.body.quotedMessage || null, // Persist quoted message
-    senderName: senderDetails.name,
-    senderPhoto: senderDetails.photo,
-    direction: 'outbound',
-    date: new Date(),
-    createdAt: new Date()
-});
-await outboundEmail.save();
+      phoneNumber: senderNorm.pureDigits,
+      recipient: normalizedRecipient,
+      emailAddress: senderNorm.pureDigits,
+      sender: senderFullEmail,
+      subject: subject || 'No Subject',
+      body: body,
+      quotedMessage: req.body.quotedMessage || null,
+      senderName: senderDetails.name,
+      senderPhoto: senderDetails.photo,
+      direction: 'outbound',
+      date: new Date(),
+      createdAt: new Date()
+    });
+    await outboundEmail.save();
 
     const io = req.app.get('io');
     if (io) {
@@ -323,7 +321,7 @@ router.get('/inbox/:phoneNumber', async (req, res) => {
         { recipient: { $regex: pureDigits,$options: 'i' } }
       ],
       isDeleted: { $ne: true }
-    }).sort({ createdAt: -1, date: -1 }).lean();
+    }).sort({ createdAt: -1, date: -1 }).allowDiskUse(true).lean();
 
     for (let email of emails) {
       if (email.sender) {
@@ -374,7 +372,6 @@ router.post('/simulate-incoming', async (req, res) => {
 });
 
 // Delete entire chat thread
-// Delete entire chat thread
 router.delete('/thread/:identifier', async (req, res) => {
   try {
     const identifier = req.params.identifier;
@@ -383,8 +380,8 @@ router.delete('/thread/:identifier', async (req, res) => {
     await Email.updateMany(
       {
         $or: [
-          { sender: { $regex: pureDigits || identifier, $options: 'i' } },
-          { recipient: { $regex: pureDigits || identifier, $options: 'i' } }
+          { sender: { $regex: pureDigits \vert{}\vert{} identifier,$options: 'i' } },
+          { recipient: { $regex: pureDigits \vert{}\vert{} identifier,$options: 'i' } }
         ]
       },
       { $set: { isDeleted: true } }

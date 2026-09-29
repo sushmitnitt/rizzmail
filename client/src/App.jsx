@@ -46,7 +46,6 @@ const formatCleanBody = (bodyText) => {
   if (!bodyText) return '';
   let text = bodyText.toString();
 
-  // 1. If message starts with raw SMTP headers, drop everything up to the first double line-break
   if (/^\s*(Received|Return-Path|DKIM-Signature|Authentication-Results|MIME-Version):/i.test(text)) {
     const doubleNewline = text.search(/(\r?\n){2}/);
     if (doubleNewline !== -1) {
@@ -54,13 +53,9 @@ const formatCleanBody = (bodyText) => {
     }
   }
 
-  // 2. Strip any lingering header metadata lines
   text = text.replace(/^(Received|Return-Path|DKIM-Signature|Authentication-Results|X-[a-zA-Z0-9-]+|Content-Type|Content-Transfer-Encoding|MIME-Version|Message-ID):.*$/gim, '');
-
-  // 3. Strip MIME boundary lines
   text = text.replace(/--[a-zA-Z0-9_-]{10,}/g, '');
 
-  // 4. Strip quoted reply headers (e.g. "On Tue, 29 Sep 2026... wrote:")
   const replyIndexPatterns = [
     /\n\s*on\s+.+wrote:/i,
     /\n\s*-----+\s*original message\s*-----+/i,
@@ -695,94 +690,99 @@ function App() {
     }, 1500);
   };
 
-  const chatThreadsMap = {};
+  // Memoized performance hook for lightning-fast thread rendering and filtering
+  const { chatThreadsList, filteredThreads } = React.useMemo(() => {
+    const threadsMap = {};
 
-  messages.forEach((msg) => {
-    if (msg.isDeleted) return;
-    const myPhoneNorm = normalizeContactIdentifier(getUserPhone());
-    const senderNorm = normalizeContactIdentifier(msg.sender);
+    messages.forEach((msg) => {
+      if (msg.isDeleted) return;
+      const myPhoneNorm = normalizeContactIdentifier(getUserPhone());
+      const senderNorm = normalizeContactIdentifier(msg.sender);
 
-    const counterpartyRaw = (senderNorm === myPhoneNorm) ? msg.recipient : msg.sender;
-    if (!counterpartyRaw) return;
+      const counterpartyRaw = (senderNorm === myPhoneNorm) ? msg.recipient : msg.sender;
+      if (!counterpartyRaw) return;
 
-    const canonicalKey = normalizeContactIdentifier(counterpartyRaw);
+      const canonicalKey = normalizeContactIdentifier(counterpartyRaw);
 
-    if (!chatThreadsMap[canonicalKey]) {
-      chatThreadsMap[canonicalKey] = {
-        canonicalKey: canonicalKey,
-        sender: counterpartyRaw,
-        name: msg.counterpartyName && !msg.counterpartyName.includes('@') ? msg.counterpartyName : counterpartyRaw.split('@')[0],
-        avatar: msg.counterpartyPhoto || '',
-        messages: [],
-        isFavorite: !!favoritesMap[canonicalKey]
-      };
-    }
-    
-    if (msg.counterpartyPhoto && !chatThreadsMap[canonicalKey].avatar) {
-      chatThreadsMap[canonicalKey].avatar = msg.counterpartyPhoto;
-    }
-    if (msg.counterpartyName && !msg.counterpartyName.includes('@')) {
-      chatThreadsMap[canonicalKey].name = msg.counterpartyName;
-    }
+      if (!threadsMap[canonicalKey]) {
+        threadsMap[canonicalKey] = {
+          canonicalKey: canonicalKey,
+          sender: counterpartyRaw,
+          name: msg.counterpartyName && !msg.counterpartyName.includes('@') ? msg.counterpartyName : counterpartyRaw.split('@')[0],
+          avatar: msg.counterpartyPhoto || '',
+          messages: [],
+          isFavorite: !!favoritesMap[canonicalKey]
+        };
+      }
+      
+      if (msg.counterpartyPhoto && !threadsMap[canonicalKey].avatar) {
+        threadsMap[canonicalKey].avatar = msg.counterpartyPhoto;
+      }
+      if (msg.counterpartyName && !msg.counterpartyName.includes('@')) {
+        threadsMap[canonicalKey].name = msg.counterpartyName;
+      }
 
-    chatThreadsMap[canonicalKey].messages.push(msg);
-  });
-
-  if (activeChatSender) {
-    const activeCanonical = normalizeContactIdentifier(activeChatSender);
-    if (!chatThreadsMap[activeCanonical]) {
-      chatThreadsMap[activeCanonical] = {
-        canonicalKey: activeCanonical,
-        sender: activeChatSender,
-        name: activeChatSender.split('@')[0],
-        avatar: '',
-        messages: [],
-        isFavorite: !!favoritesMap[activeCanonical]
-      };
-    }
-  }
-
-  const chatThreadsList = Object.values(chatThreadsMap).map(thread => {
-    const uniqueMap = new Map();
-    thread.messages.forEach(m => {
-      const msgKey = m._id || m.clientMessageId || JSON.stringify(m);
-      uniqueMap.set(msgKey, m);
+      threadsMap[canonicalKey].messages.push(msg);
     });
-    thread.messages = Array.from(uniqueMap.values());
-    thread.messages.sort((a, b) => new Date(a.createdAt || a.date || 0) - new Date(b.createdAt || b.date || 0));
-    thread.lastMessage = thread.messages[thread.messages.length - 1];
-    thread.isFavorite = !!favoritesMap[thread.canonicalKey];
-    return thread;
-  });
 
-  const filteredThreads = chatThreadsList.filter(thread => {
-    if (currentFolder === 'home') {
-      // Home unifies Inbox and Sent
-    } else if (currentFolder === 'drafts') {
-      if (!thread.messages.some(m => m.folder === 'drafts')) return false;
-    } else if (currentFolder === 'spam') {
-      if (!thread.messages.some(m => m.folder === 'spam')) return false;
-    } else if (currentFolder === 'trash') {
-      if (!thread.messages.some(m => m.folder === 'trash')) return false;
+    if (activeChatSender) {
+      const activeCanonical = normalizeContactIdentifier(activeChatSender);
+      if (!threadsMap[activeCanonical]) {
+        threadsMap[activeCanonical] = {
+          canonicalKey: activeCanonical,
+          sender: activeChatSender,
+          name: activeChatSender.split('@')[0],
+          avatar: '',
+          messages: [],
+          isFavorite: !!favoritesMap[activeCanonical]
+        };
+      }
     }
 
-    const matchesSearch = thread.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      thread.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (thread.lastMessage && formatCleanBody(thread.lastMessage.body).toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    if (chatFilter === 'unread') {
-      return matchesSearch && thread.messages.some(m => m.direction === 'inbound');
-    }
-    if (chatFilter === 'attachments') {
-      return matchesSearch && thread.messages.some(m => m.attachment);
-    }
-    if (chatFilter === 'favorites') {
-      return matchesSearch && thread.isFavorite;
-    }
-    return matchesSearch;
-  });
+    const threadsList = Object.values(threadsMap).map(thread => {
+      const uniqueMap = new Map();
+      thread.messages.forEach(m => {
+        const msgKey = m._id || m.clientMessageId || JSON.stringify(m);
+        uniqueMap.set(msgKey, m);
+      });
+      thread.messages = Array.from(uniqueMap.values());
+      thread.messages.sort((a, b) => new Date(a.createdAt || a.date || 0) - new Date(b.createdAt || b.date || 0));
+      thread.lastMessage = thread.messages[thread.messages.length - 1];
+      thread.isFavorite = !!favoritesMap[thread.canonicalKey];
+      return thread;
+    });
 
-  const activeThread = activeChatSender ? chatThreadsMap[normalizeContactIdentifier(activeChatSender)] : null;
+    const filtered = threadsList.filter(thread => {
+      if (currentFolder === 'home') {
+        // Home unifies Inbox and Sent
+      } else if (currentFolder === 'drafts') {
+        if (!thread.messages.some(m => m.folder === 'drafts')) return false;
+      } else if (currentFolder === 'spam') {
+        if (!thread.messages.some(m => m.folder === 'spam')) return false;
+      } else if (currentFolder === 'trash') {
+        if (!thread.messages.some(m => m.folder === 'trash')) return false;
+      }
+
+      const matchesSearch = thread.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        thread.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (thread.lastMessage && formatCleanBody(thread.lastMessage.body).toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      if (chatFilter === 'unread') {
+        return matchesSearch && thread.messages.some(m => m.direction === 'inbound');
+      }
+      if (chatFilter === 'attachments') {
+        return matchesSearch && thread.messages.some(m => m.attachment);
+      }
+      if (chatFilter === 'favorites') {
+        return matchesSearch && thread.isFavorite;
+      }
+      return matchesSearch;
+    });
+
+    return { chatThreadsList: threadsList, filteredThreads: filtered };
+  }, [messages, favoritesMap, searchQuery, chatFilter, currentFolder, activeChatSender]);
+
+  const activeThread = activeChatSender ? chatThreadsList.find(t => t.canonicalKey === normalizeContactIdentifier(activeChatSender)) : null;
   const isReplying = activeThread && activeThread.messages && activeThread.messages.length > 0;
 
   return (
