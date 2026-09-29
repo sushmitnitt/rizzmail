@@ -79,25 +79,25 @@ const extractCleanBody = (rawText) => {
 // SPECIFIC ROUTES
 // ==========================================
 
-// Fetch messages by phone number or alias with flexible regex matching
-// Fetch messages by phone number or alias (excluding heavy attachments for fast sorting)
+// Fetch messages by phone number or alias with memory-safe limit and projection
 router.get('/messages/:phone', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phone);
     const emails = await Email.find({
       $or: [
-        { phoneNumber: { $regex: pureDigits, $options: 'i' } },
-        { emailAddress: { $regex: pureDigits, $options: 'i' } },
+        { phoneNumber: { $regex: pureDigits,$options: 'i' } },
+        { emailAddress: { $regex: pureDigits,$options: 'i' } },
         { emailAddress: alias },
         { recipient: alias },
         { sender: alias },
-        { recipient: { $regex: pureDigits, $options: 'i' } },
-        { sender: { $regex: pureDigits, $options: 'i' } }
+        { recipient: { $regex: pureDigits,$options: 'i' } },
+        { sender: { $regex: pureDigits,$options: 'i' } }
       ],
       isDeleted: { $ne: true }
     })
     .sort({ createdAt: -1, date: -1 })
-    .select('-attachment') // <-- Omits heavy base64 images from the list query to prevent RAM overflow
+    .limit(200) // Limits working set to prevent 32MB memory crash
+    .select('-attachment') // Strips heavy base64 strings from list view
     .allowDiskUse(true)
     .lean();
 
@@ -116,7 +116,7 @@ router.get('/messages/:phone', async (req, res) => {
   }
 });
 
-// Flexible Inbox fetcher
+// Flexible Inbox fetcher with memory-safe limit
 router.get('/inbox/:phoneNumber', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phoneNumber);
@@ -124,17 +124,18 @@ router.get('/inbox/:phoneNumber', async (req, res) => {
 
     const emails = await Email.find({ 
       $or: [
-        { phoneNumber: { $regex: pureDigits, $options: 'i' } },
-        { emailAddress: { $regex: pureDigits, $options: 'i' } },
+        { phoneNumber: { $regex: pureDigits,$options: 'i' } },
+        { emailAddress: { $regex: pureDigits,$options: 'i' } },
         { recipient: alias },
         { sender: alias },
-        { recipient: { $regex: pureDigits, $options: 'i' } },
-        { sender: { $regex: pureDigits, $options: 'i' } }
+        { recipient: { $regex: pureDigits,$options: 'i' } },
+        { sender: { $regex: pureDigits,$options: 'i' } }
       ],
       isDeleted: { $ne: true }
     })
     .sort({ createdAt: -1, date: -1 })
-    .select('-attachment') // <-- Omits heavy base64 images here as well
+    .limit(200)
+    .select('-attachment')
     .allowDiskUse(true)
     .lean();
 
@@ -404,7 +405,12 @@ router.get('/:emailAddress', async (req, res) => {
         { sender: { $regex: cleanDigits,$options: 'i' } }
       ],
       isDeleted: { $ne: true }
-    }).sort({ date: -1, createdAt: -1 }).allowDiskUse(true).lean();
+    })
+    .sort({ date: -1, createdAt: -1 })
+    .limit(200)
+    .select('-attachment')
+    .allowDiskUse(true)
+    .lean();
 
     for (let email of emails) {
       if (email.sender) {
