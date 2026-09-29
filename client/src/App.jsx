@@ -752,20 +752,21 @@ function App() {
   return (
     <div className="app-container">
       {/* GMAIL-STYLE HEADER WITH BIG CENTER SEARCH BAR */}
-      <header className="app-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1.5rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', minWidth: '220px' }}>
+      <header className="app-header">
+        {/* Left: Menu, Logo, and Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           {user && step === 6 && (
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="theme-toggle-btn mobile-hamburger-btn" 
-              style={{ display: 'flex', width: '40px', height: '40px' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', flexShrink: 0 }}
               title="Toggle Menu"
             >
               <Menu size={20} />
             </button>
           )}
 
-          <div className="app-logo-icon" style={{ width: '40px', height: '40px' }}>rm</div>
+          <div className="app-logo-icon" style={{ width: '40px', height: '40px', flexShrink: 0 }}>rm</div>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
               <h1 className="logo-text" style={{ margin: 0, fontSize: '1.1rem', lineHeight: '1.2' }}>rizzmail.me</h1>
@@ -774,10 +775,10 @@ function App() {
           </div>
         </div>
 
-        {/* BIG GMAIL-STYLE SEARCH BAR IN CENTER */}
-        <div style={{ flex: 1, maxWidth: '600px', margin: '0 2rem' }}>
-          <div className="search-bar-container" style={{ width: '100%', position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={18} className="search-icon" style={{ position: 'absolute', left: '1.15rem', color: 'var(--text-muted)' }} />
+        {/* Center: Gmail-Style Big Search Bar */}
+        <div style={{ flex: 1, maxWidth: '640px', display: 'flex', alignItems: 'center' }}>
+          <div style={{ width: '100%', position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Search size={18} style={{ position: 'absolute', left: '1.15rem', color: 'var(--text-muted)', pointerEvents: 'none' }} />
             <input 
               type="text" 
               placeholder="Search chats, mail, or enter phone & press Enter..." 
@@ -796,24 +797,34 @@ function App() {
                   setSearchQuery('');
                 }
               }}
-              className="search-input" 
-              style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.8rem', borderRadius: '2rem', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none' }}
+              style={{ 
+                width: '100%', 
+                padding: '0.7rem 1rem 0.7rem 2.8rem', 
+                borderRadius: '2rem', 
+                background: 'var(--input-bg)', 
+                border: '1px solid var(--input-border)', 
+                color: 'var(--text-primary)', 
+                fontSize: '0.9rem', 
+                outline: 'none',
+                boxShadow: 'none'
+              }}
             />
           </div>
         </div>
         
-        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '180px', justifyContent: 'flex-end' }}>
-          <div className="status-pill">
+        {/* Right: Status Pill, Profile, Theme Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+          <div className="status-pill" style={{ display: 'flex', alignItems: 'center' }}>
             <span className="pulse-dot"></span> System Online
           </div>
           
           {user && step === 6 && !isLoggingOut && (
-            <div style={{ position: 'relative', overflow: 'visible' }} ref={profileMenuRef}>
+            <div style={{ position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center' }} ref={profileMenuRef}>
               <button 
                 onClick={() => setShowProfileMenu(!showProfileMenu)} 
                 className="theme-toggle-btn"
                 title={`${user.firstName || 'User Account'} - Account Settings`}
-                style={{ background: showProfileMenu ? 'rgba(99, 102, 241, 0.25)' : undefined, overflow: 'hidden', padding: 0, cursor: 'pointer', width: '40px', height: '40px', borderRadius: '50%' }}
+                style={{ background: showProfileMenu ? 'rgba(99, 102, 241, 0.25)' : undefined, overflow: 'hidden', padding: 0, cursor: 'pointer', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 {user.profilePhoto ? (
                   <img src={user.profilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -865,7 +876,7 @@ function App() {
           <button 
             onClick={toggleTheme} 
             className="theme-toggle-btn"
-            style={{ width: '40px', height: '40px' }}
+            style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}

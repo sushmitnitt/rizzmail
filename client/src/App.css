@@ -1294,16 +1294,18 @@ html, body, #root {
 }
 
 /* App Header - Enlarged Upper Banner */
+/* App Header Alignment Fix */
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.15rem 1.75rem; /* Increased vertical padding */
+  padding: 0.75rem 1.5rem;
   background: var(--card-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--input-border);
   z-index: 100;
+  gap: 1.5rem;
 }
 
 /* Expanded Search Bar */
