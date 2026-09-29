@@ -76,17 +76,17 @@ const extractCleanBody = (rawText) => {
 };
 
 // ==========================================
-// SPECIFIC ROUTES (Must be before /:emailAddress)
+// SPECIFIC ROUTES
 // ==========================================
 
-// Fetch messages by phone number or alias
+// Fetch messages by phone number or alias with flexible regex matching
 router.get('/messages/:phone', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phone);
     const emails = await Email.find({
       $or: [
-        { phoneNumber: pureDigits },
-        { emailAddress: pureDigits },
+        { phoneNumber: { $regex: pureDigits,$options: 'i' } },
+        { emailAddress: { $regex: pureDigits,$options: 'i' } },
         { emailAddress: alias },
         { recipient: alias },
         { sender: alias },
@@ -119,8 +119,8 @@ router.get('/inbox/:phoneNumber', async (req, res) => {
 
     const emails = await Email.find({ 
       $or: [
-        { phoneNumber: pureDigits },
-        { emailAddress: pureDigits },
+        { phoneNumber: { $regex: pureDigits,$options: 'i' } },
+        { emailAddress: { $regex: pureDigits,$options: 'i' } },
         { recipient: alias },
         { sender: alias },
         { recipient: { $regex: pureDigits,$options: 'i' } },
@@ -378,10 +378,9 @@ router.delete('/message/:id', async (req, res) => {
 });
 
 // ==========================================
-// GENERIC PARAMETER ROUTES (Must be at the bottom)
+// GENERIC PARAMETER ROUTES
 // ==========================================
 
-// GET all emails for a specific address
 router.get('/:emailAddress', async (req, res) => {
   try {
     const emailAddress = req.params.emailAddress.toLowerCase();
