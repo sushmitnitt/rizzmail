@@ -751,7 +751,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <header className="app-header">
+      <header className="app-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1.5rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           {user && step === 6 && (
             <button 
@@ -765,13 +765,15 @@ function App() {
           )}
 
           <div className="app-logo-icon">rm</div>
-          <div>
-            <h1 className="logo-text">rizzmail.me</h1>
-            <p>Your personal email via your phone number.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+              <h1 className="logo-text" style={{ margin: 0, fontSize: '1.1rem', lineHeight: '1.2' }}>rizzmail.me</h1>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Your personal email via your phone number.</span>
+            </div>
           </div>
         </div>
         
-        <div className="header-right">
+        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div className="status-pill">
             <span className="pulse-dot"></span> System Online
           </div>
@@ -1176,7 +1178,7 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* SIDEBAR WITH FULL-WIDTH SEARCH BAR & FILTER CHIPS (FOLDER & MENU TEXT REMOVED) */}
+                {/* SIDEBAR WITH FULL-WIDTH SEARCH BAR & FILTER CHIPS */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
                   <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>

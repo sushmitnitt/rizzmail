@@ -39,29 +39,46 @@ const getSenderDetails = async (phoneOrEmail) => {
 };
 
 // Robust cleaner to strip raw email headers and extract only plain text
+// Enhanced cleaner to strip email reply chains, quoted text, and MIME artifacts for clean chat view
 const extractCleanBody = (rawText) => {
   if (!rawText) return '';
-  if (!rawText.includes('Received:') && !rawText.includes('Content-Type:')) {
-    return rawText;
+  let cleaned = rawText.toString();
+
+  // Decode common quoted-printable artifacts (e.g. =E2=80=AF -> space, =3D -> =)
+  cleaned = cleaned
+    .replace(/=E2=80=AF/g, ' ')
+    .replace(/=C2=A0/g, ' ')
+    .replace(/=3D/g, '=')
+    .replace(/\r\n/g, '\n');
+
+  // Strip out standard email reply threads (e.g. "On Tue, 29 Sep 2026... wrote:")
+  const replyIndexPatterns = [
+    /\n\s*on\s+.+wrote:/i,
+    /\n\s*-----+\s*original message\s*-----+/i,
+    /\n\s*from:\s*.+/i,
+    /\n\s*----------+ Forwarded message ---------+/i
+  ];
+
+  for (const pattern of replyIndexPatterns) {
+    const match = cleaned.search(pattern);
+    if (match !== -1) {
+      cleaned = cleaned.substring(0, match);
+    }
   }
-  const plainIndex = rawText.indexOf('Content-Type: text/plain');
-  if (plainIndex !== -1) {
-    const textSection = rawText.slice(plainIndex);
-    const doubleNewline = textSection.indexOf('\r\n\r\n') !== -1 ? textSection.indexOf('\r\n\r\n') : textSection.indexOf('\n\n');
+
+  // If it's a raw MIME block, try to isolate plain text
+  if (cleaned.includes('Content-Type: text/plain')) {
+    const plainIndex = cleaned.indexOf('Content-Type: text/plain');
+    const textSection = cleaned.slice(plainIndex);
+    const doubleNewline = textSection.indexOf('\n\n');
     if (doubleNewline !== -1) {
-      const content = textSection.slice(doubleNewline + (textSection.indexOf('\r\n\r\n') !== -1 ? 4 : 2));
+      const content = textSection.slice(doubleNewline + 2);
       const endBoundary = content.indexOf('--');
-      return (endBoundary !== -1 ? content.slice(0, endBoundary) : content).trim();
+      cleaned = (endBoundary !== -1 ? content.slice(0, endBoundary) : content).trim();
     }
   }
-  const parts = rawText.split(/\r?\n\r?\n/);
-  for (let i = parts.length - 1; i >= 1; i--) {
-    const part = parts[i].trim();
-    if (part && !part.includes(': ') && !part.startsWith('Content-') && !part.startsWith('--')) {
-      return part;
-    }
-  }
-  return rawText.substring(0, 300);
+
+  return cleaned.trim();
 };
 
 // GET all emails for a specific address with live profile photo injection
