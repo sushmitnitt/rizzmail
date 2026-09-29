@@ -810,42 +810,44 @@ function App() {
           </div>
         </div>
 
-        {/* CENTER GMAIL-STYLE BIG SEARCH BAR */}
-        <div style={{ flex: 1, maxWidth: '640px', display: 'flex', alignItems: 'center' }}>
-          <div style={{ width: '100%', position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={18} style={{ position: 'absolute', left: '1.15rem', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-            <input 
-              type="text" 
-              placeholder="Search chats, mail, or enter phone & press Enter..." 
-              value={searchQuery} 
-              onChange={(e) => setSearchQuery(e.target.value)} 
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && searchQuery.trim()) {
-                  let target = searchQuery.trim().toLowerCase();
-                  if (!target.includes('@')) {
-                    const pure = target.replace(/[^0-9]/g, '').slice(-10);
-                    if (pure.length >= 5) {
-                      target = `${pure}@rizzmail.me`;
+        {/* SEARCH BAR ONLY SHOWN WHEN LOGGED IN */}
+        {user && step === 6 && (
+          <div style={{ flex: 1, maxWidth: '640px', display: 'flex', alignItems: 'center' }}>
+            <div style={{ width: '100%', position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={18} style={{ position: 'absolute', left: '1.15rem', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+              <input 
+                type="text" 
+                placeholder="Search chats, mail, or enter phone & press Enter..." 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchQuery.trim()) {
+                    let target = searchQuery.trim().toLowerCase();
+                    if (!target.includes('@')) {
+                      const pure = target.replace(/[^0-9]/g, '').slice(-10);
+                      if (pure.length >= 5) {
+                        target = `${pure}@rizzmail.me`;
+                      }
                     }
+                    setActiveChatSender(target);
+                    setSearchQuery('');
                   }
-                  setActiveChatSender(target);
-                  setSearchQuery('');
-                }
-              }}
-              style={{ 
-                width: '100%', 
-                padding: '0.7rem 1rem 0.7rem 2.8rem', 
-                borderRadius: '2rem', 
-                background: 'var(--input-bg)', 
-                border: '1px solid var(--input-border)', 
-                color: 'var(--text-primary)', 
-                fontSize: '0.9rem', 
-                outline: 'none',
-                boxShadow: 'none'
-              }}
-            />
+                }}
+                style={{ 
+                  width: '100%', 
+                  padding: '0.7rem 1rem 0.7rem 2.8rem', 
+                  borderRadius: '2rem', 
+                  background: 'var(--input-bg)', 
+                  border: '1px solid var(--input-border)', 
+                  color: 'var(--text-primary)', 
+                  fontSize: '0.9rem', 
+                  outline: 'none',
+                  boxShadow: 'none'
+                }}
+              />
+            </div>
           </div>
-        </div>
+        )}
         
         {/* RIGHT HEADER ACTIONS */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
@@ -853,7 +855,7 @@ function App() {
             <span className="pulse-dot"></span> System Online
           </div>
           
-          {user && step === 6 && !isLoggingOut && (
+          {user && step === 6 && (
             <div style={{ position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center' }} ref={profileMenuRef}>
               <button 
                 onClick={() => setShowProfileMenu(!showProfileMenu)} 
