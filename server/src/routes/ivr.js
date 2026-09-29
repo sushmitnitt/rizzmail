@@ -42,6 +42,7 @@ router.post("/handle-choice", async (req, res) => {
     console.log("📞 Caller:", phoneNumber);
     console.log("🔢 Pressed:", digit);
 
+    // Caller did not press 1
     if (digit !== "1") {
       return res.type("text/xml").send(`
         <Response>
@@ -52,48 +53,66 @@ router.post("/handle-choice", async (req, res) => {
       `);
     }
 
+    // Twilio did not provide caller number
     if (!phoneNumber) {
       return res.type("text/xml").send(`
         <Response>
           <Say>
-            We could not identify your phone number. Please try again later.
+            We could not identify your phone number.
+            Please try again later.
           </Say>
         </Response>
       `);
     }
 
-    let user = await User.findOne({ phoneNumber });
+    // Check whether account already exists
+    const existingUser = await User.findOne({
+      phoneNumber: phoneNumber
+    });
 
-    if (!user) {
-      await User.create({
-        phoneNumber: phoneNumber
-      });
-
-      console.log("✅ RizzMail account created:", phoneNumber);
+    // EXISTING ACCOUNT
+    if (existingUser) {
+      console.log("ℹ️ Account already exists:", phoneNumber);
 
       return res.type("text/xml").send(`
         <Response>
           <Say>
-            Your RizzMail account has been created successfully.
-            Your account is associated with this phone number.
-            Thank you for choosing RizzMail.
+            A RizzMail account already exists for this phone number.
+            You do not need to create another account.
+            Thank you for using RizzMail.
           </Say>
         </Response>
       `);
     }
 
-    console.log("ℹ️ Account already exists:", phoneNumber);
+    // NEW ACCOUNT
+    await User.create({
+      phoneNumber: phoneNumber,
+      name: "",
+      firstName: "",
+      lastName: "",
+      photo: "",
+      profilePhoto: "",
+      birthdate: "",
+      birthdateLocked: false,
+      termsAgreed: false,
+      agreedToTerms: false
+    });
+
+    console.log("✅ NEW RizzMail account created:", phoneNumber);
 
     return res.type("text/xml").send(`
       <Response>
         <Say>
-          You already have a RizzMail account associated with this phone number.
+          Your RizzMail account has been created successfully.
+          Your account is associated with this phone number.
+          Thank you for choosing RizzMail.
         </Say>
       </Response>
     `);
 
   } catch (error) {
-    console.error("❌ IVR error:", error);
+    console.error("❌ IVR account creation error:", error);
 
     return res.type("text/xml").send(`
       <Response>
