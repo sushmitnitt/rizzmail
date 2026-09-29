@@ -393,26 +393,12 @@ router.delete('/thread/:identifier', async (req, res) => {
 });
 
 // Delete single message
-// Delete entire chat thread
-// Delete entire chat thread
-// Delete entire chat thread
-router.delete('/thread/:identifier', async (req, res) => {
+router.delete('/message/:id', async (req, res) => {
   try {
-    const identifier = req.params.identifier;
-    const { pureDigits } = normalizePhone(identifier);
-    
-    await Email.updateMany(
-      {
-        $or: [
-          { sender: { $regex: pureDigits || identifier, $options: 'i' } },
-          { recipient: { $regex: pureDigits || identifier, $options: 'i' } }
-        ]
-      },
-      { $set: { isDeleted: true } }
-    );
-    res.json({ success: true, message: 'Thread deleted successfully' });
+    await Email.findByIdAndUpdate(req.params.id, { isDeleted: true });
+    res.json({ success: true, message: 'Message deleted' });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete chat thread' });
+    res.status(500).json({ error: 'Failed to delete email' });
   }
 });
 
