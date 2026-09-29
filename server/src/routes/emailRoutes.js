@@ -353,6 +353,7 @@ router.post('/simulate-incoming', async (req, res) => {
 });
 
 // Delete entire chat thread
+// Delete entire chat thread
 router.delete('/thread/:identifier', async (req, res) => {
   try {
     const identifier = req.params.identifier;
@@ -361,8 +362,8 @@ router.delete('/thread/:identifier', async (req, res) => {
     await Email.updateMany(
       {
         $or: [
-          { sender: { $regex: pureDigits \vert{}\vert{} identifier,$options: 'i' } },
-          { recipient: { $regex: pureDigits \vert{}\vert{} identifier,$options: 'i' } }
+          { sender: { $regex: pureDigits || identifier, $options: 'i' } },
+          { recipient: { $regex: pureDigits || identifier, $options: 'i' } }
         ]
       },
       { $set: { isDeleted: true } }
