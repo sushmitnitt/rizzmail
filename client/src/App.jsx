@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera, ShieldAlert, Globe, MessageSquareReply, Heart } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera, ShieldAlert, Globe, MessageSquareReply, Heart } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -30,9 +30,7 @@ const languagesList = [
   { code: 'de', label: 'German (Deutsch)' }
 ];
 
-// Pure native script greetings without English brackets
 const welcomeGreetings = [
-  "Your personal email via phone.",
   "आपका स्वागत है",
   "તમારું સ્વાગત છે",
   "நல்வரவு",
@@ -126,8 +124,8 @@ function App() {
         setTimeout(() => {
           setGreetingIndex((prev) => (prev + 1) % welcomeGreetings.length);
           setFadeAnim(true);
-        }, 400);
-      }, 3200);
+        }, 250);
+      }, 1800);
       return () => clearInterval(interval);
     }
   }, [step]);
@@ -644,26 +642,6 @@ function App() {
     loadInbox(activePhone);
   };
 
-  const handleSimulateIncomingEmail = async () => {
-    try {
-      const activePhone = getEmailPhone(getUserPhone());
-      const backendBase = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
-      await fetch(`${backendBase}/api/email/simulate-incoming`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: activePhone,
-          sender: "evaluator@rizzmail.me",
-          subject: "Project Milestone Update",
-          body: "Hello! Reviewing the buildathon requirements and checking the chat integration."
-        })
-      });
-      loadInbox(getUserPhone());
-    } catch (e) {
-      console.error("Simulation failed", e);
-    }
-  };
-
   const handleDeleteChatThread = async (canonicalKey) => {
     try {
       const backendBase = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -813,9 +791,9 @@ function App() {
   const isReplying = activeThread && activeThread.messages && activeThread.messages.length > 0;
 
   return (
-    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-main)', color: 'var(--text-primary)' }}>
       
-      {/* INJECTING DYNAMIC POPPING ANIMATION FOR THE HEART ICON */}
+      {/* DYNAMIC POPPING ANIMATION FOR THE HEART ICON */}
       <style>{`
         @keyframes heartPop {
           0% { transform: scale(1); }
@@ -824,8 +802,8 @@ function App() {
         }
       `}</style>
 
-      {/* HEADER: LOGO & TAGLINE ALWAYS VISIBLE, SEARCH BAR HIDDEN ON LOGIN */}
-      <header className="app-header">
+      {/* PROFESSIONAL FULL-WIDTH HEADER */}
+      <header className="app-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 2rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', backdropFilter: 'blur(16px)', flexShrink: 0, zIndex: 1000 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           {user && step === 6 && (
             <button 
@@ -838,7 +816,7 @@ function App() {
             </button>
           )}
 
-          <div className="app-logo-icon" style={{ width: '40px', height: '40px', flexShrink: 0 }}>rm</div>
+          <div className="app-logo-icon" style={{ width: '40px', height: '40px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-gradient)', borderRadius: '10px', color: '#fff', fontWeight: 'bold' }}>rm</div>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
               <h1 className="logo-text" style={{ margin: 0, fontSize: '1.1rem', lineHeight: '1.2' }}>rizzmail.me</h1>
@@ -849,7 +827,7 @@ function App() {
 
         {/* SEARCH BAR ONLY SHOWN WHEN LOGGED IN */}
         {user && step === 6 && (
-          <div style={{ flex: 1, maxWidth: '640px', display: 'flex', alignItems: 'center' }}>
+          <div style={{ flex: 1, maxWidth: '640px', margin: '0 2rem', display: 'flex', alignItems: 'center' }}>
             <div style={{ width: '100%', position: 'relative', display: 'flex', alignItems: 'center' }}>
               <Search size={18} style={{ position: 'absolute', left: '1.15rem', color: 'var(--text-muted)', pointerEvents: 'none' }} />
               <input 
@@ -886,11 +864,42 @@ function App() {
           </div>
         )}
         
-        {/* RIGHT HEADER ACTIONS */}
+        {/* RIGHT HEADER ACTIONS WITH HIGHLIGHTED COMPOSE ICON */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
           <div className="status-pill" style={{ display: 'flex', alignItems: 'center' }}>
             <span className="pulse-dot"></span> System Online
           </div>
+
+          {/* HIGHLIGHTED COMPOSE ICON IN HEADER (AWAY FROM CHAT INTERFACE) */}
+          {user && step === 6 && (
+            <button
+              onClick={() => {
+                setTraditionalTo('');
+                setTraditionalCc('');
+                setTraditionalSubject('');
+                setTraditionalBody('');
+                setIsTraditionalLocked(false);
+                setShowTraditionalModal(true);
+              }}
+              title="Compose New Email"
+              style={{
+                background: 'var(--accent-gradient)',
+                color: '#fff',
+                border: 'none',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)',
+                transition: 'transform 0.2s ease'
+              }}
+            >
+              <Edit3 size={18} />
+            </button>
+          )}
           
           {user && step === 6 && (
             <div style={{ position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center' }} ref={profileMenuRef}>
@@ -958,11 +967,12 @@ function App() {
         </div>
       </header>
 
-      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {/* MAIN HERO/CONTENT WORKSPACE */}
+      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', position: 'relative' }}>
         {error && <div className="error-banner" style={{ width: '100%', maxWidth: '440px', margin: '1rem auto' }}>{error}</div>}
 
         {isLoggingOut && (
-          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', padding: '2rem' }}>
             <div className="card" style={{ padding: '3.5rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
               <Lock size={32} style={{ color: '#818cf8', animation: 'spin 1.5s linear infinite', marginBottom: '1rem' }} />
               <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Signing Out...</h2>
@@ -971,30 +981,33 @@ function App() {
         )}
 
         {!isLoggingOut && step === 1 && (
-          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-            <form onSubmit={handleSendOTP} className="card" style={{ width: '100%' }}>
-              <div className="badge-pill"><Shield size={12} /> SECURE AUTHENTICATION</div>
-              <h2>Welcome to RizzMail</h2>
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }}>
+            <form onSubmit={handleSendOTP} className="card" style={{ width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.4)', borderRadius: '1.25rem', padding: '2.5rem 2rem', background: 'var(--card-bg)', border: '1px solid var(--input-border)' }}>
+              <div className="badge-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.35rem 0.85rem', background: 'rgba(99,102,241,0.1)', color: '#818cf8', borderRadius: '2rem', fontSize: '0.72rem', fontWeight: '700', marginBottom: '1.25rem' }}>
+                <Shield size={12} /> SECURE AUTHENTICATION
+              </div>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: '800', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Welcome to RizzMail</h2>
               
-              {/* DYNAMIC MULTILINGUAL SUBTEXT WITH FADE TRANSITION & NO ENGLISH BRACKETS */}
               <p 
-                className="subtitle" 
                 style={{ 
-                  minHeight: '28px', 
-                  transition: 'opacity 0.4s ease-in-out', 
+                  minHeight: '32px', 
+                  transition: 'opacity 0.25s ease-in-out', 
                   opacity: fadeAnim ? 1 : 0,
                   color: '#818cf8',
-                  fontWeight: '500'
+                  fontSize: '1.15rem',
+                  fontWeight: '700',
+                  margin: '0.5rem 0 1.5rem 0',
+                  letterSpacing: '0.01em'
                 }}
               >
                 {welcomeGreetings[greetingIndex]}
               </p>
 
-              <div style={{ marginBottom: '1.5rem' }}>
-                <div className="phone-input-container">
-                  <div className="input-icon-left"><Phone size={18} /></div>
-                  <select className="country-select-clean" value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
-                    {countriesList.map((c) => (<option key={c.name + c.code} value={c.code}>{c.label}</option>))}
+              <div style={{ marginBottom: '1.75rem' }}>
+                <div className="phone-input-container" style={{ display: 'flex', alignItems: 'center', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: '0.85rem', overflow: 'hidden', padding: '0.25rem' }}>
+                  <div className="input-icon-left" style={{ paddingLeft: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}><Phone size={18} /></div>
+                  <select className="country-select-clean" value={countryCode} onChange={(e) => setCountryCode(e.target.value)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0.65rem 0.5rem', outline: 'none', fontWeight: '600', fontSize: '0.9rem' }}>
+                    {countriesList.map((c) => (<option key={c.name + c.code} value={c.code} style={{ background: 'var(--card-bg)', color: 'var(--text-primary)' }}>{c.label}</option>))}
                   </select>
                   <input
                     type="tel"
@@ -1005,11 +1018,12 @@ function App() {
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     required
+                    style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0.65rem 0.75rem', outline: 'none', fontSize: '0.95rem' }}
                   />
                 </div>
               </div>
 
-              <button type="submit" className="primary-btn" disabled={loading}>
+              <button type="submit" className="primary-btn" disabled={loading} style={{ width: '100%', padding: '0.85rem', background: 'var(--accent-gradient)', color: '#fff', border: 'none', borderRadius: '0.85rem', fontWeight: '700', fontSize: '0.95rem', cursor: 'pointer', boxShadow: '0 8px 25px rgba(99,102,241,0.4)', transition: 'transform 0.2s' }}>
                 {loading ? 'Dispatching Code...' : 'Continue with OTP ➔'}
               </button>
             </form>
@@ -1017,13 +1031,13 @@ function App() {
         )}
 
         {!isLoggingOut && step === 2 && (
-          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', padding: '1rem' }}>
-            <form onSubmit={handleVerifyOtp} className="card" style={{ width: '100%' }}>
-              <div className="badge-pill"><Lock size={12} /> Verification</div>
-              <h2>Enter Code</h2>
-              <p className="subtitle">We've sent a 6-digit code to <b>{phoneNumber}</b>.</p>
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', padding: '2rem 1rem' }}>
+            <form onSubmit={handleVerifyOtp} className="card" style={{ width: '100%', padding: '2.5rem 2rem', background: 'var(--card-bg)', borderRadius: '1.25rem', border: '1px solid var(--input-border)' }}>
+              <div className="badge-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.35rem 0.85rem', background: 'rgba(99,102,241,0.1)', color: '#818cf8', borderRadius: '2rem', fontSize: '0.72rem', fontWeight: '700', marginBottom: '1.25rem' }}><Lock size={12} /> Verification</div>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: '800', marginBottom: '0.5rem' }}>Enter Code</h2>
+              <p className="subtitle" style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>We've sent a 6-digit code to <b>{phoneNumber}</b>.</p>
               
-              <div className="input-group-stack">
+              <div className="input-group-stack" style={{ marginBottom: '1.5rem' }}>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -1033,19 +1047,19 @@ function App() {
                   onChange={(e) => setOtp(e.target.value)}
                   maxLength={6}
                   required
-                  style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.4em', fontFamily: 'JetBrains Mono, monospace' }}
+                  style={{ width: '100%', padding: '0.85rem', borderRadius: '0.85rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.4em', fontFamily: 'JetBrains Mono, monospace', outline: 'none' }}
                 />
               </div>
-              <button type="submit" className="primary-btn" disabled={loading}>Verify & Continue</button>
+              <button type="submit" className="primary-btn" disabled={loading} style={{ width: '100%', padding: '0.85rem', background: 'var(--accent-gradient)', color: '#fff', border: 'none', borderRadius: '0.85rem', fontWeight: '700', cursor: 'pointer' }}>Verify & Continue</button>
             </form>
           </div>
         )}
 
         {!isLoggingOut && step === 3 && (
-          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', padding: '1rem' }}>
-            <form onSubmit={handleSaveProfile} className="card" style={{ width: '100%' }}>
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', padding: '2rem 1rem' }}>
+            <form onSubmit={handleSaveProfile} className="card" style={{ width: '100%', padding: '2.5rem 2rem', background: 'var(--card-bg)', borderRadius: '1.25rem', border: '1px solid var(--input-border)' }}>
               <h2>Complete Profile</h2>
-              <p className="subtitle">Provide your name, date of birth, and profile photo.</p>
+              <p className="subtitle" style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Provide your name, date of birth, and profile photo.</p>
               
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.25rem' }}>
                 <div style={{
@@ -1076,27 +1090,27 @@ function App() {
                 <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Tap to upload profile photo</label>
               </div>
 
-              <div className="input-group-stack"><label>First Name</label><input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required /></div>
-              <div className="input-group-stack"><label>Last Name</label><input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required /></div>
-              <div className="input-group-stack"><label>Date of Birth (13+)</label><input type="date" value={dob} onChange={(e) => setDob(e.target.value)} required /></div>
-              <button type="submit" className="primary-btn" disabled={loading}>Next: Terms ➔</button>
+              <div className="input-group-stack" style={{ marginBottom: '1rem' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.3rem' }}>First Name</label><input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required style={{ width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }} /></div>
+              <div className="input-group-stack" style={{ marginBottom: '1rem' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.3rem' }}>Last Name</label><input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required style={{ width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }} /></div>
+              <div className="input-group-stack" style={{ marginBottom: '1.5rem' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.3rem' }}>Date of Birth (13+)</label><input type="date" value={dob} onChange={(e) => setDob(e.target.value)} required style={{ width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }} /></div>
+              <button type="submit" className="primary-btn" disabled={loading} style={{ width: '100%', padding: '0.85rem', background: 'var(--accent-gradient)', color: '#fff', border: 'none', borderRadius: '0.85rem', fontWeight: '700', cursor: 'pointer' }}>Next: Terms ➔</button>
             </form>
           </div>
         )}
 
         {!isLoggingOut && step === 4 && (
-          <div style={{ margin: 'auto', width: '100%', maxWidth: '520px', display: 'flex', justifyContent: 'center', padding: '1rem' }}>
-            <div className="card" style={{ textAlign: 'left', width: '100%' }}>
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '520px', display: 'flex', justifyContent: 'center', padding: '2rem 1rem' }}>
+            <div className="card" style={{ textAlign: 'left', width: '100%', padding: '2.5rem 2rem', background: 'var(--card-bg)', borderRadius: '1.25rem', border: '1px solid var(--input-border)' }}>
               <h2>Terms of Service</h2>
-              <p className="subtitle">Please agree to continue to your burner inbox.</p>
-              <button type="button" onClick={handleAgreeToTerms} className="primary-btn" disabled={loading}>I Agree & Initialize ➔</button>
+              <p className="subtitle" style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Please agree to continue to your burner inbox.</p>
+              <button type="button" onClick={handleAgreeToTerms} className="primary-btn" disabled={loading} style={{ width: '100%', padding: '0.85rem', background: 'var(--accent-gradient)', color: '#fff', border: 'none', borderRadius: '0.85rem', fontWeight: '700', cursor: 'pointer' }}>I Agree & Initialize ➔</button>
             </div>
           </div>
         )}
 
         {!isLoggingOut && step === 5 && (
-          <div style={{ textAlign: 'center', margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', padding: '1rem' }}>
-            <div className="card" style={{ padding: '3.5rem 2rem', width: '100%' }}>
+          <div style={{ textAlign: 'center', margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', padding: '2rem 1rem' }}>
+            <div className="card" style={{ padding: '3.5rem 2rem', width: '100%', background: 'var(--card-bg)', borderRadius: '1.25rem', border: '1px solid var(--input-border)' }}>
               <Cpu size={34} style={{ color: '#818cf8', animation: 'spin 2s linear infinite', marginBottom: '1rem' }} />
               <h2>{setupStepsList[setupStage]}</h2>
             </div>
@@ -1311,7 +1325,7 @@ function App() {
                   
                   <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>
                     
-                    {/* FILTER CHIPS & REFRESH BUTTONS */}
+                    {/* FILTER CHIPS & REFRESH BUTTON (TESTMAIL ICON REMOVED) */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                       <div className="hide-scrollbar" style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px', flex: 1, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         {['all', 'unread', 'attachments', 'favorites'].map((chip) => (
@@ -1336,9 +1350,6 @@ function App() {
                         ))}
                       </div>
                       <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
-                        <button onClick={handleSimulateIncomingEmail} className="refresh-btn" title="Simulate incoming chat">
-                          <Zap size={14} />
-                        </button>
                         <button onClick={() => loadInbox(getUserPhone())} className="refresh-btn" title="Refresh inbox">
                           <RefreshCw size={14} />
                         </button>
@@ -1595,7 +1606,6 @@ function App() {
                       {/* FUTURISTIC CHAT COMPOSER BAR */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '1rem 1.25rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.6rem', flexShrink: 0, backdropFilter: 'blur(25px)' }}>
                         
-                        {/* QUOTED MESSAGE PREVIEW BOX ON TOP OF INPUT */}
                         {quotedMessage && (
                           <div style={{ background: 'rgba(99, 102, 241, 0.15)', borderLeft: '3px solid #6366f1', padding: '0.5rem 0.85rem', borderRadius: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backdropFilter: 'blur(10px)' }}>
                             <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1680,41 +1690,6 @@ function App() {
               </div>
             )}
           </div>
-        )}
-
-        {/* HOME SCREEN COMPOSE FLOATING BUTTON */}
-        {user && step === 6 && !isEditingProfile && (
-          <button
-            onClick={() => {
-              setTraditionalTo('');
-              setTraditionalCc('');
-              setTraditionalSubject('');
-              setTraditionalBody('');
-              setIsTraditionalLocked(false);
-              setShowTraditionalModal(true);
-            }}
-            style={{
-              position: 'fixed',
-              bottom: '28px',
-              right: '28px',
-              background: 'var(--accent-gradient)',
-              color: '#fff',
-              border: 'none',
-              width: '58px',
-              height: '58px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              boxShadow: '0 10px 30px rgba(99, 102, 241, 0.5)',
-              zIndex: 9999,
-              transition: 'transform 0.2s ease'
-            }}
-            title="Compose New Email"
-          >
-            <Edit3 size={22} />
-          </button>
         )}
 
         {showTraditionalModal && (
@@ -1859,13 +1834,13 @@ function App() {
         )}
 
         {!isLoggingOut && step === 7 && (
-          <div className="card-wrapper" style={{ maxWidth: '480px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }}>
-            <div className="card" style={{ textAlign: 'left', width: '100%' }}>
-              <div className="badge-pill" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+          <div className="card-wrapper" style={{ maxWidth: '480px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center', padding: '2rem 1rem' }}>
+            <div className="card" style={{ textAlign: 'left', width: '100%', padding: '2.5rem 2rem', background: 'var(--card-bg)', borderRadius: '1.25rem', border: '1px solid var(--input-border)' }}>
+              <div className="badge-pill" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.35rem 0.85rem', borderRadius: '2rem', fontSize: '0.72rem', fontWeight: '700', marginBottom: '1.25rem' }}>
                 <AlertTriangle size={12} /> Warning: Account Deletion
               </div>
               <h2 style={{ color: '#ef4444', fontSize: '1.4rem', marginBottom: '0.5rem' }}>Do you really want to delete your account?</h2>
-              <p className="subtitle" style={{ marginBottom: '1.5rem', lineHeight: '1.5' }}>
+              <p className="subtitle" style={{ marginBottom: '1.5rem', lineHeight: '1.5', color: 'var(--text-muted)' }}>
                 This action is permanent and cannot be undone. All your messages, profile settings, and your burner email endpoint will be permanently wiped out.
               </p>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -1877,12 +1852,12 @@ function App() {
         )}
 
         {!isLoggingOut && step === 8 && (
-          <div className="card-wrapper" style={{ maxWidth: '460px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }}>
-            <form onSubmit={handleConfirmAccountDeletion} className="card" style={{ textAlign: 'left', width: '100%' }}>
-              <h2 style={{ color: '#ef4444', fontSize: '1.4rem' }}>Enter Deletion OTP</h2>
-              <p className="subtitle" style={{ marginBottom: '1.5rem' }}>Enter the 6-digit verification code sent to your phone.</p>
+          <div className="card-wrapper" style={{ maxWidth: '460px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center', padding: '2rem 1rem' }}>
+            <form onSubmit={handleConfirmAccountDeletion} className="card" style={{ textAlign: 'left', width: '100%', padding: '2.5rem 2rem', background: 'var(--card-bg)', borderRadius: '1.25rem', border: '1px solid var(--input-border)' }}>
+              <h2 style={{ color: '#ef4444', fontSize: '1.4rem', marginBottom: '0.5rem' }}>Enter Deletion OTP</h2>
+              <p className="subtitle" style={{ marginBottom: '1.5rem', color: 'var(--text-muted)' }}>Enter the 6-digit verification code sent to your phone.</p>
               <div className="input-group-stack" style={{ marginBottom: '1.5rem' }}>
-                <input type="text" placeholder="0 0 0 0 0 0" value={deleteOtp} onChange={(e) => setDeleteOtp(e.target.value)} maxLength={6} required style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.4em', fontFamily: 'JetBrains Mono, monospace' }} />
+                <input type="text" placeholder="0 0 0 0 0 0" value={deleteOtp} onChange={(e) => setDeleteOtp(e.target.value)} maxLength={6} required style={{ width: '100%', textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.4em', fontFamily: 'JetBrains Mono, monospace', padding: '0.85rem', borderRadius: '0.85rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }} />
               </div>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button type="button" onClick={() => setStep(7)} style={{ flex: 1, background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.8rem', borderRadius: '0.875rem', fontWeight: '600', cursor: 'pointer' }}>Back</button>
@@ -1893,8 +1868,8 @@ function App() {
         )}
       </main>
 
-      {/* FOOTER WITH DYNAMIC POPPING HEART */}
-      <footer style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', borderTop: '1px solid var(--input-border)', background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexShrink: 0 }}>
+      {/* SLIM, DYNAMIC FOOTER */}
+      <footer style={{ padding: '0.5rem 1rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', flexShrink: 0, zIndex: 100 }}>
         <span>Made with</span> 
         <span style={{ display: 'inline-block', animation: 'heartPop 1.2s infinite ease-in-out' }}>❤️</span> 
         <span>in India</span>
@@ -1903,9 +1878,9 @@ function App() {
       {showLogoutConfirm && (
         <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
           <div className="card-wrapper" style={{ maxWidth: '400px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
-            <div className="card" style={{ textAlign: 'left', width: '100%' }}>
+            <div className="card" style={{ textAlign: 'left', width: '100%', padding: '2rem', background: 'var(--card-bg)', borderRadius: '1.25rem', border: '1px solid var(--input-border)' }}>
               <h3>Sign Out Confirmation</h3>
-              <p className="subtitle" style={{ margin: '1rem 0' }}>Are you sure you want to sign out of your account?</p>
+              <p className="subtitle" style={{ margin: '1rem 0', color: 'var(--text-muted)' }}>Are you sure you want to sign out of your account?</p>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button onClick={() => setShowLogoutConfirm(false)} style={{ flex: 1, background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer' }}>Cancel</button>
                 <button onClick={handleLogout} style={{ flex: 1, background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600' }}>Sign Out</button>
