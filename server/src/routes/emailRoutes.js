@@ -76,13 +76,14 @@ const extractCleanBody = (rawText) => {
 };
 
 // ==========================================
-// SPECIFIC ROUTES (Using Aggregation + allowDiskUse)
+// SPECIFIC ROUTES WITH AGGREGATION & PAGINATION
 // ==========================================
 
-// Fetch messages by phone number or alias using aggregation pipeline
 router.get('/messages/:phone', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phone);
+    
+    // Correct aggregation syntax with { allowDiskUse: true } options object
     const emails = await Email.aggregate([
       {
         $match: {$or: [
@@ -97,9 +98,9 @@ router.get('/messages/:phone', async (req, res) => {
           isDeleted: { $ne: true }
         }
       },
-      { $sort: { createdAt: -1, date: -1 } },
-      { $limit: 200 },       {$project: { attachment: 0 } } // Exclude heavy base64 attachments from list view
-    ]).allowDiskUse(true); // Allows sorting to spill over to disk safely
+      { $sort: { createdAt: -1, date: -1 } },       {$limit: 50 }, // Pagination limit to prevent large payloads
+      { $project: { attachment: 0 } } // Exclude heavy base64 strings from list view
+    ], { allowDiskUse: true });
 
     for (let email of emails) {
       if (email.sender) {
@@ -116,7 +117,6 @@ router.get('/messages/:phone', async (req, res) => {
   }
 });
 
-// Flexible Inbox fetcher using aggregation pipeline
 router.get('/inbox/:phoneNumber', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phoneNumber);
@@ -136,8 +136,8 @@ router.get('/inbox/:phoneNumber', async (req, res) => {
         }
       },
       { $sort: { createdAt: -1, date: -1 } },
-      { $limit: 200 },       {$project: { attachment: 0 } }
-    ]).allowDiskUse(true);
+      { $limit: 50 },       {$project: { attachment: 0 } }
+    ], { allowDiskUse: true });
 
     for (let email of emails) {
       if (email.sender) {
@@ -153,7 +153,6 @@ router.get('/inbox/:phoneNumber', async (req, res) => {
   }
 });
 
-// Inbound email webhook parser
 router.post('/inbound', async (req, res) => {
   try {
     const rawEmailSource = req.body.email || req.body.text || req.rawEmail;
@@ -191,7 +190,6 @@ router.post('/inbound', async (req, res) => {
   }
 });
 
-// Send email route
 router.post('/send', async (req, res) => {
   try {
     const { senderPhone, recipientEmail, subject, body } = req.body;
@@ -279,7 +277,6 @@ router.post('/send', async (req, res) => {
   }
 });
 
-// Cloudflare Email Worker Webhook Receiver
 router.post('/webhook', async (req, res) => {
   try {
     const { recipient, sender, subject, body } = req.body;
@@ -321,7 +318,6 @@ router.post('/webhook', async (req, res) => {
   }
 });
 
-// Simulate incoming email endpoint
 router.post('/simulate-incoming', async (req, res) => {
   try {
     const { phone, sender, subject, body } = req.body;
@@ -355,7 +351,6 @@ router.post('/simulate-incoming', async (req, res) => {
   }
 });
 
-// Delete entire chat thread
 router.delete('/thread/:identifier', async (req, res) => {
   try {
     const identifier = req.params.identifier;
@@ -377,7 +372,6 @@ router.delete('/thread/:identifier', async (req, res) => {
   }
 });
 
-// Delete single message
 router.delete('/message/:id', async (req, res) => {
   try {
     await Email.findByIdAndUpdate(req.params.id, { isDeleted: true });
@@ -386,10 +380,6 @@ router.delete('/message/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete email' });
   }
 });
-
-// ==========================================
-// GENERIC PARAMETER ROUTES
-// ==========================================
 
 router.get('/:emailAddress', async (req, res) => {
   try {
@@ -409,8 +399,8 @@ router.get('/:emailAddress', async (req, res) => {
         }
       },
       { $sort: { date: -1, createdAt: -1 } },
-      { $limit: 200 },       {$project: { attachment: 0 } }
-    ]).allowDiskUse(true);
+      { $limit: 50 },       {$project: { attachment: 0 } }
+    ], { allowDiskUse: true });
 
     for (let email of emails) {
       if (email.sender) {
