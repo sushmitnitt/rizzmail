@@ -38,7 +38,6 @@ const getSenderDetails = async (phoneOrEmail) => {
   }
 };
 
-// Robust cleaner to strip raw email headers and extract only plain text
 const extractCleanBody = (rawText) => {
   if (!rawText) return '';
   let cleaned = rawText.toString();
@@ -76,19 +75,23 @@ const extractCleanBody = (rawText) => {
   return cleaned.trim();
 };
 
-// GET all emails for a specific address
-router.get('/:emailAddress', async (req, res) => {
-  try {
-    const emailAddress = req.params.emailAddress.toLowerCase();
-    const cleanDigits = emailAddress.replace(/[^0-9]/g, '').slice(-10);
+// ==========================================
+// SPECIFIC ROUTES (Must be before /:emailAddress)
+// ==========================================
 
-    const emails = await Email.find({ 
+// Fetch messages by phone number or alias
+router.get('/messages/:phone', async (req, res) => {
+  try {
+    const { pureDigits, alias } = normalizePhone(req.params.phone);
+    const emails = await Email.find({
       $or: [
-        { emailAddress },
-        { recipient: emailAddress },
-        { sender: emailAddress },
-        { recipient: { $regex: cleanDigits,$options: 'i' } },
-        { sender: { $regex: cleanDigits,$options: 'i' } }
+        { phoneNumber: pureDigits },
+        { emailAddress: pureDigits },
+        { emailAddress: alias },
+        { recipient: alias },
+        { sender: alias },
+        { recipient: { $regex: pureDigits,$options: 'i' } },
+        { sender: { $regex: pureDigits,$options: 'i' } }
       ],
       isDeleted: { $ne: true }
     }).sort({ date: -1, createdAt: -1 }).allowDiskUse(true).lean();
@@ -103,7 +106,40 @@ router.get('/:emailAddress', async (req, res) => {
 
     res.json(emails);
   } catch (err) {
-    res.status(500).json({ error: 'Server error fetching emails' });
+    console.error('❌ Fetch messages error:', err);
+    res.status(500).json({ error: 'Server error fetching messages' });
+  }
+});
+
+// Flexible Inbox fetcher
+router.get('/inbox/:phoneNumber', async (req, res) => {
+  try {
+    const { pureDigits, alias } = normalizePhone(req.params.phoneNumber);
+    if (!pureDigits) return res.status(400).json({ success: false, message: 'Phone number required' });
+
+    const emails = await Email.find({ 
+      $or: [
+        { phoneNumber: pureDigits },
+        { emailAddress: pureDigits },
+        { recipient: alias },
+        { sender: alias },
+        { recipient: { $regex: pureDigits,$options: 'i' } },
+        { sender: { $regex: pureDigits,$options: 'i' } }
+      ],
+      isDeleted: { $ne: true }
+    }).sort({ createdAt: -1, date: -1 }).allowDiskUse(true).lean();
+
+    for (let email of emails) {
+      if (email.sender) {
+        const details = await getSenderDetails(email.sender);
+        email.senderName = details.name;
+        email.senderPhoto = details.photo;
+      }
+    }
+
+    res.status(200).json({ success: true, emails });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -142,38 +178,6 @@ router.post('/inbound', async (req, res) => {
   } catch (err) {
     console.error('Email parsing error:', err);
     res.status(500).json({ error: 'Failed to parse incoming email' });
-  }
-});
-
-// Robust Fetch messages by phone number or alias
-router.get('/messages/:phone', async (req, res) => {
-  try {
-    const { pureDigits, alias } = normalizePhone(req.params.phone);
-    const emails = await Email.find({
-      $or: [
-        { emailAddress: alias },
-        { recipient: alias },
-        { sender: alias },
-        { emailAddress: pureDigits },
-        { phoneNumber: pureDigits },
-        { recipient: { $regex: pureDigits,$options: 'i' } },
-        { sender: { $regex: pureDigits,$options: 'i' } }
-      ],
-      isDeleted: { $ne: true }
-    }).sort({ date: -1, createdAt: -1 }).allowDiskUse(true).lean();
-
-    for (let email of emails) {
-      if (email.sender) {
-        const details = await getSenderDetails(email.sender);
-        email.senderName = details.name;
-        email.senderPhoto = details.photo;
-      }
-    }
-
-    res.json(emails);
-  } catch (err) {
-    console.error('❌ Fetch messages error:', err);
-    res.status(500).json({ error: 'Server error fetching messages' });
   }
 });
 
@@ -307,38 +311,6 @@ router.post('/webhook', async (req, res) => {
   }
 });
 
-// Flexible Inbox fetcher
-router.get('/inbox/:phoneNumber', async (req, res) => {
-  try {
-    const { pureDigits, alias } = normalizePhone(req.params.phoneNumber);
-    if (!pureDigits) return res.status(400).json({ success: false, message: 'Phone number required' });
-
-    const emails = await Email.find({ 
-      $or: [
-        { phoneNumber: pureDigits },
-        { emailAddress: pureDigits },
-        { recipient: alias },
-        { sender: alias },
-        { recipient: { $regex: pureDigits,$options: 'i' } },
-        { sender: { $regex: pureDigits,$options: 'i' } }
-      ],
-      isDeleted: { $ne: true }
-    }).sort({ createdAt: -1, date: -1 }).allowDiskUse(true).lean();
-
-    for (let email of emails) {
-      if (email.sender) {
-        const details = await getSenderDetails(email.sender);
-        email.senderName = details.name;
-        email.senderPhoto = details.photo;
-      }
-    }
-
-    res.status(200).json({ success: true, emails });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
 // Simulate incoming email endpoint
 router.post('/simulate-incoming', async (req, res) => {
   try {
@@ -402,6 +374,41 @@ router.delete('/message/:id', async (req, res) => {
     res.json({ success: true, message: 'Message deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete email' });
+  }
+});
+
+// ==========================================
+// GENERIC PARAMETER ROUTES (Must be at the bottom)
+// ==========================================
+
+// GET all emails for a specific address
+router.get('/:emailAddress', async (req, res) => {
+  try {
+    const emailAddress = req.params.emailAddress.toLowerCase();
+    const cleanDigits = emailAddress.replace(/[^0-9]/g, '').slice(-10);
+
+    const emails = await Email.find({ 
+      $or: [
+        { emailAddress },
+        { recipient: emailAddress },
+        { sender: emailAddress },
+        { recipient: { $regex: cleanDigits,$options: 'i' } },
+        { sender: { $regex: cleanDigits,$options: 'i' } }
+      ],
+      isDeleted: { $ne: true }
+    }).sort({ date: -1, createdAt: -1 }).allowDiskUse(true).lean();
+
+    for (let email of emails) {
+      if (email.sender) {
+        const details = await getSenderDetails(email.sender);
+        email.senderName = details.name;
+        email.senderPhoto = details.photo;
+      }
+    }
+
+    res.json(emails);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error fetching emails' });
   }
 });
 
