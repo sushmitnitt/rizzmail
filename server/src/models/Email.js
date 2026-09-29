@@ -2,25 +2,17 @@ const mongoose = require('mongoose');
 
 const emailSchema = new mongoose.Schema({
   phoneNumber: { type: String, index: true },
-  emailAddress: { type: String, index: true },
-  recipient: { type: String, index: true },
-  sender: { type: String, index: true },
+  emailAddress: String,
+  recipient: String,
+  sender: String,
   subject: String,
   body: String,
-  attachment: String,
-  quotedMessage: Object,
-  senderName: String,
-  senderPhoto: String,
+  senderName: { type: String, default: '' },
+  senderPhoto: { type: String, default: '' },
   direction: String,
-  isDeleted: { type: Boolean, default: false, index: true },
+  isDeleted: { type: Boolean, default: false },
   date: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now }
 });
-
-// CRITICAL: Compound indexes to eliminate in-memory sort limits
-emailSchema.index({ phoneNumber: 1, createdAt: -1 });
-emailSchema.index({ recipient: 1, createdAt: -1 });
-emailSchema.index({ sender: 1, createdAt: -1 });
-emailSchema.index({ emailAddress: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Email', emailSchema);

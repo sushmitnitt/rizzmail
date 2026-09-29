@@ -3,7 +3,6 @@ const router = express.Router();
 const Email = require('../models/Email');
 const User = require('../models/User');
 const axios = require('axios');
-const { simpleParser } = require('mailparser');
 
 // Helper to normalize phone numbers into pure 10 digits and standard aliases
 const normalizePhone = (input) => {
@@ -41,88 +40,119 @@ const getSenderDetails = async (phoneOrEmail) => {
 // Robust cleaner to strip raw email headers and extract only plain text
 const extractCleanBody = (rawText) => {
   if (!rawText) return '';
-  let cleaned = rawText.toString();
-
-  if (/^\s*(Received|Return-Path|DKIM-Signature|Authentication-Results|MIME-Version):/i.test(cleaned)) {
-    const doubleNewline = cleaned.search(/(\r?\n){2}/);
+  if (!rawText.includes('Received:') && !rawText.includes('Content-Type:')) {
+    return rawText;
+  }
+  const plainIndex = rawText.indexOf('Content-Type: text/plain');
+  if (plainIndex !== -1) {
+    const textSection = rawText.slice(plainIndex);
+    const doubleNewline = textSection.indexOf('\r\n\r\n') !== -1 ? textSection.indexOf('\r\n\r\n') : textSection.indexOf('\n\n');
     if (doubleNewline !== -1) {
-      cleaned = cleaned.substring(doubleNewline).trim();
+      const content = textSection.slice(doubleNewline + (textSection.indexOf('\r\n\r\n') !== -1 ? 4 : 2));
+      const endBoundary = content.indexOf('--');
+      return (endBoundary !== -1 ? content.slice(0, endBoundary) : content).trim();
     }
   }
-
-  cleaned = cleaned.replace(/^(Received|Return-Path|DKIM-Signature|Authentication-Results|X-[a-zA-Z0-9-]+|Content-Type|Content-Transfer-Encoding|MIME-Version|Message-ID):.*$/gim, '');
-  cleaned = cleaned.replace(/--[a-zA-Z0-9_-]{10,}/g, '');
-
-  cleaned = cleaned
-    .replace(/=E2=80=AF/gi, ' ')
-    .replace(/=C2=A0/gi, ' ')
-    .replace(/=3D/gi, '=')
-    .replace(/=\r?\n/g, '');
-
-  const replyIndexPatterns = [
-    /\n\s*on\s+.+wrote:/i,
-    /\n\s*-----+\s*original message\s*-----+/i,
-    /\n\s*from:\s*.+/i,
-    /\n\s*----------+ Forwarded message ---------+/i
-  ];
-
-  for (const pattern of replyIndexPatterns) {
-    const match = cleaned.search(pattern);
-    if (match !== -1) {
-      cleaned = cleaned.substring(0, match);
+  const parts = rawText.split(/\r?\n\r?\n/);
+  for (let i = parts.length - 1; i >= 1; i--) {
+    const part = parts[i].trim();
+    if (part && !part.includes(': ') && !part.startsWith('Content-') && !part.startsWith('--')) {
+      return part;
     }
   }
-
-  return cleaned.trim();
+  return rawText.substring(0, 300);
 };
 
-// ==========================================
-// SPECIFIC ROUTES (Must be before /:emailAddress)
-// ==========================================
+// GET all emails for a specific address with live profile photo injection
+router.get('/:emailAddress', async (req, res) => {
+  try {
+    const emailAddress = req.params.emailAddress.toLowerCase();
+    const emails = await Email.find({ 
+      $or: [
+        { emailAddress },
+        { recipient: emailAddress }
+      ],
+      isDeleted: { $ne: true }
+    }).sort({ date: -1, createdAt: -1 }).lean();
 
-// Fetch messages safely using split queries to avoid MongoDB memory limits
+    for (let email of emails) {
+      if (email.sender) {
+        const details = await getSenderDetails(email.sender);
+        email.senderName = details.name;
+        email.senderPhoto = details.photo;
+      }
+    }
+
+    res.json(emails);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error fetching emails' });
+  }
+});
+
+// POST send email and emit via Socket.io with sender profile data
+router.post('/email/send', async (req, res) => {
+  try {
+    const { senderPhone, recipientEmail, subject, body, clientMessageId } = req.body;
+
+    // 1. Save the message to your database
+    const newMessage = new Message({
+      sender: `${senderPhone.replace(/^\+/, '')}@rizzmail.me`,
+      recipient: recipientEmail,
+      subject: subject || 'Re: Conversation',
+      body: body,
+      clientMessageId: clientMessageId || null,
+      direction: 'outbound',
+      createdAt: new Date()
+    });
+    const savedMessage = await newMessage.save();
+
+    // 2. Fetch the sender's profile details to attach to the payload
+    const cleanSenderPhone = senderPhone.replace(/^\+/, '');
+    const senderUser = await User.findOne({ 
+      $or: [
+        { phoneNumber: cleanSenderPhone }, 
+        { phone: cleanSenderPhone }, 
+        { phoneNumber: `+${cleanSenderPhone}` }
+      ] 
+    });
+
+    const senderPhoto = senderUser?.profilePhoto || senderUser?.photo || '';
+    const senderName = `${senderUser?.firstName || ''} ${senderUser?.lastName || ''}`.trim() || cleanSenderPhone;
+
+    // 3. Construct the enriched payload for real-time delivery
+    const messagePayload = {
+      ...savedMessage.toObject(),
+      counterpartyPhoto: senderPhoto,
+      counterpartyName: senderName
+    };
+
+    // 4. Emit real-time message via Socket.io to the recipient's room
+    const recipientIdentifier = recipientEmail.split('@')[0];
+    if (req.io) {
+      req.io.to(recipientIdentifier).emit('new_message', messagePayload);
+    }
+
+    res.status(201).json({ success: true, message: messagePayload });
+  } catch (err) {
+    console.error('Error sending email:', err);
+    res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
+// Fetch messages by phone number or alias with live profile photo injection
 router.get('/messages/:phone', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phone);
-    if (!pureDigits) return res.json([]);
-
-    const primaryQuery = Email.find({
+    const emails = await Email.find({
       $or: [
-        { phoneNumber: pureDigits },
-        { emailAddress: pureDigits },
-        { emailAddress: alias }
-      ],
-      isDeleted: { $ne: true }
-    })
-    .sort({ createdAt: -1 })
-    .limit(50)
-    .select('-attachment')
-    .lean();
-
-    const secondaryQuery = Email.find({
-      $or: [
+        { emailAddress: alias },
         { recipient: alias },
-        { sender: alias },
-        { recipient: pureDigits },
-        { sender: pureDigits }
+        { emailAddress: pureDigits },
+        { recipient: { $regex: pureDigits,$options: 'i' } },
+        { phoneNumber: pureDigits }
       ],
       isDeleted: { $ne: true }
-    })
-    .sort({ createdAt: -1 })
-    .limit(50)
-    .select('-attachment')
-    .lean();
-
-    const [emailsPrimary, emailsSecondary] = await Promise.all([primaryQuery, secondaryQuery]);
-
-    const emailMap = new Map();
-    [...emailsPrimary, ...emailsSecondary].forEach(email => {
-      emailMap.set(email._id.toString(), email);
-    });
-
-    const emails = Array.from(emailMap.values())
-      .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))
-      .slice(0, 50);
+    }).sort({ date: -1, createdAt: -1 }).lean();
 
     for (let email of emails) {
       if (email.sender) {
@@ -136,83 +166,6 @@ router.get('/messages/:phone', async (req, res) => {
   } catch (err) {
     console.error('❌ Fetch messages error:', err);
     res.status(500).json({ error: 'Server error fetching messages' });
-  }
-});
-
-// Flexible Inbox fetcher using split queries
-router.get('/inbox/:phoneNumber', async (req, res) => {
-  try {
-    const { pureDigits, alias } = normalizePhone(req.params.phoneNumber);
-    if (!pureDigits) return res.status(400).json({ success: false, message: 'Phone number required' });
-
-    const emailsPrimary = await Email.find({
-      $or: [{ phoneNumber: pureDigits }, { emailAddress: pureDigits }, { emailAddress: alias }],
-      isDeleted: { $ne: true }
-    }).sort({ createdAt: -1 }).limit(50).select('-attachment').lean();
-
-    const emailsSecondary = await Email.find({
-      $or: [{ recipient: alias }, { sender: alias }],
-      isDeleted: { $ne: true }
-    }).sort({ createdAt: -1 }).limit(50).select('-attachment').lean();
-
-    const emailMap = new Map();
-    [...emailsPrimary, ...emailsSecondary].forEach(email => {
-      emailMap.set(email._id.toString(), email);
-    });
-
-    const emails = Array.from(emailMap.values())
-      .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))
-      .slice(0, 50);
-
-    for (let email of emails) {
-      if (email.sender) {
-        const details = await getSenderDetails(email.sender);
-        email.senderName = details.name;
-        email.senderPhoto = details.photo;
-      }
-    }
-
-    res.status(200).json({ success: true, emails });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Inbound email webhook parser
-router.post('/inbound', async (req, res) => {
-  try {
-    const rawEmailSource = req.body.email || req.body.text || req.rawEmail;
-    
-    let parsedBody = '';
-    let parsedHtml = '';
-    let subject = req.body.subject || '';
-    let sender = req.body.from || req.body.sender || '';
-
-    if (rawEmailSource && typeof rawEmailSource === 'string' && rawEmailSource.includes('Content-Type')) {
-      const parsed = await simpleParser(rawEmailSource);
-      parsedBody = parsed.text || '';
-      parsedHtml = parsed.html || '';
-      subject = parsed.subject || subject;
-      sender = parsed.from?.text || sender;
-    } else {
-      parsedBody = req.body.body || req.body.text || '';
-      parsedHtml = req.body.html || '';
-    }
-
-    const newMessage = new Email({
-      sender,
-      recipient: req.body.recipient,
-      subject,
-      body: parsedBody,
-      htmlBody: parsedHtml,
-      createdAt: new Date()
-    });
-    
-    await newMessage.save();
-    res.status(200).json({ success: true });
-  } catch (err) {
-    console.error('Email parsing error:', err);
-    res.status(500).json({ error: 'Failed to parse incoming email' });
   }
 });
 
@@ -238,7 +191,6 @@ router.post('/send', async (req, res) => {
       sender: senderFullEmail,
       subject: subject || 'No Subject',
       body: body,
-      quotedMessage: req.body.quotedMessage || null,
       senderName: senderDetails.name,
       senderPhoto: senderDetails.photo,
       direction: 'outbound',
@@ -345,6 +297,82 @@ router.post('/webhook', async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
+// GET messages for a user phone number and enrich with sender profiles
+router.get('/email/:phone', async (req, res) => {
+  try {
+    const userPhone = req.params.phone;
+    
+    // Find messages where the user is either the sender or recipient
+    const messages = await Message.find({
+      $or: [
+        { sender: new RegExp(userPhone, 'i') }, 
+        { recipient: new RegExp(userPhone, 'i') }
+      ]
+    }).sort({ createdAt: -1 });
+
+    // Enrich every message with the sender's current profile picture & name
+    const enrichedMessages = await Promise.all(messages.map(async (msg) => {
+      // Extract clean phone/identifier from sender string (e.g., "9876543210@rizzmail.me" -> "9876543210")
+      let senderIdentifier = msg.sender.split('@')[0];
+      
+      // Look up the user in your User collection
+      const senderUser = await User.findOne({ 
+        $or: [
+          { phoneNumber: senderIdentifier }, 
+          { phone: senderIdentifier }, 
+          { phoneNumber: `+${senderIdentifier}` }
+        ] 
+      });
+
+      const msgObj = msg.toObject ? msg.toObject() : { ...msg };
+      
+      if (senderUser) {
+        msgObj.counterpartyPhoto = senderUser.profilePhoto || senderUser.photo || '';
+        msgObj.counterpartyName = `${senderUser.firstName || ''} ${senderUser.lastName || ''}`.trim() || senderIdentifier;
+      } else {
+        msgObj.counterpartyPhoto = '';
+        msgObj.counterpartyName = senderIdentifier;
+      }
+
+      return msgObj;
+    }));
+
+    res.json(enrichedMessages);
+  } catch (err) {
+    console.error('Error fetching messages:', err);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
+// Flexible Inbox fetcher
+router.get('/inbox/:phoneNumber', async (req, res) => {
+  try {
+    const { pureDigits, alias } = normalizePhone(req.params.phoneNumber);
+    if (!pureDigits) return res.status(400).json({ success: false, message: 'Phone number required' });
+
+    const emails = await Email.find({ 
+      $or: [
+        { phoneNumber: pureDigits },
+        { emailAddress: pureDigits },
+        { recipient: alias },
+        { recipient: { $regex: pureDigits,$options: 'i' } }
+      ],
+      isDeleted: { $ne: true }
+    }).sort({ createdAt: -1, date: -1 }).lean();
+
+    for (let email of emails) {
+      if (email.sender) {
+        const details = await getSenderDetails(email.sender);
+        email.senderName = details.name;
+        email.senderPhoto = details.photo;
+      }
+    }
+
+    res.status(200).json({ success: true, emails });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // Simulate incoming email endpoint
 router.post('/simulate-incoming', async (req, res) => {
@@ -385,13 +413,12 @@ router.delete('/thread/:identifier', async (req, res) => {
   try {
     const identifier = req.params.identifier;
     const { pureDigits } = normalizePhone(identifier);
-    const searchTarget = pureDigits ? pureDigits : identifier;
     
     await Email.updateMany(
       {
         $or: [
-          { sender: { $regex: searchTarget,$options: 'i' } },
-          { recipient: { $regex: searchTarget,$options: 'i' } }
+          { sender: { $regex: pureDigits || identifier,$options: 'i' } },
+          { recipient: { $regex: pureDigits || identifier,$options: 'i' } }
         ]
       },
       { $set: { isDeleted: true } }
@@ -412,39 +439,25 @@ router.delete('/message/:id', async (req, res) => {
   }
 });
 
-// ==========================================
-// GENERIC PARAMETER ROUTES (Must be at bottom)
-// ==========================================
-
-router.get('/:emailAddress', async (req, res) => {
+// Delete account and associated data
+// Delete entire chat thread
+router.delete('/thread/:identifier', async (req, res) => {
   try {
-    const emailAddress = req.params.emailAddress.toLowerCase();
-    const cleanDigits = emailAddress.replace(/[^0-9]/g, '').slice(-10);
-
-    const emails = await Email.find({
-      $or: [
-        { emailAddress },
-        { recipient: emailAddress },
-        { sender: emailAddress }
-      ],
-      isDeleted: { $ne: true }
-    })
-    .sort({ date: -1 })
-    .limit(50)
-    .select('-attachment')
-    .lean();
-
-    for (let email of emails) {
-      if (email.sender) {
-        const details = await getSenderDetails(email.sender);
-        email.senderName = details.name;
-        email.senderPhoto = details.photo;
-      }
-    }
-
-    res.json(emails);
+    const identifier = req.params.identifier;
+    const { pureDigits } = normalizePhone(identifier);
+    
+    await Email.updateMany(
+      {
+        $or: [
+          { sender: { $regex: pureDigits || identifier, $options: 'i' } },
+          { recipient: { $regex: pureDigits || identifier, $options: 'i' } }
+        ]
+      },
+      { $set: { isDeleted: true } }
+    );
+    res.json({ success: true, message: 'Thread deleted successfully' });
   } catch (err) {
-    res.status(500).json({ error: 'Server error fetching emails' });
+    res.status(500).json({ error: 'Failed to delete chat thread' });
   }
 });
 
