@@ -372,16 +372,20 @@ router.post('/simulate-incoming', async (req, res) => {
 });
 
 // Delete entire chat thread
+// Delete entire chat thread
 router.delete('/thread/:identifier', async (req, res) => {
   try {
     const identifier = req.params.identifier;
     const { pureDigits } = normalizePhone(identifier);
     
+    // Define search target cleanly on its own line to avoid clipboard translation bugs
+    const searchTarget = pureDigits ? pureDigits : identifier;
+
     await Email.updateMany(
       {
         $or: [
-          { sender: { $regex: pureDigits \vert{}\vert{} identifier,$options: 'i' } },
-          { recipient: { $regex: pureDigits \vert{}\vert{} identifier,$options: 'i' } }
+          { sender: { $regex: searchTarget, $options: 'i' } },
+          { recipient: { $regex: searchTarget, $options: 'i' } }
         ]
       },
       { $set: { isDeleted: true } }
