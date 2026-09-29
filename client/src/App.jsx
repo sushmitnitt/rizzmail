@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera, ShieldAlert, Globe, MessageSquareReply } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera, ShieldAlert, Globe, MessageSquareReply, Heart } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -30,6 +30,19 @@ const languagesList = [
   { code: 'de', label: 'German (Deutsch)' }
 ];
 
+// Multilingual welcome greetings array for the login screen fade effect
+const welcomeGreetings = [
+  { text: "Your personal email via phone.", lang: "English" },
+  { text: "आपका स्वागत है (Aapka swagat hai)", lang: "Hindi" },
+  { text: "તમારું સ્વાગત છે (Tamaru swagat chhe)", lang: "Gujarati" },
+  { text: "நல்வரவு (Nalvaravu)", lang: "Tamil" },
+  { text: "స్వాగతం (Swagatam)", lang: "Telugu" },
+  { text: "ಸುಸ್ವಾಗತ (Suswagatha)", lang: "Kannada" },
+  { text: "स्वागत आहे (Swagat aahe)", lang: "Marathi" },
+  { text: "സ്വാഗതം (Swagatham)", lang: "Malayalam" },
+  { text: "স্বাগতম (Shagotom)", lang: "Bengali" }
+];
+
 const normalizeContactIdentifier = (input) => {
   if (!input) return '';
   const str = input.toString().toLowerCase().trim();
@@ -41,7 +54,6 @@ const normalizeContactIdentifier = (input) => {
   return localPart || str;
 };
 
-// Helper to clean raw incoming email bodies and strip backend transport routing headers
 const formatCleanBody = (bodyText) => {
   if (!bodyText) return '';
   let text = bodyText.toString();
@@ -103,6 +115,23 @@ function App() {
   const [step, setStep] = useState(() => (user ? 6 : 1));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentFolder, setCurrentFolder] = useState('home');
+
+  // Dynamic greeting fade transition index state
+  const [greetingIndex, setGreetingIndex] = useState(0);
+  const [fadeAnim, setFadeAnim] = useState(true);
+
+  useEffect(() => {
+    if (step === 1) {
+      const interval = setInterval(() => {
+        setFadeAnim(false); // Fade out
+        setTimeout(() => {
+          setGreetingIndex((prev) => (prev + 1) % welcomeGreetings.length);
+          setFadeAnim(true); // Fade in
+        }, 400);
+      }, 3200);
+      return () => clearInterval(interval);
+    }
+  }, [step]);
 
   const [setupStage, setSetupStage] = useState(0);
   const setupStepsList = [
@@ -690,7 +719,6 @@ function App() {
     }, 1500);
   };
 
-  // Memoized performance hook for lightning-fast thread rendering and filtering
   const { chatThreadsList, filteredThreads } = React.useMemo(() => {
     const threadsMap = {};
 
@@ -786,8 +814,8 @@ function App() {
   const isReplying = activeThread && activeThread.messages && activeThread.messages.length > 0;
 
   return (
-    <div className="app-container">
-      {/* PERFECTLY ALIGNED GMAIL-STYLE HEADER */}
+    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      {/* HEADER: LOGO ALWAYS VISIBLE, SEARCH BAR HIDDEN ON LOGIN */}
       <header className="app-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           {user && step === 6 && (
@@ -921,7 +949,7 @@ function App() {
         </div>
       </header>
 
-      <main className="main-content">
+      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {error && <div className="error-banner" style={{ width: '100%', maxWidth: '440px', margin: '1rem auto' }}>{error}</div>}
 
         {isLoggingOut && (
@@ -934,12 +962,25 @@ function App() {
         )}
 
         {!isLoggingOut && step === 1 && (
-          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
             <form onSubmit={handleSendOTP} className="card" style={{ width: '100%' }}>
-              <div className="badge-pill"><Shield size={12} /> Secure Authentication</div>
+              <div className="badge-pill"><Shield size={12} /> SECURE AUTHENTICATION</div>
               <h2>Welcome to RizzMail</h2>
-              <p className="subtitle">Your personal email via your phone number.</p>
               
+              {/* DYNAMIC MULTILINGUAL SUBTEXT WITH FADE TRANSITION */}
+              <p 
+                className="subtitle" 
+                style={{ 
+                  minHeight: '28px', 
+                  transition: 'opacity 0.4s ease-in-out', 
+                  opacity: fadeAnim ? 1 : 0,
+                  color: '#818cf8',
+                  fontWeight: '500'
+                }}
+              >
+                {welcomeGreetings[greetingIndex].text}
+              </p>
+
               <div style={{ marginBottom: '1.5rem' }}>
                 <div className="phone-input-container">
                   <div className="input-icon-left"><Phone size={18} /></div>
@@ -1055,7 +1096,7 @@ function App() {
 
         {/* STEP 6: MAIN DASHBOARD */}
         {!isLoggingOut && step === 6 && user && (
-          <div style={{ width: '100%', height: '100%', display: 'flex', overflow: 'hidden', position: 'relative' }}>
+          <div style={{ width: '100%', height: '100%', display: 'flex', overflow: 'hidden', position: 'relative', flex: 1 }}>
             
             {/* TOP-LEFT MENU DRAWER / MODAL */}
             {mobileMenuOpen && (
@@ -1842,6 +1883,11 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* FOOTER */}
+      <footer style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', borderTop: '1px solid var(--input-border)', background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexShrink: 0 }}>
+        <span>Made with</span> <Heart size={13} style={{ color: '#ef4444', fill: '#ef4444' }} /> <span>in India • Secure Decentralized Email Protocol</span>
+      </footer>
 
       {showLogoutConfirm && (
         <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
