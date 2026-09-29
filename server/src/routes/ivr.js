@@ -34,6 +34,78 @@ router.post("/welcome", (req, res) => {
   res.send(twiml);
 });
 
+router.post("/handle-choice", async (req, res) => {
+  try {
+    const digit = req.body.Digits;
+    const phoneNumber = req.body.From;
+
+    console.log("📞 Caller:", phoneNumber);
+    console.log("🔢 Pressed:", digit);
+
+    if (digit !== "1") {
+      return res.type("text/xml").send(`
+        <Response>
+          <Say>
+            Invalid choice. Goodbye.
+          </Say>
+        </Response>
+      `);
+    }
+
+    if (!phoneNumber) {
+      return res.type("text/xml").send(`
+        <Response>
+          <Say>
+            We could not identify your phone number. Please try again later.
+          </Say>
+        </Response>
+      `);
+    }
+
+    let user = await User.findOne({ phoneNumber });
+
+    if (!user) {
+      await User.create({
+        phoneNumber: phoneNumber
+      });
+
+      console.log("✅ RizzMail account created:", phoneNumber);
+
+      return res.type("text/xml").send(`
+        <Response>
+          <Say>
+            Your RizzMail account has been created successfully.
+            Your account is associated with this phone number.
+            Thank you for choosing RizzMail.
+          </Say>
+        </Response>
+      `);
+    }
+
+    console.log("ℹ️ Account already exists:", phoneNumber);
+
+    return res.type("text/xml").send(`
+      <Response>
+        <Say>
+          You already have a RizzMail account associated with this phone number.
+        </Say>
+      </Response>
+    `);
+
+  } catch (error) {
+    console.error("❌ IVR error:", error);
+
+    return res.type("text/xml").send(`
+      <Response>
+        <Say>
+          Sorry, we could not create your RizzMail account right now.
+          Please try again later.
+        </Say>
+      </Response>
+    `);
+  }
+});
+
 router.post("/create-account", async (req, res) => {
   try {
     const phoneNumber = req.body.phoneNumber;
