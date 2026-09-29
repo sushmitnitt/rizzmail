@@ -6,7 +6,7 @@ const User = require("../models/User");
 
 const MESSAGE_CENTRAL_BASE_URL = "https://cpaas.messagecentral.com";
 
-// Helper to normalize phone numbers to a consistent format (e.g. +91XXXXXXXXXX)
+// Helper to normalize phone numbers to a consistent format (+91XXXXXXXXXX)
 const normalizePhone = (input) => {
     if (!input) return "";
     const digits = input.toString().replace(/[^0-9]/g, '');
@@ -71,19 +71,16 @@ router.post("/send-otp", async (req, res) => {
             }
         );
 
-        // Debug response to see what Message Central returns
-        console.log("MC Send Response:", JSON.stringify(mcResponse.data));
-
         const verificationId = mcResponse.data.data?.verificationId || mcResponse.data.verificationId;
 
         if (!verificationId) {
             throw new Error("Failed to retrieve verification ID from Message Central response.");
         }
 
-        // Store the verificationId in MongoDB using the normalized phone key
+        // Store the verificationId in MongoDB saving BOTH field variations to prevent mismatch
         await Otp.findOneAndUpdate(
-            { phone: targetPhone },
-            { verificationId, createdAt: new Date() },
+            { $or: [{ phone: targetPhone }, { phoneNumber: targetPhone }] },
+            { phone: targetPhone, phoneNumber: targetPhone, verificationId, createdAt: new Date() },
             { upsert: true, new: true }
         );
 
@@ -118,7 +115,11 @@ router.post("/verify-otp", async (req, res) => {
 
         const targetPhone = normalizePhone(rawPhone);
 
-        const record = await Otp.findOne({ phone: targetPhone });
+        // Query checking both possible schema field names
+        const record = await Otp.findOne({ 
+            $or: [{ phone: targetPhone }, { phoneNumber: targetPhone }] 
+        });
+
         if (!record || !record.verificationId) {
             console.warn(`⚠️ No verification record found in MongoDB for normalized phone: ${targetPhone}`);
             return res.status(400).json({ success: false, message: "No active verification found. Please request a new OTP." });
@@ -140,8 +141,6 @@ router.post("/verify-otp", async (req, res) => {
             }
         );
 
-        console.log("MC Validate Response:", JSON.stringify(validateResponse.data));
-
         const verificationStatus = validateResponse.data.data?.verificationStatus || validateResponse.data.verificationStatus;
 
         if (verificationStatus !== "VERIFICATION_COMPLETED") {
@@ -149,7 +148,9 @@ router.post("/verify-otp", async (req, res) => {
         }
 
         // Clear verification record after success
-        await Otp.deleteOne({ phone: targetPhone });
+        await Otp.deleteMany({ 
+            $or: [{ phone: targetPhone }, { phoneNumber: targetPhone }] 
+        });
 
         let user = await User.findOne({ phoneNumber: targetPhone });
         if (!user) {
@@ -280,7 +281,7 @@ router.delete("/account/:phone", async (req, res) => {
     try {
         const targetPhone = normalizePhone(req.params.phone);
         await User.findOneAndDelete({ phoneNumber: targetPhone });
-        console.log(`🗑 Account successfully deleted for: ${targetPhone}`);
+        console.log(`🗑️ Account successfully deleted for: ${targetPhone}`);
         return res.json({ success: true, message: "Account successfully deleted" });
     } catch (err) {
         console.error("❌ Account deletion error:", err);
