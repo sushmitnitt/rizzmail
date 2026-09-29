@@ -38,6 +38,7 @@ const getSenderDetails = async (phoneOrEmail) => {
   }
 };
 
+// Robust cleaner to strip raw email headers and extract only plain text
 const extractCleanBody = (rawText) => {
   if (!rawText) return '';
   let cleaned = rawText.toString();
@@ -76,31 +77,30 @@ const extractCleanBody = (rawText) => {
 };
 
 // ==========================================
-// SPECIFIC ROUTES WITH AGGREGATION & PAGINATION
+// SPECIFIC ROUTES (Must be before /:emailAddress)
 // ==========================================
 
+// Fetch messages by phone number or alias using index-safe anchored regex & aggregation
 router.get('/messages/:phone', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phone);
     
     const emails = await Email.aggregate([
       {
-        $match: {
-          $or: [
-            { phoneNumber: pureDigits },
-            { emailAddress: pureDigits },
+        $match: {$or: [
+            { phoneNumber: { $regex: '^' + pureDigits,$options: 'i' } },
+            { emailAddress: { $regex: '^' + pureDigits,$options: 'i' } },
             { emailAddress: alias },
             { recipient: alias },
             { sender: alias },
-            { recipient: pureDigits },
-            { sender: pureDigits }
+            { recipient: { $regex: '^' + pureDigits,$options: 'i' } },
+            { sender: { $regex: '^' + pureDigits,$options: 'i' } }
           ],
           isDeleted: { $ne: true }
         }
       },
       { $sort: { createdAt: -1, date: -1 } },
-      { $limit: 50 }, // Pagination limit to prevent heavy payloads
-      { $project: { attachment: 0 } } // Exclude heavy base64 strings from list view
+      { $limit: 50 },       {$project: { attachment: 0 } } // Exclude heavy base64 attachments from list view
     ], { allowDiskUse: true });
 
     for (let email of emails) {
@@ -118,6 +118,7 @@ router.get('/messages/:phone', async (req, res) => {
   }
 });
 
+// Flexible Inbox fetcher using aggregation & pagination
 router.get('/inbox/:phoneNumber', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phoneNumber);
@@ -125,21 +126,19 @@ router.get('/inbox/:phoneNumber', async (req, res) => {
 
     const emails = await Email.aggregate([
       {
-        $match: {
-          $or: [
-            { phoneNumber: pureDigits },
-            { emailAddress: pureDigits },
+        $match: {$or: [
+            { phoneNumber: { $regex: '^' + pureDigits,$options: 'i' } },
+            { emailAddress: { $regex: '^' + pureDigits,$options: 'i' } },
             { recipient: alias },
             { sender: alias },
-            { recipient: pureDigits },
-            { sender: pureDigits }
+            { recipient: { $regex: '^' + pureDigits,$options: 'i' } },
+            { sender: { $regex: '^' + pureDigits,$options: 'i' } }
           ],
           isDeleted: { $ne: true }
         }
       },
       { $sort: { createdAt: -1, date: -1 } },
-      { $limit: 50 },
-      { $project: { attachment: 0 } }
+      { $limit: 50 },       {$project: { attachment: 0 } }
     ], { allowDiskUse: true });
 
     for (let email of emails) {
@@ -156,6 +155,7 @@ router.get('/inbox/:phoneNumber', async (req, res) => {
   }
 });
 
+// Inbound email webhook parser
 router.post('/inbound', async (req, res) => {
   try {
     const rawEmailSource = req.body.email || req.body.text || req.rawEmail;
@@ -193,6 +193,7 @@ router.post('/inbound', async (req, res) => {
   }
 });
 
+// Send email route
 router.post('/send', async (req, res) => {
   try {
     const { senderPhone, recipientEmail, subject, body } = req.body;
@@ -280,6 +281,7 @@ router.post('/send', async (req, res) => {
   }
 });
 
+// Cloudflare Email Worker Webhook Receiver
 router.post('/webhook', async (req, res) => {
   try {
     const { recipient, sender, subject, body } = req.body;
@@ -321,6 +323,7 @@ router.post('/webhook', async (req, res) => {
   }
 });
 
+// Simulate incoming email endpoint
 router.post('/simulate-incoming', async (req, res) => {
   try {
     const { phone, sender, subject, body } = req.body;
@@ -354,6 +357,7 @@ router.post('/simulate-incoming', async (req, res) => {
   }
 });
 
+// Delete entire chat thread
 router.delete('/thread/:identifier', async (req, res) => {
   try {
     const identifier = req.params.identifier;
@@ -375,6 +379,7 @@ router.delete('/thread/:identifier', async (req, res) => {
   }
 });
 
+// Delete single message
 router.delete('/message/:id', async (req, res) => {
   try {
     await Email.findByIdAndUpdate(req.params.id, { isDeleted: true });
@@ -384,6 +389,10 @@ router.delete('/message/:id', async (req, res) => {
   }
 });
 
+// ==========================================
+// GENERIC PARAMETER ROUTES (Must be at bottom)
+// ==========================================
+
 router.get('/:emailAddress', async (req, res) => {
   try {
     const emailAddress = req.params.emailAddress.toLowerCase();
@@ -391,20 +400,18 @@ router.get('/:emailAddress', async (req, res) => {
 
     const emails = await Email.aggregate([
       {
-        $match: {
-          $or: [
+        $match: {$or: [
             { emailAddress },
             { recipient: emailAddress },
             { sender: emailAddress },
-            { recipient: cleanDigits },
-            { sender: cleanDigits }
+            { recipient: { $regex: '^' + cleanDigits,$options: 'i' } },
+            { sender: { $regex: '^' + cleanDigits,$options: 'i' } }
           ],
           isDeleted: { $ne: true }
         }
       },
       { $sort: { date: -1, createdAt: -1 } },
-      { $limit: 50 },
-      { $project: { attachment: 0 } }
+      { $limit: 50 },       {$project: { attachment: 0 } }
     ], { allowDiskUse: true });
 
     for (let email of emails) {
