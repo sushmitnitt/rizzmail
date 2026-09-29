@@ -174,20 +174,22 @@ router.post('/send', async (req, res) => {
 
     const senderDetails = await getSenderDetails(senderNorm.pureDigits);
 
+ // (Inside router.post('/send', ...))
     const outboundEmail = new Email({
-      phoneNumber: senderNorm.pureDigits,
-      recipient: normalizedRecipient,
-      emailAddress: senderNorm.pureDigits,
-      sender: senderFullEmail,
-      subject: subject || 'No Subject',
-      body: body,
-      senderName: senderDetails.name,
-      senderPhoto: senderDetails.photo,
-      direction: 'outbound',
-      date: new Date(),
-      createdAt: new Date()
-    });
-    await outboundEmail.save();
+    phoneNumber: senderNorm.pureDigits,
+    recipient: normalizedRecipient,
+    emailAddress: senderNorm.pureDigits,
+    sender: senderFullEmail,
+    subject: subject || 'No Subject',
+    body: body,
+    quotedMessage: req.body.quotedMessage || null, // Persist quoted message
+    senderName: senderDetails.name,
+    senderPhoto: senderDetails.photo,
+    direction: 'outbound',
+    date: new Date(),
+    createdAt: new Date()
+});
+await outboundEmail.save();
 
     const io = req.app.get('io');
     if (io) {

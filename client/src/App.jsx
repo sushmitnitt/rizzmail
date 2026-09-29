@@ -71,7 +71,7 @@ function App() {
   
   const [step, setStep] = useState(() => (user ? 6 : 1));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [currentFolder, setCurrentFolder] = useState('home'); // 'home', 'drafts', 'spam', 'trash'
+  const [currentFolder, setCurrentFolder] = useState('home');
 
   const [setupStage, setSetupStage] = useState(0);
   const setupStepsList = [
@@ -140,7 +140,6 @@ function App() {
   const [activeCall, setActiveCall] = useState(null);
   const [showSnippets, setShowSnippets] = useState(false);
 
-  // Swipe touch tracking states
   const [touchStartX, setTouchStartX] = useState(0);
 
   const quickSnippetsList = [
@@ -568,7 +567,8 @@ function App() {
           recipientEmail: target,
           subject: traditionalSubject.trim() || '',
           body: traditionalBody.trim(),
-          attachment: attachmentPreview
+          attachment: attachmentPreview,
+          quotedMessage: quotedMessage
         });
       } catch (err) {
         console.error('Failed to send traditional email to', target);
@@ -1087,7 +1087,7 @@ function App() {
 
             {/* ACCOUNT SETTINGS & ALIAS MANAGEMENT VIEW */}
             {isEditingProfile ? (
-              <div style={{ margin: 'auto', width: '100%', maxWidth: '560px', display: 'flex', justifyContent: 'center', overflowY: 'auto', maxHeight: '100%', padding: '2rem' }}>
+              <div style={{ margin: 'auto', width: '100%', maxWidth: '560px', display: 'flex', justifyContent: 'center', overflowY: 'auto', maxHeight: '100%', padding: '2rem' }} className="hide-scrollbar">
                 <div className="card" style={{ textAlign: 'left', width: '100%' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                     <h3>Account Settings & Profile</h3>
@@ -1214,9 +1214,9 @@ function App() {
                       />
                     </div>
 
-                    {/* FILTER CHIPS (ALL, UNREAD, ATTACHMENTS, FAVORITES) BELOW SEARCH BAR */}
+                    {/* FILTER CHIPS (ALL, UNREAD, ATTACHMENTS, FAVORITES) WITHOUT UGLY SCROLLER */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                      <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px', flex: 1 }}>
+                      <div className="hide-scrollbar" style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px', flex: 1, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         {['all', 'unread', 'attachments', 'favorites'].map((chip) => (
                           <button 
                             key={chip}
@@ -1249,7 +1249,7 @@ function App() {
                     </div>
                   </div>
 
-                  <div style={{ flex: 1, overflowY: 'auto' }}>
+                  <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     {filteredThreads.length === 0 ? (
                       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
                         <Mail size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
@@ -1356,8 +1356,8 @@ function App() {
                         </div>
                       </div>
 
-                      {/* MESSAGES WITH SWIPE-RIGHT & TRADITIONAL VIEW ACCESS */}
-                      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
+                      {/* MESSAGES (CLICK ANY MESSAGE TO OPEN TRADITIONAL VIEW - NO "TRADITIONAL VIEW" TEXT BUTTON) */}
+                      <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
                             <p>No messages yet in this conversation.</p>
@@ -1400,7 +1400,7 @@ function App() {
                                     position: 'relative',
                                     cursor: 'pointer'
                                   }}
-                                  title="Swipe right or tap to open in traditional view"
+                                  title="Click anywhere to open in traditional view"
                                 >
                                   {msg.subject && (
                                     <div style={{ fontSize: '0.75rem', fontWeight: '700', opacity: 0.95, marginBottom: '0.35rem', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -1408,10 +1408,11 @@ function App() {
                                     </div>
                                   )}
 
+                                  {/* REPLIED TO MESSAGE DISPLAYED ON TOP INSIDE BUBBLE */}
                                   {msg.quotedMessage && (
-                                    <div style={{ background: 'rgba(0,0,0,0.15)', borderLeft: '3px solid #818cf8', padding: '0.35rem 0.5rem', borderRadius: '0.35rem', marginBottom: '0.5rem', fontSize: '0.8rem', opacity: 0.9 }}>
-                                      <div style={{ fontWeight: '600', fontSize: '0.7rem' }}>Replying to {msg.quotedMessage.sender.split('@')[0]}</div>
-                                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{msg.quotedMessage.body}</div>
+                                    <div style={{ background: 'rgba(0,0,0,0.25)', borderLeft: '3px solid #818cf8', padding: '0.4rem 0.6rem', borderRadius: '0.35rem', marginBottom: '0.5rem', fontSize: '0.8rem', opacity: 0.95 }}>
+                                      <div style={{ fontWeight: '600', fontSize: '0.7rem', color: '#c7d2fe' }}>Replying to {msg.quotedMessage.sender.split('@')[0]}</div>
+                                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'inherit' }}>{msg.quotedMessage.body}</div>
                                     </div>
                                   )}
 
@@ -1422,23 +1423,12 @@ function App() {
                                   )}
                                   {msg.body && (
                                     <div style={{ fontSize: '0.9rem', wordBreak: 'break-word', lineHeight: '1.4' }}>
-                                      {isLong ? `${msg.body.substring(0, 180)}... (Tap to read full email)` : msg.body}
+                                      {isLong ? `${msg.body.substring(0, 180)}... (Click to read full email)` : msg.body}
                                     </div>
                                   )}
                                   <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
-                                    <button 
-                                      onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        setTraditionalEmailReader(msg); 
-                                      }}
-                                      title="Open in Traditional View"
-                                      style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.65rem', fontWeight: '600', marginRight: 'auto' }}
-                                    >
-                                      <Camera size={12} /> Traditional View
-                                    </button>
-
                                     {hasBeenRepliedTo ? (
-                                      <span style={{ fontSize: '0.65rem', opacity: 0.7, fontStyle: 'italic' }}>✓ Replied</span>
+                                      <span style={{ fontSize: '0.65rem', opacity: 0.7, fontStyle: 'italic', marginRight: 'auto' }}>✓ Replied</span>
                                     ) : (
                                       <button 
                                         onClick={(e) => { 
@@ -1446,9 +1436,9 @@ function App() {
                                           setQuotedMessage({ id: msgId, sender: msg.sender, body: msg.body || '[Attachment]' }); 
                                         }}
                                         title="Tag/Quote this message to reply"
-                                        style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.65rem' }}
+                                        style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: '600', marginRight: 'auto' }}
                                       >
-                                        <MessageSquareReply size={12} /> Reply
+                                        <MessageSquareReply size={13} /> Reply
                                       </button>
                                     )}
                                     {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1481,7 +1471,7 @@ function App() {
                       )}
 
                       {showSnippets && (
-                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flexShrink: 0 }}>
+                        <div className="hide-scrollbar" style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flexShrink: 0, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}><Sparkles size={12} /> Quick Replies:</span>
                           {quickSnippetsList.map((snip, i) => (
                             <button
@@ -1496,15 +1486,17 @@ function App() {
                         </div>
                       )}
 
-                      {/* CHAT COMPOSER BAR WITH TRADITIONAL VIEW CAMERA TAB */}
+                      {/* CHAT COMPOSER BAR WITH CLEAR REPLIED-TO PREVIEW ON TOP */}
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem', flexShrink: 0 }}>
+                        
+                        {/* QUOTED MESSAGE PREVIEW BOX ON TOP OF INPUT */}
                         {quotedMessage && (
-                          <div style={{ background: 'rgba(99, 102, 241, 0.1)', borderLeft: '3px solid #6366f1', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>
-                              <span style={{ fontWeight: '600', color: '#6366f1' }}>Replying to {quotedMessage.sender.split('@')[0]}: </span>
-                              <span style={{ opacity: 0.8 }}>{quotedMessage.body}</span>
+                          <div style={{ background: 'rgba(99, 102, 241, 0.15)', borderLeft: '3px solid #6366f1', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontWeight: '700', color: '#818cf8', display: 'block', fontSize: '0.75rem' }}>Replying to {quotedMessage.sender.split('@')[0]}</span>
+                              <span>{quotedMessage.body}</span>
                             </div>
-                            <button type="button" onClick={() => setQuotedMessage(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={14} /></button>
+                            <button type="button" onClick={() => setQuotedMessage(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}><X size={16} /></button>
                           </div>
                         )}
 
@@ -1527,7 +1519,6 @@ function App() {
                             <input type="file" accept="image/*" onChange={handleAttachmentUpload} style={{ display: 'none' }} />
                           </label>
                           
-                          {/* Camera button opens traditional view with locked To/CC fields */}
                           <button 
                             type="button" 
                             onClick={() => {
@@ -1538,7 +1529,7 @@ function App() {
                               setIsTraditionalLocked(true);
                               setShowTraditionalModal(true);
                             }}
-                            title="Compose in Traditional View (To/CC locked)"
+                            title="Compose in Traditional View"
                             style={{ background: 'transparent', border: 'none', color: '#6366f1', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <Camera size={20} />
@@ -1580,7 +1571,7 @@ function App() {
           </div>
         )}
 
-        {/* HOME SCREEN COMPOSE FLOATING BUTTON (ALLOWS MULTIPLE RECIPIENTS) */}
+        {/* HOME SCREEN COMPOSE FLOATING BUTTON */}
         {user && step === 6 && !isEditingProfile && (
           <button
             onClick={() => {
@@ -1608,7 +1599,7 @@ function App() {
               boxShadow: '0 8px 24px rgba(99, 102, 241, 0.4)',
               zIndex: 9999
             }}
-            title="Compose New Email (Multi-recipient supported)"
+            title="Compose New Email"
           >
             <Edit3 size={22} />
           </button>
@@ -1675,59 +1666,49 @@ function App() {
           </div>
         )}
 
- {traditionalEmailReader && (
-  <div className="modal-overlay" onClick={() => setTraditionalEmailReader(null)}>
-    <div className="modal-content" style={{ maxWidth: '600px', textAlign: 'left', padding: '2rem', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
-      
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--input-border)', paddingBottom: '0.75rem', flexShrink: 0 }}>
-        <div>
-          <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>{traditionalEmailReader.subject || 'Traditional Email View'}</h3>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>From: {traditionalEmailReader.sender}</span>
-        </div>
-        <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
-      </div>
+        {traditionalEmailReader && (
+          <div className="modal-overlay" onClick={() => setTraditionalEmailReader(null)}>
+            <div className="modal-content" style={{ maxWidth: '560px', textAlign: 'left', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--input-border)', paddingBottom: '0.75rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>{traditionalEmailReader.subject || 'Traditional Email View'}</h3>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>From: {traditionalEmailReader.sender}</span>
+                </div>
+                <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
+              </div>
 
-      {/* Attachment if present */}
-      {traditionalEmailReader.attachment && (
-        <div style={{ marginBottom: '1rem', borderRadius: '0.5rem', overflow: 'hidden', flexShrink: 0 }}>
-          <img src={traditionalEmailReader.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', borderRadius: '0.5rem' }} />
-        </div>
-      )}
+              {traditionalEmailReader.quotedMessage && (
+                <div style={{ background: 'var(--input-bg)', borderLeft: '3px solid #818cf8', padding: '0.5rem 0.75rem', borderRadius: '0.35rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                  <div style={{ fontWeight: '600', fontSize: '0.75rem', color: '#818cf8' }}>Replying to {traditionalEmailReader.quotedMessage.sender.split('@')[0]}</div>
+                  <div>{traditionalEmailReader.quotedMessage.body}</div>
+                </div>
+              )}
 
-      {/* Email Body: Renders rich HTML from external emails or clean plain text fallback */}
-      <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: '1.5rem', overflowY: 'auto', flex: 1, paddingRight: '0.5rem' }}>
-        {traditionalEmailReader.htmlBody ? (
-          <div 
-            dangerouslySetInnerHTML={{ __html: traditionalEmailReader.htmlBody }} 
-            style={{ wordBreak: 'break-word', overflowX: 'auto' }}
-          />
-        ) : (
-          <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            {traditionalEmailReader.body || 'No message content available.'}
+              {traditionalEmailReader.attachment && (
+                <div style={{ marginBottom: '1rem', borderRadius: '0.5rem', overflow: 'hidden' }}>
+                  <img src={traditionalEmailReader.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '280px', objectFit: 'cover', borderRadius: '0.5rem' }} />
+                </div>
+              )}
+              <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+                {traditionalEmailReader.body}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.6rem 1.25rem', borderRadius: '0.75rem', cursor: 'pointer' }}>Close</button>
+                <button onClick={() => {
+                  const sender = traditionalEmailReader.sender;
+                  const subj = traditionalEmailReader.subject;
+                  setTraditionalEmailReader(null);
+                  setTraditionalTo(sender);
+                  setTraditionalCc('');
+                  setTraditionalSubject(subj || '');
+                  setTraditionalBody('');
+                  setIsTraditionalLocked(true);
+                  setShowTraditionalModal(true);
+                }} className="primary-btn" style={{ width: 'auto' }}>Reply in Traditional View ➔</button>
+              </div>
+            </div>
           </div>
         )}
-      </div>
-
-      {/* Footer Actions */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexShrink: 0, borderTop: '1px solid var(--input-border)', paddingTop: '1rem' }}>
-        <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.6rem 1.25rem', borderRadius: '0.75rem', cursor: 'pointer' }}>Close</button>
-        <button onClick={() => {
-          const sender = traditionalEmailReader.sender;
-          const subj = traditionalEmailReader.subject;
-          setTraditionalEmailReader(null);
-          setTraditionalTo(sender);
-          setTraditionalCc('');
-          setTraditionalSubject(subj ? `Re: ${subj.replace(/^Re:\s*/i, '')}` : '');
-          setTraditionalBody('');
-          setIsTraditionalLocked(true);
-          setShowTraditionalModal(true);
-        }} className="primary-btn" style={{ width: 'auto' }}>Reply in Traditional View ➔</button>
-      </div>
-
-    </div>
-  </div>
-)}
 
         {activeCall && (
           <div className="modal-overlay" onClick={() => setActiveCall(null)}>
