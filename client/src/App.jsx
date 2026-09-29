@@ -1176,18 +1176,11 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* SIDEBAR WITH FULL-WIDTH SEARCH BAR & FILTER CHIPS */}
+                {/* SIDEBAR WITH FULL-WIDTH SEARCH BAR & FILTER CHIPS (FOLDER & MENU TEXT REMOVED) */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
                   <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>
-                    {/* CURRENT FOLDER HEADER LABEL */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#818cf8', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      <span>Folder: {currentFolder}</span>
-                      <button onClick={() => setMobileMenuOpen(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
-                        <Menu size={14} /> Menu
-                      </button>
-                    </div>
-
+                    
                     {/* FULL-WIDTH SEARCH BAR */}
                     <div className="search-bar-container" style={{ margin: 0, width: '100%' }}>
                       <Search size={16} className="search-icon" />
@@ -1214,7 +1207,7 @@ function App() {
                       />
                     </div>
 
-                    {/* FILTER CHIPS (ALL, UNREAD, ATTACHMENTS, FAVORITES) WITHOUT UGLY SCROLLER */}
+                    {/* FILTER CHIPS WITHOUT UGLY SCROLLER */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                       <div className="hide-scrollbar" style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px', flex: 1, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         {['all', 'unread', 'attachments', 'favorites'].map((chip) => (
@@ -1253,7 +1246,7 @@ function App() {
                     {filteredThreads.length === 0 ? (
                       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
                         <Mail size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
-                        <p>No active chats in {currentFolder}</p>
+                        <p>No active chats found</p>
                         <small>Type a phone number in the search bar above & press Enter to start chatting.</small>
                       </div>
                     ) : (
@@ -1303,7 +1296,7 @@ function App() {
                   </div>
                 </div>
 
-                {/* ACTIVE CHAT WINDOW PANE */}
+                {/* ACTIVE CHAT WINDOW PANE WITH FUTURISTIC BUBBLES */}
                 <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', height: '100%', overflow: 'hidden' }}>
                   {activeThread ? (
                     <>
@@ -1326,7 +1319,7 @@ function App() {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeThread.name}</h3>
                             <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span> online
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span> online node
                             </span>
                           </div>
                         </div>
@@ -1335,33 +1328,34 @@ function App() {
                           <button 
                             onClick={() => setActiveCall({ type: 'Voice Call', name: activeThread.name })}
                             title="Voice Call"
-                            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
-                            <PhoneCall size={18} />
+                            <PhoneCall size={16} />
                           </button>
                           <button 
                             onClick={() => setActiveCall({ type: 'Video Call', name: activeThread.name })}
                             title="Video Call"
-                            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
-                            <Video size={18} />
+                            <Video size={16} />
                           </button>
                           <button 
                             onClick={() => handleDeleteChatThread(activeThread.canonicalKey)}
                             title="Delete Chat Thread"
-                            style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: 'none', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: '600' }}
+                            style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.4rem 0.75rem', borderRadius: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: '600' }}
                           >
-                            <Trash size={15} /> Delete
+                            <Trash size={14} /> Delete
                           </button>
                         </div>
                       </div>
 
-                      {/* MESSAGES (CLICK ANY MESSAGE TO OPEN TRADITIONAL VIEW - NO "TRADITIONAL VIEW" TEXT BUTTON) */}
-                      <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                      {/* MESSAGES WITH ULTRA-FUTURISTIC CYBERPUNK/GLASS BUBBLES */}
+                      <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem', background: 'radial-gradient(circle at center, rgba(99,102,241,0.04) 0%, rgba(3,7,18,0.7) 100%)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
-                            <p>No messages yet in this conversation.</p>
-                            <small>Send your first message below to start chatting!</small>
+                            <Mail size={52} style={{ marginBottom: '0.75rem', opacity: 0.3, filter: 'drop-shadow(0 0 10px rgba(99,102,241,0.3))' }} />
+                            <p style={{ fontWeight: '600', letterSpacing: '0.02em' }}>Secure Channel Initialized</p>
+                            <small>Send your first transmission below.</small>
                           </div>
                         ) : (
                           activeThread.messages.map((msg, idx) => {
@@ -1390,63 +1384,69 @@ function App() {
                                 <div 
                                   onClick={() => setTraditionalEmailReader(msg)}
                                   style={{
-                                    maxWidth: '70%',
-                                    background: isOutbound ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' : 'var(--card-bg)',
+                                    maxWidth: '72%',
+                                    background: isOutbound 
+                                      ? 'linear-gradient(135deg, rgba(99,102,241,0.95) 0%, rgba(168,85,247,0.9) 50%, rgba(236,72,153,0.9) 100%)' 
+                                      : 'rgba(18, 24, 38, 0.85)',
+                                    backdropFilter: 'blur(16px)',
                                     color: isOutbound ? '#ffffff' : 'var(--text-primary)',
-                                    padding: '0.75rem 1rem',
-                                    borderRadius: isOutbound ? '1rem 1rem 0 1rem' : '1rem 1rem 1rem 0',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                    border: isOutbound ? 'none' : '1px solid var(--input-border)',
+                                    padding: '0.9rem 1.15rem',
+                                    borderRadius: isOutbound ? '1.25rem 1.25rem 0.25rem 1.25rem' : '1.25rem 1.25rem 1.25rem 0.25rem',
+                                    boxShadow: isOutbound ? '0 8px 32px rgba(99, 102, 241, 0.35)' : '0 8px 32px rgba(0, 0, 0, 0.4)',
+                                    border: isOutbound ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(99, 102, 241, 0.25)',
                                     position: 'relative',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.2s ease, box-shadow 0.2s ease'
                                   }}
-                                  title="Click anywhere to open in traditional view"
+                                  title="Click anywhere to inspect payload"
                                 >
                                   {msg.subject && (
-                                    <div style={{ fontSize: '0.75rem', fontWeight: '700', opacity: 0.95, marginBottom: '0.35rem', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <Mail size={12} /> Subject: {msg.subject}
+                                    <div style={{ fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', opacity: 0.9, marginBottom: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.18)', paddingBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                      <Sparkles size={11} /> {msg.subject}
                                     </div>
                                   )}
 
                                   {/* REPLIED TO MESSAGE DISPLAYED ON TOP INSIDE BUBBLE */}
                                   {msg.quotedMessage && (
-                                    <div style={{ background: 'rgba(0,0,0,0.25)', borderLeft: '3px solid #818cf8', padding: '0.4rem 0.6rem', borderRadius: '0.35rem', marginBottom: '0.5rem', fontSize: '0.8rem', opacity: 0.95 }}>
-                                      <div style={{ fontWeight: '600', fontSize: '0.7rem', color: '#c7d2fe' }}>Replying to {msg.quotedMessage.sender.split('@')[0]}</div>
-                                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'inherit' }}>{msg.quotedMessage.body}</div>
+                                    <div style={{ background: 'rgba(0,0,0,0.3)', borderLeft: '3px solid #38bdf8', padding: '0.45rem 0.7rem', borderRadius: '0.5rem', marginBottom: '0.6rem', fontSize: '0.81rem', backdropFilter: 'blur(4px)' }}>
+                                      <div style={{ fontWeight: '700', fontSize: '0.7rem', color: '#38bdf8', letterSpacing: '0.03em' }}>RE: {msg.quotedMessage.sender.split('@')[0].toUpperCase()}</div>
+                                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'rgba(255,255,255,0.9)' }}>{msg.quotedMessage.body}</div>
                                     </div>
                                   )}
 
                                   {msg.attachment && (
-                                    <div style={{ marginBottom: msg.body ? '0.5rem' : 0, borderRadius: '0.5rem', overflow: 'hidden' }}>
-                                      <img src={msg.attachment} alt="Attachment Preview" style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', borderRadius: '0.5rem', display: 'block' }} />
+                                    <div style={{ marginBottom: msg.body ? '0.6rem' : 0, borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)' }}>
+                                      <img src={msg.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', display: 'block' }} />
                                     </div>
                                   )}
+
                                   {msg.body && (
-                                    <div style={{ fontSize: '0.9rem', wordBreak: 'break-word', lineHeight: '1.4' }}>
-                                      {isLong ? `${msg.body.substring(0, 180)}... (Click to read full email)` : msg.body}
+                                    <div style={{ fontSize: '0.92rem', wordBreak: 'break-word', lineHeight: '1.5' }}>
+                                      {isLong ? `${msg.body.substring(0, 180)}... (Tap to expand payload)` : msg.body}
                                     </div>
                                   )}
-                                  <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+
+                                  <div style={{ fontSize: '0.68rem', opacity: 0.75, textAlign: 'right', marginTop: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', fontFamily: 'JetBrains Mono, monospace' }}>
                                     {hasBeenRepliedTo ? (
-                                      <span style={{ fontSize: '0.65rem', opacity: 0.7, fontStyle: 'italic', marginRight: 'auto' }}>✓ Replied</span>
+                                      <span style={{ fontSize: '0.65rem', fontStyle: 'italic', marginRight: 'auto', color: isOutbound ? '#e0e7ff' : '#818cf8' }}>✓ Synchronized</span>
                                     ) : (
                                       <button 
                                         onClick={(e) => { 
                                           e.stopPropagation(); 
                                           setQuotedMessage({ id: msgId, sender: msg.sender, body: msg.body || '[Attachment]' }); 
                                         }}
-                                        title="Tag/Quote this message to reply"
-                                        style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: '600', marginRight: 'auto' }}
+                                        title="Quote payload"
+                                        style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: '700', marginRight: 'auto' }}
                                       >
                                         <MessageSquareReply size={13} /> Reply
                                       </button>
                                     )}
                                     {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    {isOutbound && (msg.isOptimistic ? ' ◌' : ' ✓✓')}
+                                    {isOutbound && (msg.isOptimistic ? ' ◌' : ' ⚡')}
                                     {msg._id && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); handleDeleteSingleMessage(msg._id); }}
-                                        title="Delete message"
+                                        title="Purge message"
                                         style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.6, padding: '0 2px' }}
                                       >
                                         <Trash2 size={11} />
@@ -1461,24 +1461,24 @@ function App() {
                       </div>
 
                       {attachmentPreview && (
-                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
-                          <div style={{ width: '40px', height: '40px', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid var(--input-border)' }}>
+                        <div style={{ padding: '0.6rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, backdropFilter: 'blur(20px)' }}>
+                          <div style={{ width: '40px', height: '40px', borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid var(--input-border)' }}>
                             <img src={attachmentPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', flex: 1 }}>Attachment ready (max 5MB)</span>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', flex: 1, fontFamily: 'JetBrains Mono, monospace' }}>Encrypted attachment ready (max 5MB)</span>
                           <button onClick={() => setAttachmentPreview(null)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}><X size={16} /></button>
                         </div>
                       )}
 
                       {showSnippets && (
-                        <div className="hide-scrollbar" style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flexShrink: 0, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}><Sparkles size={12} /> Quick Replies:</span>
+                        <div className="hide-scrollbar" style={{ padding: '0.6rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flexShrink: 0, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'JetBrains Mono, monospace' }}><Sparkles size={12} /> Neural Presets:</span>
                           {quickSnippetsList.map((snip, i) => (
                             <button
                               key={i}
                               type="button"
                               onClick={() => { setChatMessageBody(snip); setShowSnippets(false); }}
-                              style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', cursor: 'pointer' }}
+                              style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.3rem 0.75rem', borderRadius: '1rem', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.2s' }}
                             >
                               {snip}
                             </button>
@@ -1486,14 +1486,14 @@ function App() {
                         </div>
                       )}
 
-                      {/* CHAT COMPOSER BAR WITH CLEAR REPLIED-TO PREVIEW ON TOP */}
-                      <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem', flexShrink: 0 }}>
+                      {/* FUTURISTIC CHAT COMPOSER BAR */}
+                      <form onSubmit={handleSendReplySubmit} style={{ padding: '1rem 1.25rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.6rem', flexShrink: 0, backdropFilter: 'blur(25px)' }}>
                         
                         {/* QUOTED MESSAGE PREVIEW BOX ON TOP OF INPUT */}
                         {quotedMessage && (
-                          <div style={{ background: 'rgba(99, 102, 241, 0.15)', borderLeft: '3px solid #6366f1', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ background: 'rgba(99, 102, 241, 0.15)', borderLeft: '3px solid #6366f1', padding: '0.5rem 0.85rem', borderRadius: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backdropFilter: 'blur(10px)' }}>
                             <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              <span style={{ fontWeight: '700', color: '#818cf8', display: 'block', fontSize: '0.75rem' }}>Replying to {quotedMessage.sender.split('@')[0]}</span>
+                              <span style={{ fontWeight: '700', color: '#818cf8', display: 'block', fontSize: '0.72rem', letterSpacing: '0.03em', fontFamily: 'JetBrains Mono, monospace' }}>QUOTED PAYLOAD FROM {quotedMessage.sender.split('@')[0].toUpperCase()}</span>
                               <span>{quotedMessage.body}</span>
                             </div>
                             <button type="button" onClick={() => setQuotedMessage(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}><X size={16} /></button>
@@ -1501,20 +1501,20 @@ function App() {
                         )}
 
                         {!isReplying && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', width: '50px' }}>Subject</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', width: '65px', fontFamily: 'JetBrains Mono, monospace' }}>SUBJECT</span>
                             <input 
                               type="text"
-                              placeholder="Add a subject (optional)..."
+                              placeholder="Add secure transmission subject..."
                               value={chatSubject}
                               onChange={(e) => setChatSubject(e.target.value)}
-                              style={{ flex: 1, padding: '0.4rem 0.75rem', borderRadius: '0.5rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: '0.8rem', outline: 'none' }}
+                              style={{ flex: 1, padding: '0.5rem 0.85rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}
                             />
                           </div>
                         )}
 
                         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                          <label title="Attach image or file up to 5MB" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <label title="Attach secure file (max 5MB)" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}>
                             <Paperclip size={20} />
                             <input type="file" accept="image/*" onChange={handleAttachmentUpload} style={{ display: 'none' }} />
                           </label>
@@ -1529,7 +1529,7 @@ function App() {
                               setIsTraditionalLocked(true);
                               setShowTraditionalModal(true);
                             }}
-                            title="Compose in Traditional View"
+                            title="Compose in Traditional Mail mode"
                             style={{ background: 'transparent', border: 'none', color: '#6366f1', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <Camera size={20} />
@@ -1538,7 +1538,7 @@ function App() {
                           <button 
                             type="button" 
                             onClick={() => setShowSnippets(!showSnippets)}
-                            title="Quick message templates"
+                            title="Neural templates"
                             style={{ background: 'transparent', border: 'none', color: showSnippets ? '#6366f1' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <Sparkles size={20} />
@@ -1546,12 +1546,12 @@ function App() {
 
                           <input 
                             type="text"
-                            placeholder="Type a message..."
+                            placeholder="Type secure transmission..."
                             value={chatMessageBody}
                             onChange={(e) => setChatMessageBody(e.target.value)}
-                            style={{ flex: 1, padding: '0.65rem 1rem', borderRadius: '1.5rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                            style={{ flex: 1, padding: '0.75rem 1.15rem', borderRadius: '1.25rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.92rem' }}
                           />
-                          <button type="submit" disabled={loading} style={{ background: '#6366f1', color: '#fff', border: 'none', width: '42px', height: '42px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
+                          <button type="submit" disabled={loading} style={{ background: 'var(--accent-gradient)', color: '#fff', border: 'none', width: '44px', height: '44px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 20px rgba(99,102,241,0.5)', transition: 'transform 0.2s' }}>
                             <Send size={18} />
                           </button>
                         </div>
@@ -1559,9 +1559,9 @@ function App() {
                     </>
                   ) : (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', padding: '2rem', textAlign: 'center' }}>
-                      <Mail size={56} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Secure Chat Portal</h3>
-                      <p style={{ maxWidth: '320px', fontSize: '0.9rem' }}>Search a phone number in the left panel and press Enter to start chatting.</p>
+                      <Mail size={64} style={{ opacity: '0.25', marginBottom: '1.25rem', filter: 'drop-shadow(0 0 15px rgba(99,102,241,0.2))' }} />
+                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '1.25rem', fontWeight: '700', letterSpacing: '-0.02em' }}>Encrypted Neural Node</h3>
+                      <p style={{ maxWidth: '340px', fontSize: '0.9rem', lineHeight: '1.5' }}>Search a phone number or alias in the left matrix panel & press Enter to establish link.</p>
                     </div>
                   )}
                 </div>
@@ -1586,18 +1586,19 @@ function App() {
               position: 'fixed',
               bottom: '28px',
               right: '28px',
-              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              background: 'var(--accent-gradient)',
               color: '#fff',
               border: 'none',
-              width: '56px',
-              height: '56px',
+              width: '58px',
+              height: '58px',
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              boxShadow: '0 8px 24px rgba(99, 102, 241, 0.4)',
-              zIndex: 9999
+              boxShadow: '0 10px 30px rgba(99, 102, 241, 0.5)',
+              zIndex: 9999,
+              transition: 'transform 0.2s ease'
             }}
             title="Compose New Email"
           >
@@ -1713,12 +1714,12 @@ function App() {
         {activeCall && (
           <div className="modal-overlay" onClick={() => setActiveCall(null)}>
             <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center', padding: '2.5rem 1.5rem', background: 'var(--card-bg)' }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#6366f1', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '2rem', fontWeight: 'bold', animation: 'pulse 1.5s infinite' }}>
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#6366f1', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '2rem', fontWeight: 'bold', animation: 'pulse 1.5s infinite', boxShadow: '0 0 30px rgba(99,102,241,0.6)' }}>
                 {activeCall.name.charAt(0).toUpperCase()}
               </div>
               <h3 style={{ fontSize: '1.3rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{activeCall.name}</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '2rem' }}>Calling via secure {activeCall.type}...</p>
-              <button onClick={() => setActiveCall(null)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem 2rem', borderRadius: '2rem', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)' }}>End Call</button>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '2rem', fontFamily: 'JetBrains Mono, monospace' }}>Establishing {activeCall.type}...</p>
+              <button onClick={() => setActiveCall(null)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem 2rem', borderRadius: '2rem', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 16px rgba(239, 68, 68, 0.5)' }}>End Transmission</button>
             </div>
           </div>
         )}
@@ -1726,7 +1727,7 @@ function App() {
         {showChatInfo && activeThread && (
           <div className="modal-overlay" onClick={() => setShowChatInfo(false)}>
             <div className="modal-content" style={{ maxWidth: '380px', textAlign: 'center', padding: '2rem 1.5rem' }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: '#6366f1', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', color: '#fff', fontSize: '2.5rem', fontWeight: 'bold', boxShadow: '0 8px 24px rgba(99,102,241,0.4)' }}>
+              <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: '#6366f1', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', color: '#fff', fontSize: '2.5rem', fontWeight: 'bold', boxShadow: '0 8px 30px rgba(99,102,241,0.5)' }}>
                 {activeThread.avatar ? (
                   <img src={activeThread.avatar} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
@@ -1736,9 +1737,9 @@ function App() {
               <h2 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{activeThread.name}</h2>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all', marginBottom: '1.5rem' }}>{activeThread.sender}</p>
               
-              <div style={{ background: 'var(--input-bg)', padding: '1rem', borderRadius: '0.875rem', textAlign: 'left', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
-                <div style={{ color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Endpoint Security</div>
-                <div style={{ color: 'var(--text-primary)', fontWeight: '600' }}>End-to-end encrypted @rizzmail.me relay</div>
+              <div style={{ background: 'var(--input-bg)', padding: '1rem', borderRadius: '0.875rem', textAlign: 'left', marginBottom: '1.5rem', fontSize: '0.85rem', border: '1px solid var(--input-border)' }}>
+                <div style={{ color: 'var(--text-muted)', marginBottom: '0.2rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem' }}>SECURITY PROTOCOL</div>
+                <div style={{ color: 'var(--text-primary)', fontWeight: '600' }}>End-to-End Encrypted @rizzmail.me Node</div>
               </div>
 
               <button onClick={() => setShowChatInfo(false)} className="primary-btn">Close Info</button>
