@@ -43,7 +43,6 @@ const extractCleanBody = (rawText) => {
   if (!rawText) return '';
   let cleaned = rawText.toString();
 
-  // Strip raw email headers before double line-break if present
   if (/^\s*(Received|Return-Path|DKIM-Signature|Authentication-Results|MIME-Version):/i.test(cleaned)) {
     const doubleNewline = cleaned.search(/(\r?\n){2}/);
     if (doubleNewline !== -1) {
@@ -51,20 +50,15 @@ const extractCleanBody = (rawText) => {
     }
   }
 
-  // Remove header lines
   cleaned = cleaned.replace(/^(Received|Return-Path|DKIM-Signature|Authentication-Results|X-[a-zA-Z0-9-]+|Content-Type|Content-Transfer-Encoding|MIME-Version|Message-ID):.*$/gim, '');
-
-  // Remove MIME boundaries
   cleaned = cleaned.replace(/--[a-zA-Z0-9_-]{10,}/g, '');
 
-  // Decode quoted-printable space artifacts
   cleaned = cleaned
     .replace(/=E2=80=AF/gi, ' ')
     .replace(/=C2=A0/gi, ' ')
     .replace(/=3D/gi, '=')
     .replace(/=\r?\n/g, '');
 
-  // Strip out reply history chains
   const replyIndexPatterns = [
     /\n\s*on\s+.+wrote:/i,
     /\n\s*-----+\s*original message\s*-----+/i,
@@ -82,14 +76,19 @@ const extractCleanBody = (rawText) => {
   return cleaned.trim();
 };
 
-// GET all emails for a specific address with live profile photo injection
+// GET all emails for a specific address
 router.get('/:emailAddress', async (req, res) => {
   try {
     const emailAddress = req.params.emailAddress.toLowerCase();
+    const cleanDigits = emailAddress.replace(/[^0-9]/g, '').slice(-10);
+
     const emails = await Email.find({ 
       $or: [
         { emailAddress },
-        { recipient: emailAddress }
+        { recipient: emailAddress },
+        { sender: emailAddress },
+        { recipient: { $regex: cleanDigits,$options: 'i' } },
+        { sender: { $regex: cleanDigits,$options: 'i' } }
       ],
       isDeleted: { $ne: true }
     }).sort({ date: -1, createdAt: -1 }).allowDiskUse(true).lean();
@@ -139,7 +138,6 @@ router.post('/inbound', async (req, res) => {
     });
     
     await newMessage.save();
-
     res.status(200).json({ success: true });
   } catch (err) {
     console.error('Email parsing error:', err);
@@ -147,7 +145,7 @@ router.post('/inbound', async (req, res) => {
   }
 });
 
-// Fetch messages by phone number or alias with live profile photo injection
+// Robust Fetch messages by phone number or alias
 router.get('/messages/:phone', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phone);
@@ -155,9 +153,11 @@ router.get('/messages/:phone', async (req, res) => {
       $or: [
         { emailAddress: alias },
         { recipient: alias },
+        { sender: alias },
         { emailAddress: pureDigits },
+        { phoneNumber: pureDigits },
         { recipient: { $regex: pureDigits,$options: 'i' } },
-        { phoneNumber: pureDigits }
+        { sender: { $regex: pureDigits,$options: 'i' } }
       ],
       isDeleted: { $ne: true }
     }).sort({ date: -1, createdAt: -1 }).allowDiskUse(true).lean();
@@ -318,7 +318,9 @@ router.get('/inbox/:phoneNumber', async (req, res) => {
         { phoneNumber: pureDigits },
         { emailAddress: pureDigits },
         { recipient: alias },
-        { recipient: { $regex: pureDigits,$options: 'i' } }
+        { sender: alias },
+        { recipient: { $regex: pureDigits,$options: 'i' } },
+        { sender: { $regex: pureDigits,$options: 'i' } }
       ],
       isDeleted: { $ne: true }
     }).sort({ createdAt: -1, date: -1 }).allowDiskUse(true).lean();
@@ -372,20 +374,17 @@ router.post('/simulate-incoming', async (req, res) => {
 });
 
 // Delete entire chat thread
-// Delete entire chat thread
 router.delete('/thread/:identifier', async (req, res) => {
   try {
     const identifier = req.params.identifier;
     const { pureDigits } = normalizePhone(identifier);
-    
-    // Define search target cleanly on its own line to avoid clipboard translation bugs
     const searchTarget = pureDigits ? pureDigits : identifier;
-
+    
     await Email.updateMany(
       {
         $or: [
-          { sender: { $regex: searchTarget, $options: 'i' } },
-          { recipient: { $regex: searchTarget, $options: 'i' } }
+          { sender: { $regex: searchTarget,$options: 'i' } },
+          { recipient: { $regex: searchTarget,$options: 'i' } }
         ]
       },
       { $set: { isDeleted: true } }
