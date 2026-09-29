@@ -83,22 +83,23 @@ router.get('/messages/:phone', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phone);
     
-    // Correct aggregation syntax with { allowDiskUse: true } options object
     const emails = await Email.aggregate([
       {
-        $match: {$or: [
-            { phoneNumber: { $regex: pureDigits,$options: 'i' } },
-            { emailAddress: { $regex: pureDigits,$options: 'i' } },
+        $match: {
+          $or: [
+            { phoneNumber: pureDigits },
+            { emailAddress: pureDigits },
             { emailAddress: alias },
             { recipient: alias },
             { sender: alias },
-            { recipient: { $regex: pureDigits,$options: 'i' } },
-            { sender: { $regex: pureDigits,$options: 'i' } }
+            { recipient: pureDigits },
+            { sender: pureDigits }
           ],
           isDeleted: { $ne: true }
         }
       },
-      { $sort: { createdAt: -1, date: -1 } },       {$limit: 50 }, // Pagination limit to prevent large payloads
+      { $sort: { createdAt: -1, date: -1 } },
+      { $limit: 50 }, // Pagination limit to prevent heavy payloads
       { $project: { attachment: 0 } } // Exclude heavy base64 strings from list view
     ], { allowDiskUse: true });
 
@@ -124,19 +125,21 @@ router.get('/inbox/:phoneNumber', async (req, res) => {
 
     const emails = await Email.aggregate([
       {
-        $match: {$or: [
-            { phoneNumber: { $regex: pureDigits,$options: 'i' } },
-            { emailAddress: { $regex: pureDigits,$options: 'i' } },
+        $match: {
+          $or: [
+            { phoneNumber: pureDigits },
+            { emailAddress: pureDigits },
             { recipient: alias },
             { sender: alias },
-            { recipient: { $regex: pureDigits,$options: 'i' } },
-            { sender: { $regex: pureDigits,$options: 'i' } }
+            { recipient: pureDigits },
+            { sender: pureDigits }
           ],
           isDeleted: { $ne: true }
         }
       },
       { $sort: { createdAt: -1, date: -1 } },
-      { $limit: 50 },       {$project: { attachment: 0 } }
+      { $limit: 50 },
+      { $project: { attachment: 0 } }
     ], { allowDiskUse: true });
 
     for (let email of emails) {
@@ -386,25 +389,23 @@ router.get('/:emailAddress', async (req, res) => {
     const emailAddress = req.params.emailAddress.toLowerCase();
     const cleanDigits = emailAddress.replace(/[^0-9]/g, '').slice(-10);
 
-   const emails = await Email.aggregate([
-  {
-    $match: {
-      $or: [
-        { phoneNumber: { $regex: pureDigits, $options: 'i' } },
-        { emailAddress: { $regex: pureDigits, $options: 'i' } },
-        { emailAddress: alias },
-        { recipient: alias },
-        { sender: alias },
-        { recipient: { $regex: pureDigits, $options: 'i' } },
-        { sender: { $regex: pureDigits, $options: 'i' } }
-      ],
-      isDeleted: { $ne: true }
-    }
-  },
-  { $sort: { createdAt: -1, date: -1 } },
-  { $limit: 50 },
-  { $project: { attachment: 0 } }
-]).allowDiskUse(true); // <--- Chained here correctly
+    const emails = await Email.aggregate([
+      {
+        $match: {
+          $or: [
+            { emailAddress },
+            { recipient: emailAddress },
+            { sender: emailAddress },
+            { recipient: cleanDigits },
+            { sender: cleanDigits }
+          ],
+          isDeleted: { $ne: true }
+        }
+      },
+      { $sort: { date: -1, createdAt: -1 } },
+      { $limit: 50 },
+      { $project: { attachment: 0 } }
+    ], { allowDiskUse: true });
 
     for (let email of emails) {
       if (email.sender) {
