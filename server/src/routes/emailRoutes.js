@@ -76,30 +76,30 @@ const extractCleanBody = (rawText) => {
 };
 
 // ==========================================
-// SPECIFIC ROUTES
+// SPECIFIC ROUTES (Using Aggregation + allowDiskUse)
 // ==========================================
 
-// Fetch messages by phone number or alias with memory-safe limit and projection
+// Fetch messages by phone number or alias using aggregation pipeline
 router.get('/messages/:phone', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phone);
-    const emails = await Email.find({
-      $or: [
-        { phoneNumber: { $regex: pureDigits,$options: 'i' } },
-        { emailAddress: { $regex: pureDigits,$options: 'i' } },
-        { emailAddress: alias },
-        { recipient: alias },
-        { sender: alias },
-        { recipient: { $regex: pureDigits,$options: 'i' } },
-        { sender: { $regex: pureDigits,$options: 'i' } }
-      ],
-      isDeleted: { $ne: true }
-    })
-    .sort({ createdAt: -1, date: -1 })
-    .limit(200) // Limits working set to prevent 32MB memory crash
-    .select('-attachment') // Strips heavy base64 strings from list view
-    .allowDiskUse(true)
-    .lean();
+    const emails = await Email.aggregate([
+      {
+        $match: {$or: [
+            { phoneNumber: { $regex: pureDigits,$options: 'i' } },
+            { emailAddress: { $regex: pureDigits,$options: 'i' } },
+            { emailAddress: alias },
+            { recipient: alias },
+            { sender: alias },
+            { recipient: { $regex: pureDigits,$options: 'i' } },
+            { sender: { $regex: pureDigits,$options: 'i' } }
+          ],
+          isDeleted: { $ne: true }
+        }
+      },
+      { $sort: { createdAt: -1, date: -1 } },
+      { $limit: 200 },       {$project: { attachment: 0 } } // Exclude heavy base64 attachments from list view
+    ]).allowDiskUse(true); // Allows sorting to spill over to disk safely
 
     for (let email of emails) {
       if (email.sender) {
@@ -116,28 +116,28 @@ router.get('/messages/:phone', async (req, res) => {
   }
 });
 
-// Flexible Inbox fetcher with memory-safe limit
+// Flexible Inbox fetcher using aggregation pipeline
 router.get('/inbox/:phoneNumber', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phoneNumber);
     if (!pureDigits) return res.status(400).json({ success: false, message: 'Phone number required' });
 
-    const emails = await Email.find({ 
-      $or: [
-        { phoneNumber: { $regex: pureDigits,$options: 'i' } },
-        { emailAddress: { $regex: pureDigits,$options: 'i' } },
-        { recipient: alias },
-        { sender: alias },
-        { recipient: { $regex: pureDigits,$options: 'i' } },
-        { sender: { $regex: pureDigits,$options: 'i' } }
-      ],
-      isDeleted: { $ne: true }
-    })
-    .sort({ createdAt: -1, date: -1 })
-    .limit(200)
-    .select('-attachment')
-    .allowDiskUse(true)
-    .lean();
+    const emails = await Email.aggregate([
+      {
+        $match: {$or: [
+            { phoneNumber: { $regex: pureDigits,$options: 'i' } },
+            { emailAddress: { $regex: pureDigits,$options: 'i' } },
+            { recipient: alias },
+            { sender: alias },
+            { recipient: { $regex: pureDigits,$options: 'i' } },
+            { sender: { $regex: pureDigits,$options: 'i' } }
+          ],
+          isDeleted: { $ne: true }
+        }
+      },
+      { $sort: { createdAt: -1, date: -1 } },
+      { $limit: 200 },       {$project: { attachment: 0 } }
+    ]).allowDiskUse(true);
 
     for (let email of emails) {
       if (email.sender) {
@@ -396,21 +396,21 @@ router.get('/:emailAddress', async (req, res) => {
     const emailAddress = req.params.emailAddress.toLowerCase();
     const cleanDigits = emailAddress.replace(/[^0-9]/g, '').slice(-10);
 
-    const emails = await Email.find({ 
-      $or: [
-        { emailAddress },
-        { recipient: emailAddress },
-        { sender: emailAddress },
-        { recipient: { $regex: cleanDigits,$options: 'i' } },
-        { sender: { $regex: cleanDigits,$options: 'i' } }
-      ],
-      isDeleted: { $ne: true }
-    })
-    .sort({ date: -1, createdAt: -1 })
-    .limit(200)
-    .select('-attachment')
-    .allowDiskUse(true)
-    .lean();
+    const emails = await Email.aggregate([
+      {
+        $match: {$or: [
+            { emailAddress },
+            { recipient: emailAddress },
+            { sender: emailAddress },
+            { recipient: { $regex: cleanDigits,$options: 'i' } },
+            { sender: { $regex: cleanDigits,$options: 'i' } }
+          ],
+          isDeleted: { $ne: true }
+        }
+      },
+      { $sort: { date: -1, createdAt: -1 } },
+      { $limit: 200 },       {$project: { attachment: 0 } }
+    ]).allowDiskUse(true);
 
     for (let email of emails) {
       if (email.sender) {
