@@ -751,30 +751,30 @@ function App() {
 
   return (
     <div className="app-container">
-      <header className="app-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1.5rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+<header className="app-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           {user && step === 6 && (
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="theme-toggle-btn mobile-hamburger-btn" 
-              style={{ display: 'flex' }}
+              style={{ display: 'flex', width: '42px', height: '42px' }}
               title="Toggle Menu"
             >
-              <Menu size={20} />
+              <Menu size={22} />
             </button>
           )}
 
-          <div className="app-logo-icon">rm</div>
+          <div className="app-logo-icon" style={{ width: '44px', height: '44px', fontSize: '1.25rem' }}>rm</div>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-              <h1 className="logo-text" style={{ margin: 0, fontSize: '1.1rem', lineHeight: '1.2' }}>rizzmail.me</h1>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Your personal email via your phone number.</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+              <h1 className="logo-text" style={{ margin: 0, fontSize: '1.3rem', lineHeight: '1.2' }}>rizzmail.me</h1>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Your personal email via your phone number.</span>
             </div>
           </div>
         </div>
         
-        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div className="status-pill">
+        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div className="status-pill" style={{ padding: '0.45rem 1rem' }}>
             <span className="pulse-dot"></span> System Online
           </div>
           
@@ -784,12 +784,12 @@ function App() {
                 onClick={() => setShowProfileMenu(!showProfileMenu)} 
                 className="theme-toggle-btn"
                 title={`${user.firstName || 'User Account'} - Account Settings`}
-                style={{ background: showProfileMenu ? 'rgba(99, 102, 241, 0.25)' : undefined, overflow: 'hidden', padding: 0, cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%' }}
+                style={{ background: showProfileMenu ? 'rgba(99, 102, 241, 0.25)' : undefined, overflow: 'hidden', padding: 0, cursor: 'pointer', width: '42px', height: '42px', borderRadius: '50%' }}
               >
                 {user.profilePhoto ? (
                   <img src={user.profilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <User size={18} />
+                  <User size={20} />
                 )}
               </button>
 
@@ -797,7 +797,7 @@ function App() {
                 <div style={{
                   position: 'absolute',
                   right: 0,
-                  top: 'calc(100% + 12px)',
+                  top: 'calc(100% + 14px)',
                   background: 'var(--card-bg)',
                   border: '1px solid var(--input-border)',
                   borderRadius: '1rem',
@@ -836,9 +836,10 @@ function App() {
           <button 
             onClick={toggleTheme} 
             className="theme-toggle-btn"
+            style={{ width: '42px', height: '42px' }}
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
           >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
         </div>
       </header>
