@@ -386,21 +386,25 @@ router.get('/:emailAddress', async (req, res) => {
     const emailAddress = req.params.emailAddress.toLowerCase();
     const cleanDigits = emailAddress.replace(/[^0-9]/g, '').slice(-10);
 
-    const emails = await Email.aggregate([
-      {
-        $match: {$or: [
-            { emailAddress },
-            { recipient: emailAddress },
-            { sender: emailAddress },
-            { recipient: { $regex: cleanDigits,$options: 'i' } },
-            { sender: { $regex: cleanDigits,$options: 'i' } }
-          ],
-          isDeleted: { $ne: true }
-        }
-      },
-      { $sort: { date: -1, createdAt: -1 } },
-      { $limit: 50 },       {$project: { attachment: 0 } }
-    ], { allowDiskUse: true });
+   const emails = await Email.aggregate([
+  {
+    $match: {
+      $or: [
+        { phoneNumber: { $regex: pureDigits, $options: 'i' } },
+        { emailAddress: { $regex: pureDigits, $options: 'i' } },
+        { emailAddress: alias },
+        { recipient: alias },
+        { sender: alias },
+        { recipient: { $regex: pureDigits, $options: 'i' } },
+        { sender: { $regex: pureDigits, $options: 'i' } }
+      ],
+      isDeleted: { $ne: true }
+    }
+  },
+  { $sort: { createdAt: -1, date: -1 } },
+  { $limit: 50 },
+  { $project: { attachment: 0 } }
+]).allowDiskUse(true); // <--- Chained here correctly
 
     for (let email of emails) {
       if (email.sender) {
