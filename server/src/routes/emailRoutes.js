@@ -80,28 +80,49 @@ const extractCleanBody = (rawText) => {
 // SPECIFIC ROUTES (Must be before /:emailAddress)
 // ==========================================
 
-// Fetch messages by phone number or alias using index-safe anchored regex & aggregation
+// Fetch messages safely using split queries to avoid MongoDB memory limits
 router.get('/messages/:phone', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phone);
-    
-    const emails = await Email.aggregate([
-      {
-        $match: {$or: [
-            { phoneNumber: { $regex: '^' + pureDigits,$options: 'i' } },
-            { emailAddress: { $regex: '^' + pureDigits,$options: 'i' } },
-            { emailAddress: alias },
-            { recipient: alias },
-            { sender: alias },
-            { recipient: { $regex: '^' + pureDigits,$options: 'i' } },
-            { sender: { $regex: '^' + pureDigits,$options: 'i' } }
-          ],
-          isDeleted: { $ne: true }
-        }
-      },
-      { $sort: { createdAt: -1, date: -1 } },
-      { $limit: 50 },       {$project: { attachment: 0 } } // Exclude heavy base64 attachments from list view
-    ], { allowDiskUse: true });
+    if (!pureDigits) return res.json([]);
+
+    const primaryQuery = Email.find({
+      $or: [
+        { phoneNumber: pureDigits },
+        { emailAddress: pureDigits },
+        { emailAddress: alias }
+      ],
+      isDeleted: { $ne: true }
+    })
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .select('-attachment')
+    .lean();
+
+    const secondaryQuery = Email.find({
+      $or: [
+        { recipient: alias },
+        { sender: alias },
+        { recipient: pureDigits },
+        { sender: pureDigits }
+      ],
+      isDeleted: { $ne: true }
+    })
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .select('-attachment')
+    .lean();
+
+    const [emailsPrimary, emailsSecondary] = await Promise.all([primaryQuery, secondaryQuery]);
+
+    const emailMap = new Map();
+    [...emailsPrimary, ...emailsSecondary].forEach(email => {
+      emailMap.set(email._id.toString(), email);
+    });
+
+    const emails = Array.from(emailMap.values())
+      .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))
+      .slice(0, 50);
 
     for (let email of emails) {
       if (email.sender) {
@@ -118,28 +139,30 @@ router.get('/messages/:phone', async (req, res) => {
   }
 });
 
-// Flexible Inbox fetcher using aggregation & pagination
+// Flexible Inbox fetcher using split queries
 router.get('/inbox/:phoneNumber', async (req, res) => {
   try {
     const { pureDigits, alias } = normalizePhone(req.params.phoneNumber);
     if (!pureDigits) return res.status(400).json({ success: false, message: 'Phone number required' });
 
-    const emails = await Email.aggregate([
-      {
-        $match: {$or: [
-            { phoneNumber: { $regex: '^' + pureDigits,$options: 'i' } },
-            { emailAddress: { $regex: '^' + pureDigits,$options: 'i' } },
-            { recipient: alias },
-            { sender: alias },
-            { recipient: { $regex: '^' + pureDigits,$options: 'i' } },
-            { sender: { $regex: '^' + pureDigits,$options: 'i' } }
-          ],
-          isDeleted: { $ne: true }
-        }
-      },
-      { $sort: { createdAt: -1, date: -1 } },
-      { $limit: 50 },       {$project: { attachment: 0 } }
-    ], { allowDiskUse: true });
+    const emailsPrimary = await Email.find({
+      $or: [{ phoneNumber: pureDigits }, { emailAddress: pureDigits }, { emailAddress: alias }],
+      isDeleted: { $ne: true }
+    }).sort({ createdAt: -1 }).limit(50).select('-attachment').lean();
+
+    const emailsSecondary = await Email.find({
+      $or: [{ recipient: alias }, { sender: alias }],
+      isDeleted: { $ne: true }
+    }).sort({ createdAt: -1 }).limit(50).select('-attachment').lean();
+
+    const emailMap = new Map();
+    [...emailsPrimary, ...emailsSecondary].forEach(email => {
+      emailMap.set(email._id.toString(), email);
+    });
+
+    const emails = Array.from(emailMap.values())
+      .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))
+      .slice(0, 50);
 
     for (let email of emails) {
       if (email.sender) {
@@ -398,21 +421,18 @@ router.get('/:emailAddress', async (req, res) => {
     const emailAddress = req.params.emailAddress.toLowerCase();
     const cleanDigits = emailAddress.replace(/[^0-9]/g, '').slice(-10);
 
-    const emails = await Email.aggregate([
-      {
-        $match: {$or: [
-            { emailAddress },
-            { recipient: emailAddress },
-            { sender: emailAddress },
-            { recipient: { $regex: '^' + cleanDigits,$options: 'i' } },
-            { sender: { $regex: '^' + cleanDigits,$options: 'i' } }
-          ],
-          isDeleted: { $ne: true }
-        }
-      },
-      { $sort: { date: -1, createdAt: -1 } },
-      { $limit: 50 },       {$project: { attachment: 0 } }
-    ], { allowDiskUse: true });
+    const emails = await Email.find({
+      $or: [
+        { emailAddress },
+        { recipient: emailAddress },
+        { sender: emailAddress }
+      ],
+      isDeleted: { $ne: true }
+    })
+    .sort({ date: -1 })
+    .limit(50)
+    .select('-attachment')
+    .lean();
 
     for (let email of emails) {
       if (email.sender) {
