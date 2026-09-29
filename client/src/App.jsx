@@ -751,30 +751,59 @@ function App() {
 
   return (
     <div className="app-container">
-<header className="app-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      {/* GMAIL-STYLE HEADER WITH BIG CENTER SEARCH BAR */}
+      <header className="app-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1.5rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', minWidth: '220px' }}>
           {user && step === 6 && (
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="theme-toggle-btn mobile-hamburger-btn" 
-              style={{ display: 'flex', width: '42px', height: '42px' }}
+              style={{ display: 'flex', width: '40px', height: '40px' }}
               title="Toggle Menu"
             >
-              <Menu size={22} />
+              <Menu size={20} />
             </button>
           )}
 
-          <div className="app-logo-icon" style={{ width: '44px', height: '44px', fontSize: '1.25rem' }}>rm</div>
+          <div className="app-logo-icon" style={{ width: '40px', height: '40px' }}>rm</div>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
-              <h1 className="logo-text" style={{ margin: 0, fontSize: '1.3rem', lineHeight: '1.2' }}>rizzmail.me</h1>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Your personal email via your phone number.</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+              <h1 className="logo-text" style={{ margin: 0, fontSize: '1.1rem', lineHeight: '1.2' }}>rizzmail.me</h1>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Your personal email via phone.</span>
             </div>
           </div>
         </div>
+
+        {/* BIG GMAIL-STYLE SEARCH BAR IN CENTER */}
+        <div style={{ flex: 1, maxWidth: '600px', margin: '0 2rem' }}>
+          <div className="search-bar-container" style={{ width: '100%', position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Search size={18} className="search-icon" style={{ position: 'absolute', left: '1.15rem', color: 'var(--text-muted)' }} />
+            <input 
+              type="text" 
+              placeholder="Search chats, mail, or enter phone & press Enter..." 
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)} 
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchQuery.trim()) {
+                  let target = searchQuery.trim().toLowerCase();
+                  if (!target.includes('@')) {
+                    const pure = target.replace(/[^0-9]/g, '').slice(-10);
+                    if (pure.length >= 5) {
+                      target = `${pure}@rizzmail.me`;
+                    }
+                  }
+                  setActiveChatSender(target);
+                  setSearchQuery('');
+                }
+              }}
+              className="search-input" 
+              style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.8rem', borderRadius: '2rem', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none' }}
+            />
+          </div>
+        </div>
         
-        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div className="status-pill" style={{ padding: '0.45rem 1rem' }}>
+        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '180px', justifyContent: 'flex-end' }}>
+          <div className="status-pill">
             <span className="pulse-dot"></span> System Online
           </div>
           
@@ -784,12 +813,12 @@ function App() {
                 onClick={() => setShowProfileMenu(!showProfileMenu)} 
                 className="theme-toggle-btn"
                 title={`${user.firstName || 'User Account'} - Account Settings`}
-                style={{ background: showProfileMenu ? 'rgba(99, 102, 241, 0.25)' : undefined, overflow: 'hidden', padding: 0, cursor: 'pointer', width: '42px', height: '42px', borderRadius: '50%' }}
+                style={{ background: showProfileMenu ? 'rgba(99, 102, 241, 0.25)' : undefined, overflow: 'hidden', padding: 0, cursor: 'pointer', width: '40px', height: '40px', borderRadius: '50%' }}
               >
                 {user.profilePhoto ? (
                   <img src={user.profilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <User size={20} />
+                  <User size={18} />
                 )}
               </button>
 
@@ -797,7 +826,7 @@ function App() {
                 <div style={{
                   position: 'absolute',
                   right: 0,
-                  top: 'calc(100% + 14px)',
+                  top: 'calc(100% + 12px)',
                   background: 'var(--card-bg)',
                   border: '1px solid var(--input-border)',
                   borderRadius: '1rem',
@@ -836,10 +865,10 @@ function App() {
           <button 
             onClick={toggleTheme} 
             className="theme-toggle-btn"
-            style={{ width: '42px', height: '42px' }}
+            style={{ width: '40px', height: '40px' }}
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
           >
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
         </div>
       </header>
@@ -1179,38 +1208,12 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* SIDEBAR WITH FULL-WIDTH SEARCH BAR & FILTER CHIPS */}
+                {/* SIDEBAR WITH CLEAN FILTER CHIPS */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
                   <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>
                     
-                    {/* FULL-WIDTH SEARCH BAR */}
-                    <div className="search-bar-container" style={{ margin: 0, width: '100%' }}>
-                      <Search size={16} className="search-icon" />
-                      <input 
-                        type="text" 
-                        placeholder="Search chats or enter phone & press Enter..." 
-                        value={searchQuery} 
-                        onChange={(e) => setSearchQuery(e.target.value)} 
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && searchQuery.trim()) {
-                            let target = searchQuery.trim().toLowerCase();
-                            if (!target.includes('@')) {
-                              const pure = target.replace(/[^0-9]/g, '').slice(-10);
-                              if (pure.length >= 5) {
-                                target = `${pure}@rizzmail.me`;
-                              }
-                            }
-                            setActiveChatSender(target);
-                            setSearchQuery('');
-                          }
-                        }}
-                        className="search-input" 
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-
-                    {/* FILTER CHIPS WITHOUT UGLY SCROLLER */}
+                    {/* FILTER CHIPS & REFRESH BUTTONS */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                       <div className="hide-scrollbar" style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px', flex: 1, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         {['all', 'unread', 'attachments', 'favorites'].map((chip) => (
@@ -1221,9 +1224,9 @@ function App() {
                               background: chatFilter === chip ? '#6366f1' : 'var(--input-bg)', 
                               color: chatFilter === chip ? '#fff' : 'var(--text-muted)', 
                               border: '1px solid var(--input-border)', 
-                              padding: '0.25rem 0.6rem', 
+                              padding: '0.3rem 0.65rem', 
                               borderRadius: '1rem', 
-                              fontSize: '0.7rem', 
+                              fontSize: '0.75rem', 
                               fontWeight: '600', 
                               cursor: 'pointer',
                               textTransform: 'capitalize',
@@ -1250,7 +1253,7 @@ function App() {
                       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
                         <Mail size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
                         <p>No active chats found</p>
-                        <small>Type a phone number in the search bar above & press Enter to start chatting.</small>
+                        <small>Type a phone number in the top search bar & press Enter to start chatting.</small>
                       </div>
                     ) : (
                       filteredThreads.map((thread) => {
@@ -1299,7 +1302,7 @@ function App() {
                   </div>
                 </div>
 
-                {/* ACTIVE CHAT WINDOW PANE WITH FUTURISTIC BUBBLES */}
+                {/* ACTIVE CHAT WINDOW PANE WITH FRIENDLY EMPTY STATE */}
                 <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', height: '100%', overflow: 'hidden' }}>
                   {activeThread ? (
                     <>
@@ -1561,10 +1564,15 @@ function App() {
                       </form>
                     </>
                   ) : (
+                    /* FRIENDLY WELCOME EMPTY STATE */
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', padding: '2rem', textAlign: 'center' }}>
-                      <Mail size={64} style={{ opacity: '0.25', marginBottom: '1.25rem', filter: 'drop-shadow(0 0 15px rgba(99,102,241,0.2))' }} />
-                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '1.25rem', fontWeight: '700', letterSpacing: '-0.02em' }}>Encrypted Neural Node</h3>
-                      <p style={{ maxWidth: '340px', fontSize: '0.9rem', lineHeight: '1.5' }}>Search a phone number or alias in the left matrix panel & press Enter to establish link.</p>
+                      <div style={{ width: '76px', height: '76px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem', color: '#6366f1', boxShadow: '0 0 30px rgba(99,102,241,0.15)' }}>
+                        <Mail size={36} />
+                      </div>
+                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '1.4rem', fontWeight: '700', letterSpacing: '-0.02em' }}>Welcome to your Inbox ✨</h3>
+                      <p style={{ maxWidth: '380px', fontSize: '0.95rem', lineHeight: '1.6', color: 'var(--text-muted)' }}>
+                        Select any conversation from the sidebar or look up any phone number in the search bar above to start messaging instantly.
+                      </p>
                     </div>
                   )}
                 </div>
