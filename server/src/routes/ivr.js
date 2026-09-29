@@ -9,6 +9,31 @@ router.get("/test", (req, res) => {
   });
 });
 
+router.post("/welcome", (req, res) => {
+  const twiml = `
+<Response>
+  <Gather
+    numDigits="1"
+    action="action="https://rizzmail-backend.onrender.com/api/ivr/handle-choice"
+    method="POST"
+    timeout="10"
+  >
+    <Say>
+      Welcome to RizzMail.
+      To create a RizzMail account using this phone number, press 1.
+    </Say>
+  </Gather>
+
+  <Say>
+    We did not receive your choice. Goodbye.
+  </Say>
+</Response>
+`;
+
+  res.type("text/xml");
+  res.send(twiml);
+});
+
 router.post("/create-account", async (req, res) => {
   try {
     const phoneNumber = req.body.phoneNumber;
