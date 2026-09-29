@@ -30,7 +30,7 @@ async function getMessageCentralToken() {
     return response.data.token || response.data.data?.token;
 }
 
-// 1. Send OTP Route (Triggers real SMS to physical device via Message Central)
+// 1. Send OTP Route (Triggers 6-digit SMS to physical device via Message Central)
 router.post("/send-otp", async (req, res) => {
     try {
         const { phone, phoneNumber } = req.body || {};
@@ -46,7 +46,7 @@ router.post("/send-otp", async (req, res) => {
         // Get live auth token from Message Central
         const authToken = await getMessageCentralToken();
 
-        // Call Message Central V3 Send API
+        // Call Message Central V3 Send API with 6-digit configuration
         const mcResponse = await axios.post(
             `${MESSAGE_CENTRAL_BASE_URL}/verification/v3/send`,
             null,
@@ -54,7 +54,8 @@ router.post("/send-otp", async (req, res) => {
                 params: {
                     countryCode: "91",
                     flowType: "SMS",
-                    mobileNumber: cleanNumber
+                    mobileNumber: cleanNumber,
+                    otpLength: 6 // 👈 Forces a 6-digit OTP to match your frontend
                 },
                 headers: {
                     'authToken': authToken
@@ -68,14 +69,14 @@ router.post("/send-otp", async (req, res) => {
             throw new Error("Failed to retrieve verification ID from Message Central response.");
         }
 
-        // Store the verificationId in MongoDB (DO NOT store a local OTP code)
+        // Store the verificationId in MongoDB
         await Otp.findOneAndUpdate(
             { phone: targetPhone },
             { verificationId, createdAt: new Date() },
             { upsert: true, new: true }
         );
 
-        console.log(`📱 Message Central successfully dispatched OTP to physical device for +91${cleanNumber}`);
+        console.log(`📱 Message Central successfully dispatched 6-digit OTP to physical device for +91${cleanNumber}`);
 
         return res.json({ 
             success: true, 
@@ -262,7 +263,7 @@ router.delete("/account/:phone", async (req, res) => {
     try {
         const targetPhone = req.params.phone;
         await User.findOneAndDelete({ phoneNumber: targetPhone });
-        console.log(`🗑️ Account successfully deleted for: ${targetPhone}`);
+        console.log(`🗑️️ Account successfully deleted for: ${targetPhone}`);
         return res.json({ success: true, message: "Account successfully deleted" });
     } catch (err) {
         console.error("❌ Account deletion error:", err);
