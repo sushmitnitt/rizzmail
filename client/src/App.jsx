@@ -25,10 +25,52 @@ const languagesList = [
   { code: 'en', label: 'English' },
   { code: 'hi', label: 'Hindi (हिंदी)' },
   { code: 'ta', label: 'Tamil (தமிழ்)' },
-  { code: 'es', label: 'Spanish (Español)' },
-  { code: 'fr', label: 'French (Français)' },
-  { code: 'de', label: 'German (Deutsch)' }
+  { code: 'te', label: 'Telugu (తెలుగు)' },
+  { code: 'bn', label: 'Bengali (বাংলা)' }
 ];
+
+const frontPageTranslations = {
+  en: {
+    tagline: "Your personal email via your phone number.",
+    secure: "SECURE AUTHENTICATION",
+    welcome: "Welcome to RizzMail",
+    greetings: ["Welcome", "Aapka swaagat hai", "Nalvaravu", "Swagatam", "Swagato"],
+    continueBtn: "Continue with OTP ➔",
+    systemOnline: "System Online"
+  },
+  hi: {
+    tagline: "आपके फोन नंबर के माध्यम से आपका व्यक्तिगत ईमेल।",
+    secure: "सुरक्षित प्रमाणीकरण",
+    welcome: "रिज़मेल में आपका स्वागत है",
+    greetings: ["आपका स्वागत है", "नमस्ते", "स्वागत है", "Aapka swaagat hai"],
+    continueBtn: "ओटीपी के साथ जारी रखें ➔",
+    systemOnline: "सिस्टम ऑनलाइन"
+  },
+  ta: {
+    tagline: "உங்கள் தொலைபேசி எண் மூலம் உங்கள் தனிப்பட்ட மின்னஞ்சல்.",
+    secure: "பாதுகாப்பான அங்கீகாரம்",
+    welcome: "RizzMail-க்கு உங்களை வரவேற்கிறோம்",
+    greetings: ["நல்வரவு", "வணக்கம்", "வரவேற்கிறோம்", "Aapka swaagat hai"],
+    continueBtn: "OTP உடன் தொடரவும் ➔",
+    systemOnline: "கணினி ஆன்லைனில் உள்ளது"
+  },
+  te: {
+    tagline: "మీ ఫోన్ నంబర్ ద్వారా మీ వ్యక్తిగత ఇమెయిల్.",
+    secure: "సురక్షిత ప్రమాణీకరణ",
+    welcome: "RizzMailకి స్వాగతం",
+    greetings: ["స్వాగతం", "నమస్కారం", "సుస్వాగతం", "Aapka swaagat hai"],
+    continueBtn: "OTP తో కొనసాగించండి ➔",
+    systemOnline: "సిస్టమ్ ఆన్‌‌లైన్‌లో ఉంది"
+  },
+  bn: {
+    tagline: "আপনার ফোন নম্বরের মাধ্যমে আপনার ব্যক্তিগত ইমেল।",
+    secure: "সুরক্ষিত প্রমাণীকরণ",
+    welcome: "RizzMail-এ স্বাগতম",
+    greetings: ["স্বাগত", "নমস্কার", "স্বাগতম", "Aapka swaagat hai"],
+    continueBtn: "OTP দিয়ে চালিয়ে যান ➔",
+    systemOnline: "সিস্টেম অনলাইন"
+  }
+};
 
 const normalizeContactIdentifier = (input) => {
   if (!input) return '';
@@ -41,6 +83,37 @@ const normalizeContactIdentifier = (input) => {
   return localPart || str;
 };
 
+// Helper to clean raw incoming email bodies and strip backend transport routing headers
+const formatCleanBody = (bodyText) => {
+  if (!bodyText) return '';
+  let text = bodyText.toString();
+
+  if (/^\s*(Received|Return-Path|DKIM-Signature|Authentication-Results|MIME-Version):/i.test(text)) {
+    const doubleNewline = text.search(/(\r?\n){2}/);
+    if (doubleNewline !== -1) {
+      text = text.substring(doubleNewline).trim();
+    }
+  }
+
+  text = text.replace(/^(Received|Return-Path|DKIM-Signature|Authentication-Results|X-[a-zA-Z0-9-]+|Content-Type|Content-Transfer-Encoding|MIME-Version|Message-ID):.*$/gim, '');
+  text = text.replace(/--[a-zA-Z0-9_-]{10,}/g, '');
+
+  const replyIndexPatterns = [
+    /\n\s*on\s+.+wrote:/i,
+    /\n\s*-----+\s*original message\s*-----+/i,
+    /\n\s*from:\s*.+/i
+  ];
+
+  for (const pattern of replyIndexPatterns) {
+    const match = text.search(pattern);
+    if (match !== -1) {
+      text = text.substring(0, match);
+    }
+  }
+
+  return text.trim();
+};
+
 function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('rizzmail_theme') || 'dark');
 
@@ -50,6 +123,23 @@ function App() {
   }, [theme]);
 
   const toggleTheme = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+
+  // Front page language & sliding greeting state
+  const [lang, setLang] = useState('en');
+  const [greetingIndex, setGreetingIndex] = useState(0);
+  const [fadeAnim, setFadeAnim] = useState(true);
+  const t = frontPageTranslations[lang] || frontPageTranslations.en;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFadeAnim(false);
+      setTimeout(() => {
+        setGreetingIndex((prev) => (prev + 1) % t.greetings.length);
+        setFadeAnim(true);
+      }, 300);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [lang, t.greetings.length]);
 
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('rizzmail_user');
@@ -71,7 +161,7 @@ function App() {
   
   const [step, setStep] = useState(() => (user ? 6 : 1));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [currentFolder, setCurrentFolder] = useState('home'); // 'home', 'drafts', 'spam', 'trash'
+  const [currentFolder, setCurrentFolder] = useState('home');
 
   const [setupStage, setSetupStage] = useState(0);
   const setupStepsList = [
@@ -140,7 +230,6 @@ function App() {
   const [activeCall, setActiveCall] = useState(null);
   const [showSnippets, setShowSnippets] = useState(false);
 
-  // Swipe touch tracking states
   const [touchStartX, setTouchStartX] = useState(0);
 
   const quickSnippetsList = [
@@ -568,7 +657,8 @@ function App() {
           recipientEmail: target,
           subject: traditionalSubject.trim() || '',
           body: traditionalBody.trim(),
-          attachment: attachmentPreview
+          attachment: attachmentPreview,
+          quotedMessage: quotedMessage
         });
       } catch (err) {
         console.error('Failed to send traditional email to', target);
@@ -659,130 +749,177 @@ function App() {
     }, 1500);
   };
 
-  const chatThreadsMap = {};
+  const { chatThreadsList, filteredThreads } = React.useMemo(() => {
+    const threadsMap = {};
 
-  messages.forEach((msg) => {
-    if (msg.isDeleted) return;
-    const myPhoneNorm = normalizeContactIdentifier(getUserPhone());
-    const senderNorm = normalizeContactIdentifier(msg.sender);
+    messages.forEach((msg) => {
+      if (msg.isDeleted) return;
+      const myPhoneNorm = normalizeContactIdentifier(getUserPhone());
+      const senderNorm = normalizeContactIdentifier(msg.sender);
 
-    const counterpartyRaw = (senderNorm === myPhoneNorm) ? msg.recipient : msg.sender;
-    if (!counterpartyRaw) return;
+      const counterpartyRaw = (senderNorm === myPhoneNorm) ? msg.recipient : msg.sender;
+      if (!counterpartyRaw) return;
 
-    const canonicalKey = normalizeContactIdentifier(counterpartyRaw);
+      const canonicalKey = normalizeContactIdentifier(counterpartyRaw);
 
-    if (!chatThreadsMap[canonicalKey]) {
-      chatThreadsMap[canonicalKey] = {
-        canonicalKey: canonicalKey,
-        sender: counterpartyRaw,
-        name: msg.counterpartyName && !msg.counterpartyName.includes('@') ? msg.counterpartyName : counterpartyRaw.split('@')[0],
-        avatar: msg.counterpartyPhoto || '',
-        messages: [],
-        isFavorite: !!favoritesMap[canonicalKey]
-      };
-    }
-    
-    if (msg.counterpartyPhoto && !chatThreadsMap[canonicalKey].avatar) {
-      chatThreadsMap[canonicalKey].avatar = msg.counterpartyPhoto;
-    }
-    if (msg.counterpartyName && !msg.counterpartyName.includes('@')) {
-      chatThreadsMap[canonicalKey].name = msg.counterpartyName;
-    }
+      if (!threadsMap[canonicalKey]) {
+        threadsMap[canonicalKey] = {
+          canonicalKey: canonicalKey,
+          sender: counterpartyRaw,
+          name: msg.counterpartyName && !msg.counterpartyName.includes('@') ? msg.counterpartyName : counterpartyRaw.split('@')[0],
+          avatar: msg.counterpartyPhoto || '',
+          messages: [],
+          isFavorite: !!favoritesMap[canonicalKey]
+        };
+      }
+      
+      if (msg.counterpartyPhoto && !threadsMap[canonicalKey].avatar) {
+        threadsMap[canonicalKey].avatar = msg.counterpartyPhoto;
+      }
+      if (msg.counterpartyName && !msg.counterpartyName.includes('@')) {
+        threadsMap[canonicalKey].name = msg.counterpartyName;
+      }
 
-    chatThreadsMap[canonicalKey].messages.push(msg);
-  });
-
-  if (activeChatSender) {
-    const activeCanonical = normalizeContactIdentifier(activeChatSender);
-    if (!chatThreadsMap[activeCanonical]) {
-      chatThreadsMap[activeCanonical] = {
-        canonicalKey: activeCanonical,
-        sender: activeChatSender,
-        name: activeChatSender.split('@')[0],
-        avatar: '',
-        messages: [],
-        isFavorite: !!favoritesMap[activeCanonical]
-      };
-    }
-  }
-
-  const chatThreadsList = Object.values(chatThreadsMap).map(thread => {
-    const uniqueMap = new Map();
-    thread.messages.forEach(m => {
-      const msgKey = m._id || m.clientMessageId || JSON.stringify(m);
-      uniqueMap.set(msgKey, m);
+      threadsMap[canonicalKey].messages.push(msg);
     });
-    thread.messages = Array.from(uniqueMap.values());
-    thread.messages.sort((a, b) => new Date(a.createdAt || a.date || 0) - new Date(b.createdAt || b.date || 0));
-    thread.lastMessage = thread.messages[thread.messages.length - 1];
-    thread.isFavorite = !!favoritesMap[thread.canonicalKey];
-    return thread;
-  });
 
-  const filteredThreads = chatThreadsList.filter(thread => {
-    if (currentFolder === 'home') {
-      // Home unifies Inbox and Sent
-    } else if (currentFolder === 'drafts') {
-      if (!thread.messages.some(m => m.folder === 'drafts')) return false;
-    } else if (currentFolder === 'spam') {
-      if (!thread.messages.some(m => m.folder === 'spam')) return false;
-    } else if (currentFolder === 'trash') {
-      if (!thread.messages.some(m => m.folder === 'trash')) return false;
+    if (activeChatSender) {
+      const activeCanonical = normalizeContactIdentifier(activeChatSender);
+      if (!threadsMap[activeCanonical]) {
+        threadsMap[activeCanonical] = {
+          canonicalKey: activeCanonical,
+          sender: activeChatSender,
+          name: activeChatSender.split('@')[0],
+          avatar: '',
+          messages: [],
+          isFavorite: !!favoritesMap[activeCanonical]
+        };
+      }
     }
 
-    const matchesSearch = thread.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      thread.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (thread.lastMessage && thread.lastMessage.body.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    if (chatFilter === 'unread') {
-      return matchesSearch && thread.messages.some(m => m.direction === 'inbound');
-    }
-    if (chatFilter === 'attachments') {
-      return matchesSearch && thread.messages.some(m => m.attachment);
-    }
-    if (chatFilter === 'favorites') {
-      return matchesSearch && thread.isFavorite;
-    }
-    return matchesSearch;
-  });
+    const threadsList = Object.values(threadsMap).map(thread => {
+      const uniqueMap = new Map();
+      thread.messages.forEach(m => {
+        const msgKey = m._id || m.clientMessageId || JSON.stringify(m);
+        uniqueMap.set(msgKey, m);
+      });
+      thread.messages = Array.from(uniqueMap.values());
+      thread.messages.sort((a, b) => new Date(a.createdAt || a.date || 0) - new Date(b.createdAt || b.date || 0));
+      thread.lastMessage = thread.messages[thread.messages.length - 1];
+      thread.isFavorite = !!favoritesMap[thread.canonicalKey];
+      return thread;
+    });
 
-  const activeThread = activeChatSender ? chatThreadsMap[normalizeContactIdentifier(activeChatSender)] : null;
+    const filtered = threadsList.filter(thread => {
+      if (currentFolder === 'home') {
+        // Home unifies Inbox and Sent
+      } else if (currentFolder === 'drafts') {
+        if (!thread.messages.some(m => m.folder === 'drafts')) return false;
+      } else if (currentFolder === 'spam') {
+        if (!thread.messages.some(m => m.folder === 'spam')) return false;
+      } else if (currentFolder === 'trash') {
+        if (!thread.messages.some(m => m.folder === 'trash')) return false;
+      }
+
+      const matchesSearch = thread.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        thread.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (thread.lastMessage && formatCleanBody(thread.lastMessage.body).toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      if (chatFilter === 'unread') {
+        return matchesSearch && thread.messages.some(m => m.direction === 'inbound');
+      }
+      if (chatFilter === 'attachments') {
+        return matchesSearch && thread.messages.some(m => m.attachment);
+      }
+      if (chatFilter === 'favorites') {
+        return matchesSearch && thread.isFavorite;
+      }
+      return matchesSearch;
+    });
+
+    return { chatThreadsList: threadsList, filteredThreads: filtered };
+  }, [messages, favoritesMap, searchQuery, chatFilter, currentFolder, activeChatSender]);
+
+  const activeThread = activeChatSender ? chatThreadsList.find(t => t.canonicalKey === normalizeContactIdentifier(activeChatSender)) : null;
   const isReplying = activeThread && activeThread.messages && activeThread.messages.length > 0;
 
   return (
-    <div className="app-container">
+    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      {/* HEADER */}
       <header className="app-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           {user && step === 6 && (
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="theme-toggle-btn mobile-hamburger-btn" 
-              style={{ display: 'flex' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', flexShrink: 0 }}
               title="Toggle Menu"
             >
               <Menu size={20} />
             </button>
           )}
 
-          <div className="app-logo-icon">rm</div>
-          <div>
-            <h1 className="logo-text">rizzmail.me</h1>
-            <p>Your personal email via your phone number.</p>
+          <div className="app-logo-icon" style={{ width: '40px', height: '40px', flexShrink: 0 }}>rm</div>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+              <h1 className="logo-text" style={{ margin: 0, fontSize: '1.1rem', lineHeight: '1.2' }}>rizzmail.me</h1>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Your personal email via phone.</span>
+            </div>
           </div>
         </div>
+
+        {/* SEARCH BAR (Visible when logged in) */}
+        {user && step === 6 && (
+          <div style={{ flex: 1, maxWidth: '640px', display: 'flex', alignItems: 'center' }}>
+            <div style={{ width: '100%', position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={18} style={{ position: 'absolute', left: '1.15rem', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+              <input 
+                type="text" 
+                placeholder="Search chats, mail, or enter phone & press Enter..." 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchQuery.trim()) {
+                    let target = searchQuery.trim().toLowerCase();
+                    if (!target.includes('@')) {
+                      const pure = target.replace(/[^0-9]/g, '').slice(-10);
+                      if (pure.length >= 5) {
+                        target = `${pure}@rizzmail.me`;
+                      }
+                    }
+                    setActiveChatSender(target);
+                    setSearchQuery('');
+                  }
+                }}
+                style={{ 
+                  width: '100%', 
+                  padding: '0.7rem 1rem 0.7rem 2.8rem', 
+                  borderRadius: '2rem', 
+                  background: 'var(--input-bg)', 
+                  border: '1px solid var(--input-border)', 
+                  color: 'var(--text-primary)', 
+                  fontSize: '0.9rem', 
+                  outline: 'none',
+                  boxShadow: 'none'
+                }}
+              />
+            </div>
+          </div>
+        )}
         
-        <div className="header-right">
-          <div className="status-pill">
-            <span className="pulse-dot"></span> System Online
+        {/* RIGHT HEADER ACTIONS */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, marginLeft: 'auto' }}>
+          <div className="status-pill" style={{ display: 'flex', alignItems: 'center' }}>
+            <span className="pulse-dot"></span> {t.systemOnline}
           </div>
           
           {user && step === 6 && !isLoggingOut && (
-            <div style={{ position: 'relative', overflow: 'visible' }} ref={profileMenuRef}>
+            <div style={{ position: 'relative', overflow: 'visible', display: 'flex', alignItems: 'center' }} ref={profileMenuRef}>
               <button 
                 onClick={() => setShowProfileMenu(!showProfileMenu)} 
                 className="theme-toggle-btn"
                 title={`${user.firstName || 'User Account'} - Account Settings`}
-                style={{ background: showProfileMenu ? 'rgba(99, 102, 241, 0.25)' : undefined, overflow: 'hidden', padding: 0, cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%' }}
+                style={{ background: showProfileMenu ? 'rgba(99, 102, 241, 0.25)' : undefined, overflow: 'hidden', padding: 0, cursor: 'pointer', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 {user.profilePhoto ? (
                   <img src={user.profilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -834,6 +971,7 @@ function App() {
           <button 
             onClick={toggleTheme} 
             className="theme-toggle-btn"
+            style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
@@ -841,7 +979,7 @@ function App() {
         </div>
       </header>
 
-      <main className="main-content">
+      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {error && <div className="error-banner" style={{ width: '100%', maxWidth: '440px', margin: '1rem auto' }}>{error}</div>}
 
         {isLoggingOut && (
@@ -853,12 +991,50 @@ function App() {
           </div>
         )}
 
+        {/* STEP 1: FRONT PAGE LOGIN WITH LANGUAGE SELECTOR & SLIDING GREETING */}
         {!isLoggingOut && step === 1 && (
-          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            
+            {/* Front Page Language Selector Dropdown */}
+            <div style={{ width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', background: 'var(--card-bg)', border: '1px solid var(--input-border)', borderRadius: '1rem', padding: '0.35rem 0.85rem', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
+                <Globe size={15} style={{ color: '#818cf8', marginRight: '6px' }} />
+                <select
+                  value={lang}
+                  onChange={(e) => {
+                    setLang(e.target.value);
+                    setGreetingIndex(0);
+                  }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: '600', outline: 'none', cursor: 'pointer' }}
+                >
+                  {languagesList.map(l => (
+                    <option key={l.code} value={l.code} style={{ background: 'var(--card-bg)', color: 'var(--text-primary)' }}>{l.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <form onSubmit={handleSendOTP} className="card" style={{ width: '100%' }}>
-              <div className="badge-pill"><Shield size={12} /> Secure Authentication</div>
-              <h2>Welcome to RizzMail</h2>
-              <p className="subtitle">Your personal email via your phone number.</p>
+              <div className="badge-pill"><Shield size={12} /> {t.secure}</div>
+              <h2>{t.welcome}</h2>
+              <p className="subtitle">{t.tagline}</p>
+              
+              {/* Sliding fade transition welcome sub-banner */}
+              <div style={{ height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '1.25rem' }}>
+                <p 
+                  style={{ 
+                    fontSize: '0.85rem', 
+                    fontWeight: '600', 
+                    color: '#818cf8', 
+                    margin: 0,
+                    transition: 'all 0.4s ease',
+                    opacity: fadeAnim ? 1 : 0,
+                    transform: fadeAnim ? 'translateY(0)' : 'translateY(-12px)'
+                  }}
+                >
+                  {t.greetings[greetingIndex]} • Aapka swaagat hai
+                </p>
+              </div>
               
               <div style={{ marginBottom: '1.5rem' }}>
                 <div className="phone-input-container">
@@ -880,7 +1056,7 @@ function App() {
               </div>
 
               <button type="submit" className="primary-btn" disabled={loading}>
-                {loading ? 'Dispatching Code...' : 'Continue with OTP ➔'}
+                {loading ? 'Dispatching Code...' : t.continueBtn}
               </button>
             </form>
           </div>
@@ -975,7 +1151,7 @@ function App() {
 
         {/* STEP 6: MAIN DASHBOARD */}
         {!isLoggingOut && step === 6 && user && (
-          <div style={{ width: '100%', height: '100%', display: 'flex', overflow: 'hidden', position: 'relative' }}>
+          <div style={{ width: '100%', height: '100%', display: 'flex', overflow: 'hidden', position: 'relative', flex: 1 }}>
             
             {/* TOP-LEFT MENU DRAWER / MODAL */}
             {mobileMenuOpen && (
@@ -1087,7 +1263,7 @@ function App() {
 
             {/* ACCOUNT SETTINGS & ALIAS MANAGEMENT VIEW */}
             {isEditingProfile ? (
-              <div style={{ margin: 'auto', width: '100%', maxWidth: '560px', display: 'flex', justifyContent: 'center', overflowY: 'auto', maxHeight: '100%', padding: '2rem' }}>
+              <div style={{ margin: 'auto', width: '100%', maxWidth: '560px', display: 'flex', justifyContent: 'center', overflowY: 'auto', maxHeight: '100%', padding: '2rem' }} className="hide-scrollbar">
                 <div className="card" style={{ textAlign: 'left', width: '100%' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                     <h3>Account Settings & Profile</h3>
@@ -1176,47 +1352,12 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* SIDEBAR WITH FULL-WIDTH SEARCH BAR & FILTER CHIPS */}
+                {/* SIDEBAR WITH CLEAN FILTER CHIPS */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
                   <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>
-                    {/* CURRENT FOLDER HEADER LABEL */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#818cf8', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      <span>Folder: {currentFolder}</span>
-                      <button onClick={() => setMobileMenuOpen(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
-                        <Menu size={14} /> Menu
-                      </button>
-                    </div>
-
-                    {/* FULL-WIDTH SEARCH BAR */}
-                    <div className="search-bar-container" style={{ margin: 0, width: '100%' }}>
-                      <Search size={16} className="search-icon" />
-                      <input 
-                        type="text" 
-                        placeholder="Search chats or enter phone & press Enter..." 
-                        value={searchQuery} 
-                        onChange={(e) => setSearchQuery(e.target.value)} 
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && searchQuery.trim()) {
-                            let target = searchQuery.trim().toLowerCase();
-                            if (!target.includes('@')) {
-                              const pure = target.replace(/[^0-9]/g, '').slice(-10);
-                              if (pure.length >= 5) {
-                                target = `${pure}@rizzmail.me`;
-                              }
-                            }
-                            setActiveChatSender(target);
-                            setSearchQuery('');
-                          }
-                        }}
-                        className="search-input" 
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-
-                    {/* FILTER CHIPS (ALL, UNREAD, ATTACHMENTS, FAVORITES) BELOW SEARCH BAR */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                      <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px', flex: 1 }}>
+                      <div className="hide-scrollbar" style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px', flex: 1, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         {['all', 'unread', 'attachments', 'favorites'].map((chip) => (
                           <button 
                             key={chip}
@@ -1225,9 +1366,9 @@ function App() {
                               background: chatFilter === chip ? '#6366f1' : 'var(--input-bg)', 
                               color: chatFilter === chip ? '#fff' : 'var(--text-muted)', 
                               border: '1px solid var(--input-border)', 
-                              padding: '0.25rem 0.6rem', 
+                              padding: '0.3rem 0.65rem', 
                               borderRadius: '1rem', 
-                              fontSize: '0.7rem', 
+                              fontSize: '0.75rem', 
                               fontWeight: '600', 
                               cursor: 'pointer',
                               textTransform: 'capitalize',
@@ -1249,16 +1390,17 @@ function App() {
                     </div>
                   </div>
 
-                  <div style={{ flex: 1, overflowY: 'auto' }}>
+                  <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     {filteredThreads.length === 0 ? (
                       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
                         <Mail size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
-                        <p>No active chats in {currentFolder}</p>
-                        <small>Type a phone number in the search bar above & press Enter to start chatting.</small>
+                        <p>No active chats found</p>
+                        <small>Type a phone number in the top search bar & press Enter to start chatting.</small>
                       </div>
                     ) : (
                       filteredThreads.map((thread) => {
                         const isSelected = activeChatSender === thread.sender;
+                        const snippetText = thread.lastMessage ? formatCleanBody(thread.lastMessage.body) : '';
                         return (
                           <div 
                             key={thread.canonicalKey}
@@ -1287,7 +1429,7 @@ function App() {
                                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{thread.lastMessage ? new Date(thread.lastMessage.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                               </div>
                               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>
-                                {thread.lastMessage ? (thread.lastMessage.attachment ? '📷 [Attachment]' : thread.lastMessage.body) : 'New conversation'}
+                                {thread.lastMessage ? (thread.lastMessage.attachment ? '📷 [Attachment]' : snippetText) : 'New conversation'}
                               </p>
                             </div>
                             <button 
@@ -1326,7 +1468,7 @@ function App() {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeThread.name}</h3>
                             <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span> online
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span> online node
                             </span>
                           </div>
                         </div>
@@ -1335,38 +1477,40 @@ function App() {
                           <button 
                             onClick={() => setActiveCall({ type: 'Voice Call', name: activeThread.name })}
                             title="Voice Call"
-                            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
-                            <PhoneCall size={18} />
+                            <PhoneCall size={16} />
                           </button>
                           <button 
                             onClick={() => setActiveCall({ type: 'Video Call', name: activeThread.name })}
                             title="Video Call"
-                            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
-                            <Video size={18} />
+                            <Video size={16} />
                           </button>
                           <button 
                             onClick={() => handleDeleteChatThread(activeThread.canonicalKey)}
                             title="Delete Chat Thread"
-                            style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: 'none', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: '600' }}
+                            style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.4rem 0.75rem', borderRadius: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: '600' }}
                           >
-                            <Trash size={15} /> Delete
+                            <Trash size={14} /> Delete
                           </button>
                         </div>
                       </div>
 
-                      {/* MESSAGES WITH SWIPE-RIGHT & TRADITIONAL VIEW ACCESS */}
-                      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, rgba(3,7,18,0.5) 100%)' }}>
+                      {/* MESSAGES */}
+                      <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem', background: 'radial-gradient(circle at center, rgba(99,102,241,0.04) 0%, rgba(3,7,18,0.7) 100%)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
-                            <p>No messages yet in this conversation.</p>
-                            <small>Send your first message below to start chatting!</small>
+                            <Mail size={52} style={{ marginBottom: '0.75rem', opacity: 0.3, filter: 'drop-shadow(0 0 10px rgba(99,102,241,0.3))' }} />
+                            <p style={{ fontWeight: '600', letterSpacing: '0.02em' }}>Secure Channel Initialized</p>
+                            <small>Send your first transmission below.</small>
                           </div>
                         ) : (
                           activeThread.messages.map((msg, idx) => {
                             const isOutbound = msg.direction === 'outbound';
-                            const isLong = msg.body && msg.body.length > 180;
+                            const cleanBodyText = formatCleanBody(msg.body);
+                            const isLong = cleanBodyText.length > 180;
                             const msgId = msg._id || msg.clientMessageId;
                             const hasBeenRepliedTo = activeThread.messages.some(m => m.quotedMessage && (m.quotedMessage.id === msgId));
 
@@ -1390,73 +1534,68 @@ function App() {
                                 <div 
                                   onClick={() => setTraditionalEmailReader(msg)}
                                   style={{
-                                    maxWidth: '70%',
-                                    background: isOutbound ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' : 'var(--card-bg)',
+                                    maxWidth: '72%',
+                                    background: isOutbound 
+                                      ? 'linear-gradient(135deg, rgba(99,102,241,0.95) 0%, rgba(168,85,247,0.9) 50%, rgba(236,72,153,0.9) 100%)' 
+                                      : 'rgba(18, 24, 38, 0.85)',
+                                    backdropFilter: 'blur(16px)',
                                     color: isOutbound ? '#ffffff' : 'var(--text-primary)',
-                                    padding: '0.75rem 1rem',
-                                    borderRadius: isOutbound ? '1rem 1rem 0 1rem' : '1rem 1rem 1rem 0',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                    border: isOutbound ? 'none' : '1px solid var(--input-border)',
+                                    padding: '0.9rem 1.15rem',
+                                    borderRadius: isOutbound ? '1.25rem 1.25rem 0.25rem 1.25rem' : '1.25rem 1.25rem 1.25rem 0.25rem',
+                                    boxShadow: isOutbound ? '0 8px 32px rgba(99, 102, 241, 0.35)' : '0 8px 32px rgba(0, 0, 0, 0.4)',
+                                    border: isOutbound ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(99, 102, 241, 0.25)',
                                     position: 'relative',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.2s ease, box-shadow 0.2s ease'
                                   }}
-                                  title="Swipe right or tap to open in traditional view"
+                                  title="Click anywhere to inspect payload"
                                 >
                                   {msg.subject && (
-                                    <div style={{ fontSize: '0.75rem', fontWeight: '700', opacity: 0.95, marginBottom: '0.35rem', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <Mail size={12} /> Subject: {msg.subject}
+                                    <div style={{ fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', opacity: 0.9, marginBottom: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.18)', paddingBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                      <Sparkles size={11} /> {msg.subject}
                                     </div>
                                   )}
 
                                   {msg.quotedMessage && (
-                                    <div style={{ background: 'rgba(0,0,0,0.15)', borderLeft: '3px solid #818cf8', padding: '0.35rem 0.5rem', borderRadius: '0.35rem', marginBottom: '0.5rem', fontSize: '0.8rem', opacity: 0.9 }}>
-                                      <div style={{ fontWeight: '600', fontSize: '0.7rem' }}>Replying to {msg.quotedMessage.sender.split('@')[0]}</div>
-                                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{msg.quotedMessage.body}</div>
+                                    <div style={{ background: 'rgba(0,0,0,0.3)', borderLeft: '3px solid #38bdf8', padding: '0.45rem 0.7rem', borderRadius: '0.5rem', marginBottom: '0.6rem', fontSize: '0.81rem', backdropFilter: 'blur(4px)' }}>
+                                      <div style={{ fontWeight: '700', fontSize: '0.7rem', color: '#38bdf8', letterSpacing: '0.03em' }}>RE: {msg.quotedMessage.sender.split('@')[0].toUpperCase()}</div>
+                                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'rgba(255,255,255,0.9)' }}>{formatCleanBody(msg.quotedMessage.body)}</div>
                                     </div>
                                   )}
 
                                   {msg.attachment && (
-                                    <div style={{ marginBottom: msg.body ? '0.5rem' : 0, borderRadius: '0.5rem', overflow: 'hidden' }}>
-                                      <img src={msg.attachment} alt="Attachment Preview" style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', borderRadius: '0.5rem', display: 'block' }} />
+                                    <div style={{ marginBottom: cleanBodyText ? '0.6rem' : 0, borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)' }}>
+                                      <img src={msg.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', display: 'block' }} />
                                     </div>
                                   )}
-                                  {msg.body && (
-                                    <div style={{ fontSize: '0.9rem', wordBreak: 'break-word', lineHeight: '1.4' }}>
-                                      {isLong ? `${msg.body.substring(0, 180)}... (Tap to read full email)` : msg.body}
-                                    </div>
-                                  )}
-                                  <div style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'right', marginTop: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
-                                    <button 
-                                      onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        setTraditionalEmailReader(msg); 
-                                      }}
-                                      title="Open in Traditional View"
-                                      style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.65rem', fontWeight: '600', marginRight: 'auto' }}
-                                    >
-                                      <Camera size={12} /> Traditional View
-                                    </button>
 
+                                  {cleanBodyText && (
+                                    <div style={{ fontSize: '0.92rem', wordBreak: 'break-word', lineHeight: '1.5' }}>
+                                      {isLong ? `${cleanBodyText.substring(0, 180)}... (Tap to expand payload)` : cleanBodyText}
+                                    </div>
+                                  )}
+
+                                  <div style={{ fontSize: '0.68rem', opacity: 0.75, textAlign: 'right', marginTop: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', fontFamily: 'JetBrains Mono, monospace' }}>
                                     {hasBeenRepliedTo ? (
-                                      <span style={{ fontSize: '0.65rem', opacity: 0.7, fontStyle: 'italic' }}>✓ Replied</span>
+                                      <span style={{ fontSize: '0.65rem', fontStyle: 'italic', marginRight: 'auto', color: isOutbound ? '#e0e7ff' : '#818cf8' }}>✓ Synchronized</span>
                                     ) : (
                                       <button 
                                         onClick={(e) => { 
                                           e.stopPropagation(); 
-                                          setQuotedMessage({ id: msgId, sender: msg.sender, body: msg.body || '[Attachment]' }); 
+                                          setQuotedMessage({ id: msgId, sender: msg.sender, body: cleanBodyText || '[Attachment]' }); 
                                         }}
-                                        title="Tag/Quote this message to reply"
-                                        style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.65rem' }}
+                                        title="Quote payload"
+                                        style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: '700', marginRight: 'auto' }}
                                       >
-                                        <MessageSquareReply size={12} /> Reply
+                                        <MessageSquareReply size={13} /> Reply
                                       </button>
                                     )}
                                     {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    {isOutbound && (msg.isOptimistic ? ' ◌' : ' ✓✓')}
+                                    {isOutbound && (msg.isOptimistic ? ' ◌' : ' ⚡')}
                                     {msg._id && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); handleDeleteSingleMessage(msg._id); }}
-                                        title="Delete message"
+                                        title="Purge message"
                                         style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.6, padding: '0 2px' }}
                                       >
                                         <Trash2 size={11} />
@@ -1471,24 +1610,24 @@ function App() {
                       </div>
 
                       {attachmentPreview && (
-                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
-                          <div style={{ width: '40px', height: '40px', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid var(--input-border)' }}>
+                        <div style={{ padding: '0.6rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, backdropFilter: 'blur(20px)' }}>
+                          <div style={{ width: '40px', height: '40px', borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid var(--input-border)' }}>
                             <img src={attachmentPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', flex: 1 }}>Attachment ready (max 5MB)</span>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', flex: 1, fontFamily: 'JetBrains Mono, monospace' }}>Encrypted attachment ready (max 5MB)</span>
                           <button onClick={() => setAttachmentPreview(null)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}><X size={16} /></button>
                         </div>
                       )}
 
                       {showSnippets && (
-                        <div style={{ padding: '0.5rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flexShrink: 0 }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}><Sparkles size={12} /> Quick Replies:</span>
+                        <div className="hide-scrollbar" style={{ padding: '0.6rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flexShrink: 0, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'JetBrains Mono, monospace' }}><Sparkles size={12} /> Neural Presets:</span>
                           {quickSnippetsList.map((snip, i) => (
                             <button
                               key={i}
                               type="button"
                               onClick={() => { setChatMessageBody(snip); setShowSnippets(false); }}
-                              style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', cursor: 'pointer' }}
+                              style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.3rem 0.75rem', borderRadius: '1rem', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.2s' }}
                             >
                               {snip}
                             </button>
@@ -1496,38 +1635,37 @@ function App() {
                         </div>
                       )}
 
-                      {/* CHAT COMPOSER BAR WITH TRADITIONAL VIEW CAMERA TAB */}
-                      <form onSubmit={handleSendReplySubmit} style={{ padding: '0.875rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.5rem', flexShrink: 0 }}>
+                      {/* CHAT COMPOSER BAR */}
+                      <form onSubmit={handleSendReplySubmit} style={{ padding: '1rem 1.25rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.6rem', flexShrink: 0, backdropFilter: 'blur(25px)' }}>
                         {quotedMessage && (
-                          <div style={{ background: 'rgba(99, 102, 241, 0.1)', borderLeft: '3px solid #6366f1', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>
-                              <span style={{ fontWeight: '600', color: '#6366f1' }}>Replying to {quotedMessage.sender.split('@')[0]}: </span>
-                              <span style={{ opacity: 0.8 }}>{quotedMessage.body}</span>
+                          <div style={{ background: 'rgba(99, 102, 241, 0.15)', borderLeft: '3px solid #6366f1', padding: '0.5rem 0.85rem', borderRadius: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backdropFilter: 'blur(10px)' }}>
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontWeight: '700', color: '#818cf8', display: 'block', fontSize: '0.72rem', letterSpacing: '0.03em', fontFamily: 'JetBrains Mono, monospace' }}>QUOTED PAYLOAD FROM {quotedMessage.sender.split('@')[0].toUpperCase()}</span>
+                              <span>{quotedMessage.body}</span>
                             </div>
-                            <button type="button" onClick={() => setQuotedMessage(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={14} /></button>
+                            <button type="button" onClick={() => setQuotedMessage(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}><X size={16} /></button>
                           </div>
                         )}
 
                         {!isReplying && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', width: '50px' }}>Subject</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', width: '65px', fontFamily: 'JetBrains Mono, monospace' }}>SUBJECT</span>
                             <input 
                               type="text"
-                              placeholder="Add a subject (optional)..."
+                              placeholder="Add secure transmission subject..."
                               value={chatSubject}
                               onChange={(e) => setChatSubject(e.target.value)}
-                              style={{ flex: 1, padding: '0.4rem 0.75rem', borderRadius: '0.5rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: '0.8rem', outline: 'none' }}
+                              style={{ flex: 1, padding: '0.5rem 0.85rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}
                             />
                           </div>
                         )}
 
                         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                          <label title="Attach image or file up to 5MB" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <label title="Attach secure file (max 5MB)" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}>
                             <Paperclip size={20} />
                             <input type="file" accept="image/*" onChange={handleAttachmentUpload} style={{ display: 'none' }} />
                           </label>
                           
-                          {/* Camera button opens traditional view with locked To/CC fields */}
                           <button 
                             type="button" 
                             onClick={() => {
@@ -1538,7 +1676,7 @@ function App() {
                               setIsTraditionalLocked(true);
                               setShowTraditionalModal(true);
                             }}
-                            title="Compose in Traditional View (To/CC locked)"
+                            title="Compose in Traditional Mail mode"
                             style={{ background: 'transparent', border: 'none', color: '#6366f1', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <Camera size={20} />
@@ -1547,7 +1685,7 @@ function App() {
                           <button 
                             type="button" 
                             onClick={() => setShowSnippets(!showSnippets)}
-                            title="Quick message templates"
+                            title="Neural templates"
                             style={{ background: 'transparent', border: 'none', color: showSnippets ? '#6366f1' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <Sparkles size={20} />
@@ -1555,12 +1693,12 @@ function App() {
 
                           <input 
                             type="text"
-                            placeholder="Type a message..."
+                            placeholder="Type secure transmission..."
                             value={chatMessageBody}
                             onChange={(e) => setChatMessageBody(e.target.value)}
-                            style={{ flex: 1, padding: '0.65rem 1rem', borderRadius: '1.5rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                            style={{ flex: 1, padding: '0.75rem 1.15rem', borderRadius: '1.25rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.92rem' }}
                           />
-                          <button type="submit" disabled={loading} style={{ background: '#6366f1', color: '#fff', border: 'none', width: '42px', height: '42px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
+                          <button type="submit" disabled={loading} style={{ background: 'var(--accent-gradient)', color: '#fff', border: 'none', width: '44px', height: '44px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 20px rgba(99,102,241,0.5)', transition: 'transform 0.2s' }}>
                             <Send size={18} />
                           </button>
                         </div>
@@ -1568,9 +1706,13 @@ function App() {
                     </>
                   ) : (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', padding: '2rem', textAlign: 'center' }}>
-                      <Mail size={56} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Secure Chat Portal</h3>
-                      <p style={{ maxWidth: '320px', fontSize: '0.9rem' }}>Search a phone number in the left panel and press Enter to start chatting.</p>
+                      <div style={{ width: '76px', height: '76px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem', color: '#6366f1', boxShadow: '0 0 30px rgba(99,102,241,0.15)' }}>
+                        <Mail size={36} />
+                      </div>
+                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '1.4rem', fontWeight: '700', letterSpacing: '-0.02em' }}>Welcome to your Inbox ✨</h3>
+                      <p style={{ maxWidth: '380px', fontSize: '0.95rem', lineHeight: '1.6', color: 'var(--text-muted)' }}>
+                        Select any conversation from the sidebar or look up any phone number in the search bar above to start messaging instantly.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1580,7 +1722,7 @@ function App() {
           </div>
         )}
 
-        {/* HOME SCREEN COMPOSE FLOATING BUTTON (ALLOWS MULTIPLE RECIPIENTS) */}
+        {/* HOME SCREEN COMPOSE FLOATING BUTTON */}
         {user && step === 6 && !isEditingProfile && (
           <button
             onClick={() => {
@@ -1593,22 +1735,23 @@ function App() {
             }}
             style={{
               position: 'fixed',
-              bottom: '28px',
+              bottom: '56px',
               right: '28px',
-              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              background: 'var(--accent-gradient)',
               color: '#fff',
               border: 'none',
-              width: '56px',
-              height: '56px',
+              width: '58px',
+              height: '58px',
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              boxShadow: '0 8px 24px rgba(99, 102, 241, 0.4)',
-              zIndex: 9999
+              boxShadow: '0 10px 30px rgba(99, 102, 241, 0.5)',
+              zIndex: 9999,
+              transition: 'transform 0.2s ease'
             }}
-            title="Compose New Email (Multi-recipient supported)"
+            title="Compose New Email"
           >
             <Edit3 size={22} />
           </button>
@@ -1685,13 +1828,21 @@ function App() {
                 </div>
                 <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
               </div>
+
+              {traditionalEmailReader.quotedMessage && (
+                <div style={{ background: 'var(--input-bg)', borderLeft: '3px solid #818cf8', padding: '0.5rem 0.75rem', borderRadius: '0.35rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                  <div style={{ fontWeight: '600', fontSize: '0.75rem', color: '#818cf8' }}>Replying to {traditionalEmailReader.quotedMessage.sender.split('@')[0]}</div>
+                  <div>{formatCleanBody(traditionalEmailReader.quotedMessage.body)}</div>
+                </div>
+              )}
+
               {traditionalEmailReader.attachment && (
                 <div style={{ marginBottom: '1rem', borderRadius: '0.5rem', overflow: 'hidden' }}>
                   <img src={traditionalEmailReader.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '280px', objectFit: 'cover', borderRadius: '0.5rem' }} />
                 </div>
               )}
               <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto' }}>
-                {traditionalEmailReader.body}
+                {formatCleanBody(traditionalEmailReader.body)}
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
                 <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.6rem 1.25rem', borderRadius: '0.75rem', cursor: 'pointer' }}>Close</button>
@@ -1714,12 +1865,12 @@ function App() {
         {activeCall && (
           <div className="modal-overlay" onClick={() => setActiveCall(null)}>
             <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center', padding: '2.5rem 1.5rem', background: 'var(--card-bg)' }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#6366f1', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '2rem', fontWeight: 'bold', animation: 'pulse 1.5s infinite' }}>
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#6366f1', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '2rem', fontWeight: 'bold', animation: 'pulse 1.5s infinite', boxShadow: '0 0 30px rgba(99,102,241,0.6)' }}>
                 {activeCall.name.charAt(0).toUpperCase()}
               </div>
               <h3 style={{ fontSize: '1.3rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{activeCall.name}</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '2rem' }}>Calling via secure {activeCall.type}...</p>
-              <button onClick={() => setActiveCall(null)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem 2rem', borderRadius: '2rem', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)' }}>End Call</button>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '2rem', fontFamily: 'JetBrains Mono, monospace' }}>Establishing {activeCall.type}...</p>
+              <button onClick={() => setActiveCall(null)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem 2rem', borderRadius: '2rem', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 16px rgba(239, 68, 68, 0.5)' }}>End Transmission</button>
             </div>
           </div>
         )}
@@ -1727,7 +1878,7 @@ function App() {
         {showChatInfo && activeThread && (
           <div className="modal-overlay" onClick={() => setShowChatInfo(false)}>
             <div className="modal-content" style={{ maxWidth: '380px', textAlign: 'center', padding: '2rem 1.5rem' }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: '#6366f1', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', color: '#fff', fontSize: '2.5rem', fontWeight: 'bold', boxShadow: '0 8px 24px rgba(99,102,241,0.4)' }}>
+              <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: '#6366f1', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', color: '#fff', fontSize: '2.5rem', fontWeight: 'bold', boxShadow: '0 8px 30px rgba(99,102,241,0.5)' }}>
                 {activeThread.avatar ? (
                   <img src={activeThread.avatar} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
@@ -1737,9 +1888,9 @@ function App() {
               <h2 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{activeThread.name}</h2>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all', marginBottom: '1.5rem' }}>{activeThread.sender}</p>
               
-              <div style={{ background: 'var(--input-bg)', padding: '1rem', borderRadius: '0.875rem', textAlign: 'left', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
-                <div style={{ color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Endpoint Security</div>
-                <div style={{ color: 'var(--text-primary)', fontWeight: '600' }}>End-to-end encrypted @rizzmail.me relay</div>
+              <div style={{ background: 'var(--input-bg)', padding: '1rem', borderRadius: '0.875rem', textAlign: 'left', marginBottom: '1.5rem', fontSize: '0.85rem', border: '1px solid var(--input-border)' }}>
+                <div style={{ color: 'var(--text-muted)', marginBottom: '0.2rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem' }}>SECURITY PROTOCOL</div>
+                <div style={{ color: 'var(--text-primary)', fontWeight: '600' }}>End-to-End Encrypted @rizzmail.me Node</div>
               </div>
 
               <button onClick={() => setShowChatInfo(false)} className="primary-btn">Close Info</button>
@@ -1781,6 +1932,13 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* MADE WITH LOVE IN INDIA FOOTER */}
+      <footer style={{ textAlign: 'center', padding: '1rem', flexShrink: 0, zIndex: 10, borderTop: '1px solid var(--input-border)', background: 'var(--card-bg)' }}>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+          Made with <span style={{ color: '#ef4444' }}>❤️</span> in India
+        </p>
+      </footer>
 
       {showLogoutConfirm && (
         <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
