@@ -4,7 +4,7 @@ import axios from 'axios';
 const router = express.Router();
 
 const MESSAGE_CENTRAL_BASE_URL = 'https://cpaas.messagecentral.com';
-const CUSTOMER_ID = process.env.MESSAGE_CENTRAL_CUSTOMER_ID || 'C-1D2F967287424E7';
+const CUSTOMER_ID = process.env.MESSAGE_CENTRAL_CUSTOMER_ID || 'C-869064A99A8B417';
 const API_KEY = process.env.MESSAGE_CENTRAL_KEY || 'S3JhdG9zQDIwMDQ=';
 
 // 1. Helper function to generate authentication token
@@ -16,7 +16,7 @@ async function getAuthToken() {
                 key: API_KEY,
                 scope: 'NEW',
                 country: '91',
-                email: process.env.MESSAGE_CENTRAL_EMAIL || 'opshubhamop29@gmail.com'
+                email: process.env.MESSAGE_CENTRAL_EMAIL || 'shubhuawsonly@gmail.com'
             },
             headers: { 'accept': '*/*' }
         });
