@@ -760,7 +760,9 @@ function App() {
     try {
       if (currentFolder === 'trash') {
         const threadMsgs = messages.filter(m => {
-          const isOutbound = m.direction === 'outbound';
+          const myEmailNorm = normalizeContactIdentifier(`${getEmailPhone(getUserPhone())}@rizzmail.me`);
+          const senderNorm = normalizeContactIdentifier(extractEmail(m.sender));
+          const isOutbound = m.direction === 'outbound' || senderNorm === myEmailNorm;
           const other = isOutbound ? m.recipient : m.sender;
           return normalizeContactIdentifier(other) === chatToDeleteKey;
         });
@@ -770,13 +772,17 @@ function App() {
           }
         }
         setMessages((prev) => prev.filter(m => {
-          const isOutbound = m.direction === 'outbound';
+          const myEmailNorm = normalizeContactIdentifier(`${getEmailPhone(getUserPhone())}@rizzmail.me`);
+          const senderNorm = normalizeContactIdentifier(extractEmail(m.sender));
+          const isOutbound = m.direction === 'outbound' || senderNorm === myEmailNorm;
           const other = isOutbound ? m.recipient : m.sender;
           return normalizeContactIdentifier(other) !== chatToDeleteKey;
         }));
       } else {
         setMessages((prev) => prev.map(m => {
-          const isOutbound = m.direction === 'outbound';
+          const myEmailNorm = normalizeContactIdentifier(`${getEmailPhone(getUserPhone())}@rizzmail.me`);
+          const senderNorm = normalizeContactIdentifier(extractEmail(m.sender));
+          const isOutbound = m.direction === 'outbound' || senderNorm === myEmailNorm;
           const other = isOutbound ? m.recipient : m.sender;
           if (normalizeContactIdentifier(other) === chatToDeleteKey) {
             return { ...m, folder: 'trash' };
@@ -835,10 +841,11 @@ function App() {
 
     messages.forEach((msg) => {
       if (msg.isDeleted) return;
-      const myPhoneNorm = normalizeContactIdentifier(getUserPhone());
-      const senderNorm = normalizeContactIdentifier(msg.sender);
+      const myEmailNorm = normalizeContactIdentifier(`${getEmailPhone(getUserPhone())}@rizzmail.me`);
+      const senderNorm = normalizeContactIdentifier(extractEmail(msg.sender));
 
-      const rawCounterparty = (senderNorm === myPhoneNorm) ? msg.recipient : msg.sender;
+      const isFromMe = (msg.direction === 'outbound' || senderNorm === myEmailNorm);
+      const rawCounterparty = isFromMe ? msg.recipient : msg.sender;
       if (!rawCounterparty) return;
 
       const cleanEmail = extractEmail(rawCounterparty);
@@ -856,7 +863,6 @@ function App() {
         };
       }
       
-      const isFromMe = (senderNorm === myPhoneNorm);
       if (!isFromMe && (msg.senderPhoto || msg.counterpartyPhoto)) {
         threadsMap[canonicalKey].avatar = msg.senderPhoto || msg.counterpartyPhoto;
       } else if (!threadsMap[canonicalKey].avatar && avatarCache[canonicalKey]) {
@@ -917,7 +923,11 @@ function App() {
         (thread.lastMessage && formatCleanBody(thread.lastMessage.body).toLowerCase().includes(searchQuery.toLowerCase()));
       
       if (chatFilter === 'unread') {
-        return matchesSearch && thread.messages.some(m => m.direction === 'inbound');
+        return matchesSearch && thread.messages.some(m => {
+          const myEmailNorm = normalizeContactIdentifier(`${getEmailPhone(getUserPhone())}@rizzmail.me`);
+          const senderNorm = normalizeContactIdentifier(extractEmail(m.sender));
+          return m.direction !== 'outbound' && senderNorm !== myEmailNorm;
+        });
       }
       if (chatFilter === 'attachments') {
         return matchesSearch && thread.messages.some(m => m.attachment);
@@ -1673,7 +1683,10 @@ function App() {
                           </div>
                         ) : (
                           activeThread.messages.map((msg, idx) => {
-                            const isOutbound = msg.direction === 'outbound';
+                            const myEmailNorm = normalizeContactIdentifier(`${getEmailPhone(getUserPhone())}@rizzmail.me`);
+                            const senderNorm = normalizeContactIdentifier(extractEmail(msg.sender));
+                            const isOutbound = msg.direction === 'outbound' || senderNorm === myEmailNorm;
+                            
                             const cleanBodyText = formatCleanBody(msg.body);
                             const isLong = cleanBodyText.length > 180;
                             const msgId = msg._id || msg.clientMessageId;
