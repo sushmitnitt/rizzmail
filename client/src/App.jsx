@@ -297,7 +297,6 @@ function App() {
     const myPhoneNorm = normalizeContactIdentifier(getUserPhone());
     const senderNorm = normalizeContactIdentifier(msg.sender);
     
-    // ONLY learn avatar from messages sent BY the counterparty (Inbound)
     if (senderNorm === myPhoneNorm) return;
 
     const counterpartyRaw = msg.sender;
@@ -832,7 +831,6 @@ function App() {
       }
       
       const isFromMe = (senderNorm === myPhoneNorm);
-      // ONLY pull avatar if the message is from the counterparty, or from cache
       if (!isFromMe && (msg.senderPhoto || msg.counterpartyPhoto)) {
         threadsMap[canonicalKey].avatar = msg.senderPhoto || msg.counterpartyPhoto;
       } else if (!threadsMap[canonicalKey].avatar && avatarCache[canonicalKey]) {
@@ -1060,7 +1058,7 @@ function App() {
                     onClick={() => { setShowProfileMenu(false); setIsEditingProfile(true); }}
                     style={{ width: '100%', background: 'transparent', border: 'none', padding: '0.65rem 0.75rem', borderRadius: '0.65rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500' }}
                   >
-                    <Edit3 size={16} style={{ color: '#818cf8' }} /> Account Settings & Aliases
+                    <Edit3 size={16} style={{ color: '#818cf8' }} /> Settings
                   </button>
 
                   <div style={{ height: '1px', background: 'var(--input-border)', margin: '0.5rem 0' }}></div>
@@ -1069,7 +1067,7 @@ function App() {
                     onClick={() => { setShowProfileMenu(false); setShowLogoutConfirm(true); }}
                     style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '0.65rem 0.75rem', borderRadius: '0.65rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
                   >
-                    <LogOut size={16} /> Sign Out / Logout
+                    <LogOut size={16} /> Sign Out
                   </button>
                 </div>
               )}
@@ -1380,21 +1378,21 @@ function App() {
               </div>
             )}
 
-            {/* ACCOUNT SETTINGS VIEW */}
+            {/* SETTINGS VIEW (Redesigned & Structured) */}
             {isEditingProfile ? (
-              <div style={{ margin: 'auto', width: '100%', maxWidth: '560px', display: 'flex', justifyContent: 'center', overflowY: 'auto', maxHeight: '100%', padding: '2rem' }} className="hide-scrollbar">
-                <div className="card" style={{ textAlign: 'left', width: '100%' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                    <h3>Account Settings & Profile</h3>
-                    <button onClick={() => setIsEditingProfile(false)} className="text-btn">Back to Chat</button>
+              <div style={{ margin: 'auto', width: '100%', maxWidth: '520px', display: 'flex', justifyContent: 'center', overflowY: 'auto', maxHeight: '100%', padding: '1.5rem' }} className="hide-scrollbar">
+                <div className="card" style={{ textAlign: 'left', width: '100%', display: 'flex', flexDirection: 'column', gap: '1.25rem', backdropFilter: 'blur(20px)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--input-border)', paddingBottom: '0.75rem' }}>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>Settings</h3>
+                    <button onClick={() => setIsEditingProfile(false)} className="text-btn" style={{ fontSize: '0.85rem', fontWeight: '600', color: '#818cf8', background: 'transparent', border: 'none', cursor: 'pointer' }}>Back to Chat</button>
                   </div>
                   {profileSuccess && <div className="success-banner">{profileSuccess}</div>}
 
-                  <form onSubmit={handleUpdateAccountDetails} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <form onSubmit={handleUpdateAccountDetails} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                       <div style={{
-                        width: '80px',
-                        height: '80px',
+                        width: '84px',
+                        height: '84px',
                         borderRadius: '50%',
                         background: 'var(--input-bg)',
                         border: '2px dashed var(--input-border)',
@@ -1403,7 +1401,8 @@ function App() {
                         justifyContent: 'center',
                         overflow: 'hidden',
                         position: 'relative',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
                       }}>
                         {editProfilePhoto ? (
                           <img src={editProfilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -1417,20 +1416,22 @@ function App() {
                           style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
                         />
                       </div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Change profile picture</label>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Tap to change profile picture</label>
                     </div>
 
-                    <div className="input-group-stack"><label>First Name</label><input type="text" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} required /></div>
-                    <div className="input-group-stack"><label>Last Name</label><input type="text" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} required /></div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div className="input-group-stack" style={{ margin: 0 }}><label>First Name</label><input type="text" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} required style={{ padding: '0.7rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }} /></div>
+                      <div className="input-group-stack" style={{ margin: 0 }}><label>Last Name</label><input type="text" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} required style={{ padding: '0.7rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }} /></div>
+                    </div>
                     
-                    <div className="input-group-stack">
+                    <div className="input-group-stack" style={{ margin: 0 }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Globe size={14} /> Language Preference
                       </label>
                       <select 
                         value={selectedLanguage} 
                         onChange={(e) => setSelectedLanguage(e.target.value)}
-                        style={{ padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                        style={{ padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none', width: '100%' }}
                       >
                         {languagesList.map(lang => (
                           <option key={lang.code} value={lang.code}>{lang.label}</option>
@@ -1438,32 +1439,33 @@ function App() {
                       </select>
                     </div>
 
-                    <div style={{ background: 'var(--input-bg)', padding: '1rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)' }}>
-                      <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.5rem' }}>Manage Alias IDs</label>
-                      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <div style={{ background: 'var(--input-bg)', padding: '1rem', borderRadius: '0.85rem', border: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <label style={{ fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-primary)', display: 'block' }}>Manage Alias IDs</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <input 
                           type="text" 
                           placeholder="e.g. support or work" 
                           value={newAliasInput} 
                           onChange={(e) => setNewAliasInput(e.target.value)}
-                          style={{ flex: 1, padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid var(--input-border)', background: 'var(--card-bg)', color: 'var(--text-primary)', outline: 'none' }}
+                          style={{ flex: 1, padding: '0.6rem 0.75rem', borderRadius: '0.65rem', border: '1px solid var(--input-border)', background: 'var(--card-bg)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem' }}
                         />
-                        <button type="button" onClick={handleAddAlias} style={{ background: '#6366f1', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: '600' }}>Add Alias</button>
+                        <button type="button" onClick={handleAddAlias} style={{ background: '#6366f1', color: '#fff', border: 'none', padding: '0.6rem 1rem', borderRadius: '0.65rem', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>Add Alias</button>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingTop: '0.25rem' }}>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>• {getEmailPhone(getUserPhone())}@rizzmail.me (Primary)</div>
                         {aliases.map((al, idx) => (
                           <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-primary)' }}>
                             <span>• {al}</span>
-                            <button type="button" onClick={() => handleRemoveAlias(al)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={13} /></button>
+                            <button type="button" onClick={() => handleRemoveAlias(al)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}><Trash2 size={13} /></button>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <button type="submit" className="primary-btn">Save Changes</button>
+                    <button type="submit" className="primary-btn" style={{ marginTop: '0.5rem' }}>Save Changes</button>
                   </form>
-                  <button onClick={handleOpenDeletionWarning} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem', borderRadius: '0.75rem', marginTop: '1.5rem', cursor: 'pointer', width: '100%', fontWeight: '600' }}>Delete Account 🗑️</button>
+
+                  <button onClick={handleOpenDeletionWarning} style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer', width: '100%', fontWeight: '600', fontSize: '0.9rem', transition: 'background 0.2s' }}>Delete Account 🗑️</button>
                 </div>
               </div>
             ) : (
