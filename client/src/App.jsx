@@ -1430,11 +1430,11 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* EXPANDED SIDEBAR (410px) WITH CLEAN SINGLE-LINE FIT FILTER CHIPS & GRADIENT REFRESH ICON */}
+                {/* EXPANDED SIDEBAR (410px) WITH GUARANTEED VISIBLE REFRESH BUTTON & HORIZONTALLY SCROLLABLE CHIPS */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '410px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
-                  <div style={{ padding: '0.75rem 0.875rem', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem', flexShrink: 0 }}>
-                    <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                  <div style={{ padding: '0.75rem 0.875rem', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexShrink: 0 }}>
+                    <div className="hide-scrollbar" style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flex: 1, minWidth: 0, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                       {[
                         { key: 'all', label: 'All' },
                         { key: 'unread', label: 'Unread' },
@@ -1461,7 +1461,7 @@ function App() {
                         </button>
                       ))}
                     </div>
-                    <div style={{ display: 'flex', flexShrink: 0, marginLeft: '0.2rem' }}>
+                    <div style={{ display: 'flex', flexShrink: 0 }}>
                       <button 
                         onClick={handleRefreshInbox} 
                         className="refresh-btn" 
