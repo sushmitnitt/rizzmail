@@ -842,6 +842,7 @@ function App() {
     messages.forEach((msg) => {
       if (msg.isDeleted) return;
       const myEmailNorm = normalizeContactIdentifier(`${getEmailPhone(getUserPhone())}@rizzmail.me`);
+      const myPhoneNorm = normalizeContactIdentifier(getUserPhone());
       const senderNorm = normalizeContactIdentifier(extractEmail(msg.sender));
 
       const isFromMe = (msg.direction === 'outbound' || senderNorm === myEmailNorm);
@@ -850,6 +851,12 @@ function App() {
 
       const cleanEmail = extractEmail(rawCounterparty);
       const canonicalKey = normalizeContactIdentifier(cleanEmail);
+
+      // Skip self-chats (conversations with oneself)
+      if (canonicalKey === myEmailNorm || canonicalKey === myPhoneNorm || canonicalKey === normalizeContactIdentifier(getUserPhone()) || !canonicalKey) {
+        return;
+      }
+
       const displayName = extractName(rawCounterparty, msg.counterpartyName);
 
       if (!threadsMap[canonicalKey]) {
@@ -879,7 +886,10 @@ function App() {
     if (activeChatSender) {
       const activeClean = extractEmail(activeChatSender);
       const activeCanonical = normalizeContactIdentifier(activeClean);
-      if (!threadsMap[activeCanonical]) {
+      const myEmailNorm = normalizeContactIdentifier(`${getEmailPhone(getUserPhone())}@rizzmail.me`);
+      const myPhoneNorm = normalizeContactIdentifier(getUserPhone());
+
+      if (activeCanonical && activeCanonical !== myEmailNorm && activeCanonical !== myPhoneNorm && !threadsMap[activeCanonical]) {
         threadsMap[activeCanonical] = {
           canonicalKey: activeCanonical,
           sender: activeClean,
