@@ -202,6 +202,7 @@ function App() {
   const [chatToDeleteKey, setChatToDeleteKey] = useState(null);
 
   const [messages, setMessages] = useState([]);
+  const [avatarCache, setAvatarCache] = useState(() => JSON.parse(localStorage.getItem('rizzmail_avatars') || '{}'));
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -292,8 +293,25 @@ function App() {
     }
   }, [step]);
 
+  const updateAvatarCacheFromMessage = (msg) => {
+    const myPhoneNorm = normalizeContactIdentifier(getUserPhone());
+    const senderNorm = normalizeContactIdentifier(msg.sender);
+    const counterpartyRaw = (senderNorm === myPhoneNorm) ? msg.recipient : msg.sender;
+    const photo = (senderNorm === myPhoneNorm) ? (msg.recipientPhoto || user?.profilePhoto) : (msg.counterpartyPhoto || msg.senderPhoto);
+    if (counterpartyRaw && photo) {
+      const canonical = normalizeContactIdentifier(counterpartyRaw);
+      setAvatarCache(prev => {
+        if (prev[canonical] === photo) return prev;
+        const updated = { ...prev, [canonical]: photo };
+        localStorage.setItem('rizzmail_avatars', JSON.stringify(updated));
+        return updated;
+      });
+    }
+  };
+
   useEffect(() => {
     socket.on('new_message', (incomingMsg) => {
+      updateAvatarCacheFromMessage(incomingMsg);
       setMessages((prev) => {
         if (incomingMsg._id && prev.some(m => m._id === incomingMsg._id)) return prev;
         if (incomingMsg.clientMessageId) {
@@ -582,6 +600,15 @@ function App() {
       await verifyOTP(cleanPhone, deleteOtp);
       await deleteAccountAPI(cleanPhone);
       setDeleteLoading(false);
+      
+      // Permanently wipe all client-side stored data
+      localStorage.removeItem('rizzmail_user');
+      localStorage.removeItem('rizzmail_phone');
+      localStorage.removeItem('rizzmail_favs');
+      localStorage.removeItem('rizzmail_aliases');
+      localStorage.removeItem('rizzmail_lang');
+      localStorage.removeItem('rizzmail_avatars');
+
       handleLogout();
     } catch (err) {
       setDeleteLoading(false);
@@ -592,7 +619,9 @@ function App() {
   const loadInbox = async (phone) => {
     try {
       const res = await fetchMessages(phone);
-      setMessages(res.data || []);
+      const msgs = res.data || [];
+      msgs.forEach(m => updateAvatarCacheFromMessage(m));
+      setMessages(msgs);
     } catch (err) {
       console.error('Failed to load messages', err);
     }
@@ -625,7 +654,8 @@ function App() {
       direction: 'outbound',
       createdAt: new Date().toISOString(),
       isOptimistic: true,
-      folder: 'home'
+      folder: 'home',
+      senderPhoto: user?.profilePhoto || ''
     };
 
     setMessages((prev) => [optimisticMsg, ...prev]);
@@ -642,11 +672,14 @@ function App() {
         body: finalBody,
         attachment: attachmentPreview,
         quotedMessage: quotedMessage,
-        clientMessageId: tempClientMessageId
+        clientMessageId: tempClientMessageId,
+        senderPhoto: user?.profilePhoto || '',
+        senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
       });
       
       if (res.data && res.data.message) {
         const confirmedMsg = res.data.message;
+        updateAvatarCacheFromMessage(confirmedMsg);
         setMessages((prev) => prev.map(m => m.clientMessageId === tempClientMessageId ? confirmedMsg : m));
       } else {
         loadInbox(activePhone);
@@ -677,7 +710,9 @@ function App() {
           subject: traditionalSubject.trim() || '',
           body: traditionalBody.trim(),
           attachment: attachmentPreview,
-          quotedMessage: quotedMessage
+          quotedMessage: quotedMessage,
+          senderPhoto: user?.profilePhoto || '',
+          senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
         });
       } catch (err) {
         console.error('Failed to send traditional email to', target);
@@ -698,7 +733,6 @@ function App() {
     if (!chatToDeleteKey) return;
     try {
       if (currentFolder === 'trash') {
-        // Permanently delete messages in this thread
         const threadMsgs = messages.filter(m => {
           const isOutbound = m.direction === 'outbound';
           const other = isOutbound ? m.recipient : m.sender;
@@ -715,7 +749,6 @@ function App() {
           return normalizeContactIdentifier(other) !== chatToDeleteKey;
         }));
       } else {
-        // Move to trash
         setMessages((prev) => prev.map(m => {
           const isOutbound = m.direction === 'outbound';
           const other = isOutbound ? m.recipient : m.sender;
@@ -789,15 +822,19 @@ function App() {
           canonicalKey: canonicalKey,
           sender: counterpartyRaw,
           name: msg.counterpartyName && !msg.counterpartyName.includes('@') ? msg.counterpartyName : counterpartyRaw.split('@')[0],
-          avatar: msg.counterpartyPhoto || '',
+          avatar: msg.counterpartyPhoto || msg.senderPhoto || avatarCache[canonicalKey] || '',
           messages: [],
           isFavorite: !!favoritesMap[canonicalKey]
         };
       }
       
-      if (msg.counterpartyPhoto && !threadsMap[canonicalKey].avatar) {
-        threadsMap[canonicalKey].avatar = msg.counterpartyPhoto;
+      const msgPhoto = msg.counterpartyPhoto || msg.senderPhoto;
+      if (msgPhoto && !threadsMap[canonicalKey].avatar) {
+        threadsMap[canonicalKey].avatar = msgPhoto;
+      } else if (!threadsMap[canonicalKey].avatar && avatarCache[canonicalKey]) {
+        threadsMap[canonicalKey].avatar = avatarCache[canonicalKey];
       }
+
       if (msg.counterpartyName && !msg.counterpartyName.includes('@')) {
         threadsMap[canonicalKey].name = msg.counterpartyName;
       }
@@ -812,7 +849,7 @@ function App() {
           canonicalKey: activeCanonical,
           sender: activeChatSender,
           name: activeChatSender.split('@')[0],
-          avatar: '',
+          avatar: avatarCache[activeCanonical] || '',
           messages: [],
           isFavorite: !!favoritesMap[activeCanonical]
         };
@@ -829,6 +866,9 @@ function App() {
       thread.messages.sort((a, b) => new Date(a.createdAt || a.date || 0) - new Date(b.createdAt || b.date || 0));
       thread.lastMessage = thread.messages[thread.messages.length - 1];
       thread.isFavorite = !!favoritesMap[thread.canonicalKey];
+      if (!thread.avatar && avatarCache[thread.canonicalKey]) {
+        thread.avatar = avatarCache[thread.canonicalKey];
+      }
       return thread;
     });
 
@@ -860,7 +900,7 @@ function App() {
     });
 
     return { chatThreadsList: threadsList, filteredThreads: filtered };
-  }, [messages, favoritesMap, searchQuery, chatFilter, currentFolder, activeChatSender]);
+  }, [messages, favoritesMap, searchQuery, chatFilter, currentFolder, activeChatSender, avatarCache]);
 
   const activeThread = activeChatSender ? chatThreadsList.find(t => t.canonicalKey === normalizeContactIdentifier(activeChatSender)) : null;
   const isReplying = activeThread && activeThread.messages && activeThread.messages.length > 0;
@@ -1883,7 +1923,7 @@ function App() {
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button onClick={() => setChatToDeleteKey(null)} style={{ flex: 1, background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600' }}>Cancel</button>
                 <button onClick={handleConfirmDeleteAction} style={{ flex: 1, background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600' }}>
-                  {currentFolder === 'trash' ? 'Delete Forever 🗑️' : 'Move to Trash 🗑️️'}
+                  {currentFolder === 'trash' ? 'Delete Forever 🗑️' : 'Move to Trash 🗑'}
                 </button>
               </div>
             </div>
