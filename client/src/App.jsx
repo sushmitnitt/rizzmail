@@ -34,7 +34,7 @@ const frontPageTranslations = {
     tagline: "Your personal email via your phone number.",
     secure: "SECURE AUTHENTICATION",
     welcome: "Welcome to RizzMail",
-    greetings: ["Welcome", "Aapka swaagat hai", "Nalvaravu", "Swagatam", "Swagato"],
+    greetings: ["Welcome", "Greetings", "Hello"],
     continueBtn: "Continue with OTP ➔",
     systemOnline: "System Online"
   },
@@ -42,7 +42,7 @@ const frontPageTranslations = {
     tagline: "आपके फोन नंबर के माध्यम से आपका व्यक्तिगत ईमेल।",
     secure: "सुरक्षित प्रमाणीकरण",
     welcome: "रिज़मेल में आपका स्वागत है",
-    greetings: ["आपका स्वागत है", "नमस्ते", "स्वागत है", "Aapka swaagat hai"],
+    greetings: ["आपका स्वागत है", "नमस्ते", "Aapka swaagat hai"],
     continueBtn: "ओटीपी के साथ जारी रखें ➔",
     systemOnline: "सिस्टम ऑनलाइन"
   },
@@ -50,7 +50,7 @@ const frontPageTranslations = {
     tagline: "உங்கள் தொலைபேசி எண் மூலம் உங்கள் தனிப்பட்ட மின்னஞ்சல்.",
     secure: "பாதுகாப்பான அங்கீகாரம்",
     welcome: "RizzMail-க்கு உங்களை வரவேற்கிறோம்",
-    greetings: ["நல்வரவு", "வணக்கம்", "வரவேற்கிறோம்", "Aapka swaagat hai"],
+    greetings: ["நல்வரவு", "வணக்கம்", "வரவேற்கிறோம்"],
     continueBtn: "OTP உடன் தொடரவும் ➔",
     systemOnline: "கணினி ஆன்லைனில் உள்ளது"
   },
@@ -58,7 +58,7 @@ const frontPageTranslations = {
     tagline: "మీ ఫోన్ నంబర్ ద్వారా మీ వ్యక్తిగత ఇమెయిల్.",
     secure: "సురక్షిత ప్రమాణీకరణ",
     welcome: "RizzMailకి స్వాగతం",
-    greetings: ["స్వాగతం", "నమస్కారం", "సుస్వాగతం", "Aapka swaagat hai"],
+    greetings: ["స్వాగతం", "నమస్కారం", "సుస్వాగతం"],
     continueBtn: "OTP తో కొనసాగించండి ➔",
     systemOnline: "సిస్టమ్ ఆన్‌‌లైన్‌లో ఉంది"
   },
@@ -66,7 +66,7 @@ const frontPageTranslations = {
     tagline: "আপনার ফোন নম্বরের মাধ্যমে আপনার ব্যক্তিগত ইমেল।",
     secure: "সুরক্ষিত প্রমাণীকরণ",
     welcome: "RizzMail-এ স্বাগতম",
-    greetings: ["স্বাগত", "নমস্কার", "স্বাগতম", "Aapka swaagat hai"],
+    greetings: ["স্বাগত", "নমস্কার", "স্বাগতম"],
     continueBtn: "OTP দিয়ে চালিয়ে যান ➔",
     systemOnline: "সিস্টেম অনলাইন"
   }
@@ -844,9 +844,18 @@ function App() {
   const isReplying = activeThread && activeThread.messages && activeThread.messages.length > 0;
 
   return (
-    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative', overflowX: 'hidden' }}>
+      
+      {/* DYNAMIC BACKGROUND GLOW ANIMATIONS */}
+      {step === 1 && (
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: '15%', left: '20%', width: '380px', height: '380px', background: 'rgba(99, 102, 241, 0.12)', borderRadius: '50%', filter: 'blur(70px)', animation: 'pulse 6s ease-in-out infinite' }}></div>
+          <div style={{ position: 'absolute', bottom: '15%', right: '20%', width: '420px', height: '420px', background: 'rgba(168, 85, 247, 0.1)', borderRadius: '50%', filter: 'blur(80px)', animation: 'pulse 8s ease-in-out infinite alternate' }}></div>
+        </div>
+      )}
+
       {/* HEADER */}
-      <header className="app-header">
+      <header className="app-header" style={{ zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           {user && step === 6 && (
             <button 
@@ -979,7 +988,7 @@ function App() {
         </div>
       </header>
 
-      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 5 }}>
         {error && <div className="error-banner" style={{ width: '100%', maxWidth: '440px', margin: '1rem auto' }}>{error}</div>}
 
         {isLoggingOut && (
@@ -991,7 +1000,7 @@ function App() {
           </div>
         )}
 
-        {/* STEP 1: FRONT PAGE LOGIN WITH LANGUAGE SELECTOR & SLIDING GREETING */}
+        {/* STEP 1: FRONT PAGE LOGIN WITH LANGUAGE SELECTOR, SLIDING GREETING & INTERACTIVE FEATURE CARDS */}
         {!isLoggingOut && step === 1 && (
           <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
             
@@ -1014,7 +1023,7 @@ function App() {
               </div>
             </div>
 
-            <form onSubmit={handleSendOTP} className="card" style={{ width: '100%' }}>
+            <form onSubmit={handleSendOTP} className="card" style={{ width: '100%', backdropFilter: 'blur(20px)', border: '1px solid var(--input-border)', boxShadow: '0 20px 50px rgba(0,0,0,0.4)' }}>
               <div className="badge-pill"><Shield size={12} /> {t.secure}</div>
               <h2>{t.welcome}</h2>
               <p className="subtitle">{t.tagline}</p>
@@ -1023,7 +1032,7 @@ function App() {
               <div style={{ height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '1.25rem' }}>
                 <p 
                   style={{ 
-                    fontSize: '0.85rem', 
+                    fontSize: '0.95rem', 
                     fontWeight: '600', 
                     color: '#818cf8', 
                     margin: 0,
@@ -1032,7 +1041,7 @@ function App() {
                     transform: fadeAnim ? 'translateY(0)' : 'translateY(-12px)'
                   }}
                 >
-                  {t.greetings[greetingIndex]} • Aapka swaagat hai
+                  {t.greetings[greetingIndex]}
                 </p>
               </div>
               
@@ -1055,9 +1064,34 @@ function App() {
                 </div>
               </div>
 
-              <button type="submit" className="primary-btn" disabled={loading}>
+              <button type="submit" className="primary-btn" disabled={loading} style={{ transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer' }}>
                 {loading ? 'Dispatching Code...' : t.continueBtn}
               </button>
+
+              {/* DYNAMIC SITE FEATURES DISPLAYED BELOW CONTINUE WITH OTP BUTTON */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid var(--input-border)', paddingTop: '1.2rem' }}>
+                <div style={{ textAlign: 'center', padding: '0.5rem', background: 'var(--input-bg)', borderRadius: '0.6rem', border: '1px solid var(--input-border)' }}>
+                  <div style={{ fontSize: '0.68rem', fontWeight: '700', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                    <Zap size={11} /> PHONE-ID
+                  </div>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '2px' }}>Your number is your email</div>
+                </div>
+
+                <div style={{ textAlign: 'center', padding: '0.5rem', background: 'var(--input-bg)', borderRadius: '0.6rem', border: '1px solid var(--input-border)' }}>
+                  <div style={{ fontSize: '0.68rem', fontWeight: '700', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                    <Sparkles size={11} /> REAL-TIME
+                  </div>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '2px' }}>Instant WebSocket sync</div>
+                </div>
+
+                <div style={{ textAlign: 'center', padding: '0.5rem', background: 'var(--input-bg)', borderRadius: '0.6rem', border: '1px solid var(--input-border)' }}>
+                  <div style={{ fontSize: '0.68rem', fontWeight: '700', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                    <Shield size={11} /> SECURE
+                  </div>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '2px' }}>Encrypted @rizzmail.me</div>
+                </div>
+              </div>
+
             </form>
           </div>
         )}
