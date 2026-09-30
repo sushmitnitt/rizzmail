@@ -29,44 +29,44 @@ const languagesList = [
   { code: 'bn', label: 'Bengali (বাংলা)' }
 ];
 
+const dynamicWelcomes = [
+  "आपका स्वागत है",       // Hindi
+  "உங்களை வரவேற்கிறோம்", // Tamil
+  "మీకు స్వాగతం",         // Telugu
+  "আপনাকে স্বাগতম",       // Bengali
+  "આપનું સ્વાગત છે",     // Gujarati
+  "ನಿಮಗೆ ಸ್ವಾಗತ",         // Kannada
+  "Welcome to RizzMail"  // English
+];
+
 const frontPageTranslations = {
   en: {
     tagline: "Your personal email via your phone number.",
     secure: "SECURE AUTHENTICATION",
-    welcome: "Welcome to RizzMail",
-    greetings: ["Welcome", "Greetings", "Hello"],
     continueBtn: "Continue with OTP ➔",
     systemOnline: "System Online"
   },
   hi: {
     tagline: "आपके फोन नंबर के माध्यम से आपका व्यक्तिगत ईमेल।",
     secure: "सुरक्षित प्रमाणीकरण",
-    welcome: "रिज़मेल में आपका स्वागत है",
-    greetings: ["आपका स्वागत है", "नमस्ते", "Aapka swaagat hai"],
     continueBtn: "ओटीपी के साथ जारी रखें ➔",
     systemOnline: "सिस्टम ऑनलाइन"
   },
   ta: {
     tagline: "உங்கள் தொலைபேசி எண் மூலம் உங்கள் தனிப்பட்ட மின்னஞ்சல்.",
     secure: "பாதுகாப்பான அங்கீகாரம்",
-    welcome: "RizzMail-க்கு உங்களை வரவேற்கிறோம்",
-    greetings: ["நல்வரவு", "வணக்கம்", "வரவேற்கிறோம்"],
     continueBtn: "OTP உடன் தொடரவும் ➔",
     systemOnline: "கணினி ஆன்லைனில் உள்ளது"
   },
   te: {
     tagline: "మీ ఫోన్ నంబర్ ద్వారా మీ వ్యక్తిగత ఇమెయిల్.",
     secure: "సురక్షిత ప్రమాణీకరణ",
-    welcome: "RizzMailకి స్వాగతం",
-    greetings: ["స్వాగతం", "నమస్కారం", "సుస్వాగతం"],
     continueBtn: "OTP తో కొనసాగించండి ➔",
     systemOnline: "సిస్టమ్ ఆన్‌‌లైన్‌లో ఉంది"
   },
   bn: {
     tagline: "আপনার ফোন নম্বরের মাধ্যমে আপনার ব্যক্তিগত ইমেল।",
     secure: "সুরক্ষিত প্রমাণীকরণ",
-    welcome: "RizzMail-এ স্বাগতম",
-    greetings: ["স্বাগত", "নমস্কার", "স্বাগতম"],
     continueBtn: "OTP দিয়ে চালিয়ে যান ➔",
     systemOnline: "সিস্টেম অনলাইন"
   }
@@ -83,7 +83,6 @@ const normalizeContactIdentifier = (input) => {
   return localPart || str;
 };
 
-// Helper to clean raw incoming email bodies and strip backend transport routing headers
 const formatCleanBody = (bodyText) => {
   if (!bodyText) return '';
   let text = bodyText.toString();
@@ -124,9 +123,8 @@ function App() {
 
   const toggleTheme = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
 
-  // Front page language & sliding greeting state
   const [lang, setLang] = useState('en');
-  const [greetingIndex, setGreetingIndex] = useState(0);
+  const [welcomeIndex, setWelcomeIndex] = useState(0);
   const [fadeAnim, setFadeAnim] = useState(true);
   const t = frontPageTranslations[lang] || frontPageTranslations.en;
 
@@ -134,12 +132,12 @@ function App() {
     const interval = setInterval(() => {
       setFadeAnim(false);
       setTimeout(() => {
-        setGreetingIndex((prev) => (prev + 1) % t.greetings.length);
+        setWelcomeIndex((prev) => (prev + 1) % dynamicWelcomes.length);
         setFadeAnim(true);
-      }, 300);
-    }, 3000);
+      }, 350);
+    }, 3200);
     return () => clearInterval(interval);
-  }, [lang, t.greetings.length]);
+  }, []);
 
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('rizzmail_user');
@@ -988,7 +986,7 @@ function App() {
         </div>
       </header>
 
-      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 5 }}>
+      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', zIndex: 5, padding: '1.5rem 0' }}>
         {error && <div className="error-banner" style={{ width: '100%', maxWidth: '440px', margin: '1rem auto' }}>{error}</div>}
 
         {isLoggingOut && (
@@ -1000,7 +998,7 @@ function App() {
           </div>
         )}
 
-        {/* STEP 1: FRONT PAGE LOGIN WITH LANGUAGE SELECTOR, SLIDING GREETING & INTERACTIVE FEATURE CARDS */}
+        {/* STEP 1: FRONT PAGE LOGIN WITH DYNAMIC BOLD MULTI-LANGUAGE WELCOMES */}
         {!isLoggingOut && step === 1 && (
           <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
             
@@ -1010,10 +1008,7 @@ function App() {
                 <Globe size={15} style={{ color: '#818cf8', marginRight: '6px' }} />
                 <select
                   value={lang}
-                  onChange={(e) => {
-                    setLang(e.target.value);
-                    setGreetingIndex(0);
-                  }}
+                  onChange={(e) => setLang(e.target.value)}
                   style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: '600', outline: 'none', cursor: 'pointer' }}
                 >
                   {languagesList.map(l => (
@@ -1025,25 +1020,27 @@ function App() {
 
             <form onSubmit={handleSendOTP} className="card" style={{ width: '100%', backdropFilter: 'blur(20px)', border: '1px solid var(--input-border)', boxShadow: '0 20px 50px rgba(0,0,0,0.4)' }}>
               <div className="badge-pill"><Shield size={12} /> {t.secure}</div>
-              <h2>{t.welcome}</h2>
-              <p className="subtitle">{t.tagline}</p>
               
-              {/* Sliding fade transition welcome sub-banner */}
-              <div style={{ height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '1.25rem' }}>
-                <p 
+              {/* DYNAMIC BOLD BIGGER WELCOME HEADING */}
+              <div style={{ height: '54px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', margin: '0.5rem 0 0.25rem 0' }}>
+                <h2 
                   style={{ 
-                    fontSize: '0.95rem', 
-                    fontWeight: '600', 
-                    color: '#818cf8', 
+                    fontSize: '1.55rem', 
+                    fontWeight: '800', 
+                    color: 'var(--text-primary)', 
                     margin: 0,
                     transition: 'all 0.4s ease',
                     opacity: fadeAnim ? 1 : 0,
-                    transform: fadeAnim ? 'translateY(0)' : 'translateY(-12px)'
+                    transform: fadeAnim ? 'translateY(0)' : 'translateY(-14px)',
+                    textAlign: 'center',
+                    letterSpacing: '-0.01em'
                   }}
                 >
-                  {t.greetings[greetingIndex]}
-                </p>
+                  {dynamicWelcomes[welcomeIndex]}
+                </h2>
               </div>
+
+              <p className="subtitle" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>{t.tagline}</p>
               
               <div style={{ marginBottom: '1.5rem' }}>
                 <div className="phone-input-container">
@@ -1068,7 +1065,7 @@ function App() {
                 {loading ? 'Dispatching Code...' : t.continueBtn}
               </button>
 
-              {/* DYNAMIC SITE FEATURES DISPLAYED BELOW CONTINUE WITH OTP BUTTON */}
+              {/* SITE FEATURES DISPLAYED BELOW CONTINUE WITH OTP BUTTON */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid var(--input-border)', paddingTop: '1.2rem' }}>
                 <div style={{ textAlign: 'center', padding: '0.5rem', background: 'var(--input-bg)', borderRadius: '0.6rem', border: '1px solid var(--input-border)' }}>
                   <div style={{ fontSize: '0.68rem', fontWeight: '700', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
@@ -1965,14 +1962,14 @@ function App() {
             </form>
           </div>
         )}
-      </main>
 
-      {/* MADE WITH LOVE IN INDIA FOOTER */}
-      <footer style={{ textAlign: 'center', padding: '1rem', flexShrink: 0, zIndex: 10, borderTop: '1px solid var(--input-border)', background: 'var(--card-bg)' }}>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-          Made with <span style={{ color: '#ef4444' }}>❤️</span> in India
-        </p>
-      </footer>
+        {/* CLEAN COMPACT INLINE SECTION: MADE WITH LOVE IN INDIA */}
+        <div style={{ textAlign: 'center', padding: '1.5rem 1rem 0.5rem 1rem', marginTop: 'auto', flexShrink: 0 }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+            Made with <span style={{ color: '#ef4444' }}>❤️</span> in India
+          </p>
+        </div>
+      </main>
 
       {showLogoutConfirm && (
         <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
