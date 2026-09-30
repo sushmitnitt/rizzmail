@@ -30,13 +30,13 @@ const languagesList = [
 ];
 
 const dynamicWelcomes = [
+  "Welcome to RizzMail",
   "आपका स्वागत है",       // Hindi
   "உங்களை வரவேற்கிறோம்", // Tamil
   "మీకు స్వాగతం",         // Telugu
   "আপনাকে স্বাগতম",       // Bengali
   "આપનું સ્વાગત છે",     // Gujarati
-  "ನಿಮಗೆ ಸ್ವಾಗತ",         // Kannada
-  "Welcome to RizzMail"  // English
+  "ನಿಮಗೆ ಸ್ವಾಗತ"         // Kannada
 ];
 
 const frontPageTranslations = {
@@ -998,7 +998,7 @@ function App() {
           </div>
         )}
 
-        {/* STEP 1: FRONT PAGE LOGIN WITH DYNAMIC BOLD MULTI-LANGUAGE WELCOMES */}
+        {/* STEP 1: FRONT PAGE LOGIN WITH ROTATING WELCOMES INCLUDING "Welcome to RizzMail" */}
         {!isLoggingOut && step === 1 && (
           <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
             
@@ -1065,24 +1065,24 @@ function App() {
                 {loading ? 'Dispatching Code...' : t.continueBtn}
               </button>
 
-              {/* SITE FEATURES DISPLAYED BELOW CONTINUE WITH OTP BUTTON */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid var(--input-border)', paddingTop: '1.2rem' }}>
-                <div style={{ textAlign: 'center', padding: '0.5rem', background: 'var(--input-bg)', borderRadius: '0.6rem', border: '1px solid var(--input-border)' }}>
+              {/* SITE FEATURES DISPLAYED BELOW CONTINUE WITH OTP BUTTON IN BLUE THEME */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid rgba(99, 102, 241, 0.25)', paddingTop: '1.2rem' }}>
+                <div style={{ textAlign: 'center', padding: '0.5rem', background: 'rgba(99, 102, 241, 0.08)', borderRadius: '0.6rem', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
                   <div style={{ fontSize: '0.68rem', fontWeight: '700', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
                     <Zap size={11} /> PHONE-ID
                   </div>
                   <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '2px' }}>Your number is your email</div>
                 </div>
 
-                <div style={{ textAlign: 'center', padding: '0.5rem', background: 'var(--input-bg)', borderRadius: '0.6rem', border: '1px solid var(--input-border)' }}>
-                  <div style={{ fontSize: '0.68rem', fontWeight: '700', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                <div style={{ textAlign: 'center', padding: '0.5rem', background: 'rgba(99, 102, 241, 0.08)', borderRadius: '0.6rem', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+                  <div style={{ fontSize: '0.68rem', fontWeight: '700', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
                     <Sparkles size={11} /> REAL-TIME
                   </div>
                   <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '2px' }}>Instant WebSocket sync</div>
                 </div>
 
-                <div style={{ textAlign: 'center', padding: '0.5rem', background: 'var(--input-bg)', borderRadius: '0.6rem', border: '1px solid var(--input-border)' }}>
-                  <div style={{ fontSize: '0.68rem', fontWeight: '700', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                <div style={{ textAlign: 'center', padding: '0.5rem', background: 'rgba(99, 102, 241, 0.08)', borderRadius: '0.6rem', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+                  <div style={{ fontSize: '0.68rem', fontWeight: '700', color: '#a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
                     <Shield size={11} /> SECURE
                   </div>
                   <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '2px' }}>Encrypted @rizzmail.me</div>
