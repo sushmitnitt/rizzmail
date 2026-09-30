@@ -1131,7 +1131,7 @@ function App() {
         </div>
       </header>
 
-      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 5, minHeight: 0 }}>
+      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', zIndex: 5, minHeight: 0 }}>
         {error && <div className="error-banner" style={{ width: '100%', maxWidth: '440px', margin: '1rem auto' }}>{error}</div>}
 
         {isLoggingOut && (
@@ -1555,8 +1555,8 @@ function App() {
                       className="refresh-btn" 
                       title="Refresh inbox" 
                       style={{ 
-                        width: '34px', 
-                        height: '34px', 
+                        width: '38px', 
+                        height: '38px', 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center', 
@@ -1565,11 +1565,11 @@ function App() {
                         borderRadius: '50%', 
                         color: '#fff', 
                         cursor: 'pointer',
-                        boxShadow: '0 2px 8px rgba(99, 102, 241, 0.4)',
+                        boxShadow: '0 2px 10px rgba(99, 102, 241, 0.5)',
                         flexShrink: 0
                       }}
                     >
-                      <RefreshCw size={14} style={{ transform: isRefreshing ? 'rotate(360deg)' : 'none', transition: 'transform 0.8s ease' }} />
+                      <RefreshCw size={18} style={{ transform: isRefreshing ? 'rotate(360deg)' : 'none', transition: 'transform 0.8s ease' }} />
                     </button>
                   </div>
 
