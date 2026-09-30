@@ -296,8 +296,12 @@ function App() {
   const updateAvatarCacheFromMessage = (msg) => {
     const myPhoneNorm = normalizeContactIdentifier(getUserPhone());
     const senderNorm = normalizeContactIdentifier(msg.sender);
-    const counterpartyRaw = (senderNorm === myPhoneNorm) ? msg.recipient : msg.sender;
-    const photo = (senderNorm === myPhoneNorm) ? (msg.recipientPhoto || user?.profilePhoto) : (msg.counterpartyPhoto || msg.senderPhoto);
+    
+    // ONLY learn avatar from messages sent BY the counterparty (Inbound)
+    if (senderNorm === myPhoneNorm) return;
+
+    const counterpartyRaw = msg.sender;
+    const photo = msg.senderPhoto || msg.counterpartyPhoto;
     if (counterpartyRaw && photo) {
       const canonical = normalizeContactIdentifier(counterpartyRaw);
       setAvatarCache(prev => {
@@ -601,7 +605,6 @@ function App() {
       await deleteAccountAPI(cleanPhone);
       setDeleteLoading(false);
       
-      // Permanently wipe all client-side stored data
       localStorage.removeItem('rizzmail_user');
       localStorage.removeItem('rizzmail_phone');
       localStorage.removeItem('rizzmail_favs');
@@ -822,15 +825,16 @@ function App() {
           canonicalKey: canonicalKey,
           sender: counterpartyRaw,
           name: msg.counterpartyName && !msg.counterpartyName.includes('@') ? msg.counterpartyName : counterpartyRaw.split('@')[0],
-          avatar: msg.counterpartyPhoto || msg.senderPhoto || avatarCache[canonicalKey] || '',
+          avatar: '',
           messages: [],
           isFavorite: !!favoritesMap[canonicalKey]
         };
       }
       
-      const msgPhoto = msg.counterpartyPhoto || msg.senderPhoto;
-      if (msgPhoto && !threadsMap[canonicalKey].avatar) {
-        threadsMap[canonicalKey].avatar = msgPhoto;
+      const isFromMe = (senderNorm === myPhoneNorm);
+      // ONLY pull avatar if the message is from the counterparty, or from cache
+      if (!isFromMe && (msg.senderPhoto || msg.counterpartyPhoto)) {
+        threadsMap[canonicalKey].avatar = msg.senderPhoto || msg.counterpartyPhoto;
       } else if (!threadsMap[canonicalKey].avatar && avatarCache[canonicalKey]) {
         threadsMap[canonicalKey].avatar = avatarCache[canonicalKey];
       }
