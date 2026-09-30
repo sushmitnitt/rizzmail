@@ -694,21 +694,41 @@ function App() {
     loadInbox(activePhone);
   };
 
-  const handleConfirmMoveToTrash = async () => {
+  const handleConfirmDeleteAction = async () => {
     if (!chatToDeleteKey) return;
     try {
-      setMessages((prev) => prev.map(m => {
-        const isOutbound = m.direction === 'outbound';
-        const other = isOutbound ? m.recipient : m.sender;
-        if (normalizeContactIdentifier(other) === chatToDeleteKey) {
-          return { ...m, folder: 'trash' };
+      if (currentFolder === 'trash') {
+        // Permanently delete messages in this thread
+        const threadMsgs = messages.filter(m => {
+          const isOutbound = m.direction === 'outbound';
+          const other = isOutbound ? m.recipient : m.sender;
+          return normalizeContactIdentifier(other) === chatToDeleteKey;
+        });
+        for (const m of threadMsgs) {
+          if (m._id) {
+            try { await deleteMessageAPI(m._id); } catch (e) {}
+          }
         }
-        return m;
-      }));
+        setMessages((prev) => prev.filter(m => {
+          const isOutbound = m.direction === 'outbound';
+          const other = isOutbound ? m.recipient : m.sender;
+          return normalizeContactIdentifier(other) !== chatToDeleteKey;
+        }));
+      } else {
+        // Move to trash
+        setMessages((prev) => prev.map(m => {
+          const isOutbound = m.direction === 'outbound';
+          const other = isOutbound ? m.recipient : m.sender;
+          if (normalizeContactIdentifier(other) === chatToDeleteKey) {
+            return { ...m, folder: 'trash' };
+          }
+          return m;
+        }));
+      }
       setActiveChatSender(null);
       setChatToDeleteKey(null);
     } catch (e) {
-      setError('Failed to move conversation to trash.');
+      setError('Failed to process deletion request.');
     }
   };
 
@@ -921,7 +941,6 @@ function App() {
         {/* RIGHT HEADER ACTIONS */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, marginLeft: 'auto' }}>
           
-          {/* HEADER COMPOSE BUTTON (ONLY SHOWN WHEN A CHAT IS OPEN, GLOWING & DIFFERENT) */}
           {user && step === 6 && !isLoggingOut && activeChatSender && (
             <button
               onClick={() => {
@@ -1561,10 +1580,10 @@ function App() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <button 
                             onClick={() => setChatToDeleteKey(activeThread.canonicalKey)}
-                            title="Move Chat Thread to Trash"
+                            title={currentFolder === 'trash' ? 'Delete Forever' : 'Move Chat Thread to Trash'}
                             style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.4rem 0.75rem', borderRadius: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: '600' }}
                           >
-                            <Trash size={14} /> Delete
+                            <Trash size={14} /> {currentFolder === 'trash' ? 'Delete Forever' : 'Delete'}
                           </button>
                         </div>
                       </div>
@@ -1852,14 +1871,20 @@ function App() {
             <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'left', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', marginBottom: '0.75rem' }}>
                 <AlertTriangle size={22} />
-                <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text-primary)' }}>Move Chat to Trash?</h3>
+                <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text-primary)' }}>
+                  {currentFolder === 'trash' ? 'Delete Chat Forever?' : 'Move Chat to Trash?'}
+                </h3>
               </div>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
-                Are you sure you want to delete this conversation? It will be moved to your Trash folder.
+                {currentFolder === 'trash' 
+                  ? 'Are you sure you want to permanently delete this conversation? This action cannot be undone.'
+                  : 'Are you sure you want to delete this conversation? It will be moved to your Trash folder.'}
               </p>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button onClick={() => setChatToDeleteKey(null)} style={{ flex: 1, background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600' }}>Cancel</button>
-                <button onClick={handleConfirmMoveToTrash} style={{ flex: 1, background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600' }}>Move to Trash 🗑️</button>
+                <button onClick={handleConfirmDeleteAction} style={{ flex: 1, background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600' }}>
+                  {currentFolder === 'trash' ? 'Delete Forever 🗑️' : 'Move to Trash 🗑️️'}
+                </button>
               </div>
             </div>
           </div>
