@@ -1622,7 +1622,7 @@ function App() {
                 </div>
 
                 {/* ACTIVE CHAT WINDOW PANE */}
-                <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', height: '100%', overflow: 'hidden', minHeight: 0 }}>
+                <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: theme === 'light' ? '#ffffff' : 'var(--bg-main)', height: '100%', overflow: 'hidden', minHeight: 0 }}>
                   {activeThread ? (
                     <>
                       <div style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -1674,7 +1674,7 @@ function App() {
                       </div>
 
                       {/* MESSAGES */}
-                      <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem', background: 'radial-gradient(circle at center, rgba(99,102,241,0.04) 0%, rgba(3,7,18,0.7) 100%)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                      <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem', background: theme === 'light' ? '#ffffff' : 'radial-gradient(circle at center, rgba(99,102,241,0.04) 0%, rgba(3,7,18,0.7) 100%)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
                             <Mail size={52} style={{ marginBottom: '0.75rem', opacity: 0.3 }} />
@@ -1716,13 +1716,13 @@ function App() {
                                     textAlign: 'left',
                                     background: isOutbound 
                                       ? 'linear-gradient(135deg, rgba(99,102,241,0.95) 0%, rgba(168,85,247,0.9) 50%, rgba(236,72,153,0.9) 100%)' 
-                                      : 'rgba(18, 24, 38, 0.85)',
+                                      : (theme === 'light' ? '#f1f5f9' : 'rgba(18, 24, 38, 0.85)'),
                                     backdropFilter: 'blur(16px)',
-                                    color: isOutbound ? '#ffffff' : 'var(--text-primary)',
+                                    color: isOutbound ? '#ffffff' : (theme === 'light' ? '#0f172a' : 'var(--text-primary)'),
                                     padding: '0.9rem 1.15rem',
                                     borderRadius: isOutbound ? '1.25rem 1.25rem 0.25rem 1.25rem' : '1.25rem 1.25rem 1.25rem 0.25rem',
-                                    boxShadow: isOutbound ? '0 8px 32px rgba(99, 102, 241, 0.35)' : '0 8px 32px rgba(0, 0, 0, 0.4)',
-                                    border: isOutbound ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(99, 102, 241, 0.25)',
+                                    boxShadow: isOutbound ? '0 8px 32px rgba(99, 102, 241, 0.35)' : (theme === 'light' ? '0 4px 12px rgba(0, 0, 0, 0.06)' : '0 8px 32px rgba(0, 0, 0, 0.4)'),
+                                    border: isOutbound ? '1px solid rgba(255,255,255,0.2)' : (theme === 'light' ? '1px solid #e2e8f0' : '1px solid rgba(99, 102, 241, 0.25)'),
                                     position: 'relative',
                                     cursor: 'pointer',
                                     transition: 'transform 0.2s ease, box-shadow 0.2s ease'
@@ -1730,15 +1730,15 @@ function App() {
                                   title="Click to view message"
                                 >
                                   {msg.subject && (
-                                    <div style={{ fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', opacity: 0.9, marginBottom: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.18)', paddingBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '5px', textAlign: 'left' }}>
+                                    <div style={{ fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', opacity: 0.9, marginBottom: '0.4rem', borderBottom: isOutbound ? '1px solid rgba(255,255,255,0.18)' : (theme === 'light' ? '1px solid #cbd5e1' : '1px solid rgba(255,255,255,0.18)'), paddingBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '5px', textAlign: 'left' }}>
                                       <Sparkles size={11} /> {msg.subject}
                                     </div>
                                   )}
 
                                   {msg.quotedMessage && (
-                                    <div style={{ background: 'rgba(0,0,0,0.3)', borderLeft: '3px solid #38bdf8', padding: '0.45rem 0.7rem', borderRadius: '0.5rem', marginBottom: '0.6rem', fontSize: '0.81rem', backdropFilter: 'blur(4px)', textAlign: 'left' }}>
-                                      <div style={{ fontWeight: '700', fontSize: '0.7rem', color: '#38bdf8', letterSpacing: '0.03em', textAlign: 'left' }}>RE: {extractEmail(msg.quotedMessage.sender).split('@')[0].toUpperCase()}</div>
-                                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'rgba(255,255,255,0.9)', textAlign: 'left' }}>{formatCleanBody(msg.quotedMessage.body)}</div>
+                                    <div style={{ background: theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.3)', borderLeft: '3px solid #38bdf8', padding: '0.45rem 0.7rem', borderRadius: '0.5rem', marginBottom: '0.6rem', fontSize: '0.81rem', backdropFilter: 'blur(4px)', textAlign: 'left' }}>
+                                      <div style={{ fontWeight: '700', fontSize: '0.7rem', color: theme === 'light' ? '#0284c7' : '#38bdf8', letterSpacing: '0.03em', textAlign: 'left' }}>RE: {extractEmail(msg.quotedMessage.sender).split('@')[0].toUpperCase()}</div>
+                                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: isOutbound ? 'rgba(255,255,255,0.9)' : (theme === 'light' ? '#334155' : 'rgba(255,255,255,0.9)'), textAlign: 'left' }}>{formatCleanBody(msg.quotedMessage.body)}</div>
                                     </div>
                                   )}
 
@@ -1756,7 +1756,7 @@ function App() {
 
                                   <div style={{ fontSize: '0.68rem', opacity: 0.75, textAlign: 'right', marginTop: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', fontFamily: 'JetBrains Mono, monospace' }}>
                                     {hasBeenRepliedTo ? (
-                                      <span style={{ fontSize: '0.65rem', fontStyle: 'italic', marginRight: 'auto', color: isOutbound ? '#e0e7ff' : '#818cf8', textAlign: 'left' }}>✓ Sent</span>
+                                      <span style={{ fontSize: '0.65rem', fontStyle: 'italic', marginRight: 'auto', color: isOutbound ? '#e0e7ff' : '#6366f1', textAlign: 'left' }}>✓ Sent</span>
                                     ) : (
                                       <button 
                                         onClick={(e) => { 
