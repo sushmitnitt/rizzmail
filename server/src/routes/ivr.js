@@ -1,171 +1,94 @@
 const express = require("express");
 const router = express.Router();
+const twilio = require("twilio");
 const User = require("../models/User");
 
-router.get("/test", (req, res) => {
-  res.json({
-    success: true,
-    message: "RizzMail IVR server is working!"
+// Handle incoming call
+router.post("/incoming-call", (req, res) => {
+  const twiml = new twilio.twiml.VoiceResponse();
+
+  const gather = twiml.gather({
+    numDigits: 1,
+    action: "/api/ivr/handle-input",
+    method: "POST",
   });
-});
 
-router.post("/welcome", (req, res) => {
-  const twiml = `
-<Response>
-  <Gather
-    numDigits="1"
-    action="action="https://rizzmail-backend.onrender.com/api/ivr/handle-choice"
-    method="POST"
-    timeout="10"
-  >
-    <Say>
-      Welcome to RizzMail.
-      To create a RizzMail account using this phone number, press 1.
-    </Say>
-  </Gather>
+  gather.say(
+    { voice: "alice" },
+    "Welcome to Rizzmail. To create your account, please press 1."
+  );
 
-  <Say>
-    We did not receive your choice. Goodbye.
-  </Say>
-</Response>
-`;
+  twiml.say(
+    { voice: "alice" },
+    "We did not receive any input. Goodbye."
+  );
 
   res.type("text/xml");
-  res.send(twiml);
+  res.send(twiml.toString());
 });
 
-router.post("/handle-choice", async (req, res) => {
-  try {
-    const digit = req.body.Digits;
-    const phoneNumber = req.body.From;
+// Handle digit pressed by caller
+router.post("/handle-input", async (req, res) => {
+  const twiml = new twilio.twiml.VoiceResponse();
 
-    console.log("📞 Caller:", phoneNumber);
-    console.log("🔢 Pressed:", digit);
+  const digitPressed = req.body.Digits;
+  const callerPhoneNumber = req.body.From;
 
-    // Caller did not press 1
-    if (digit !== "1") {
-      return res.type("text/xml").send(`
-        <Response>
-          <Say>
-            Invalid choice. Goodbye.
-          </Say>
-        </Response>
-      `);
-    }
+  console.log("Caller:", callerPhoneNumber);
+  console.log("Digit pressed:", digitPressed);
 
-    // Twilio did not provide caller number
-    if (!phoneNumber) {
-      return res.type("text/xml").send(`
-        <Response>
-          <Say>
-            We could not identify your phone number.
-            Please try again later.
-          </Say>
-        </Response>
-      `);
-    }
+  if (digitPressed !== "1") {
+    twiml.say(
+      { voice: "alice" },
+      "Invalid selection. Goodbye."
+    );
 
-    // Check whether account already exists
-    const existingUser = await User.findOne({
-      phoneNumber: phoneNumber
-    });
-
-    // EXISTING ACCOUNT
-    if (existingUser) {
-      console.log("ℹ️ Account already exists:", phoneNumber);
-
-      return res.type("text/xml").send(`
-        <Response>
-          <Say>
-            A RizzMail account already exists for this phone number.
-            You do not need to create another account.
-            Thank you for using RizzMail.
-          </Say>
-        </Response>
-      `);
-    }
-
-    // NEW ACCOUNT
-    await User.create({
-      phoneNumber: phoneNumber,
-      name: "",
-      firstName: "",
-      lastName: "",
-      photo: "",
-      profilePhoto: "",
-      birthdate: "",
-      birthdateLocked: false,
-      termsAgreed: false,
-      agreedToTerms: false
-    });
-
-    console.log("✅ NEW RizzMail account created:", phoneNumber);
-
-    return res.type("text/xml").send(`
-      <Response>
-        <Say>
-          Your RizzMail account has been created successfully.
-          Your account is associated with this phone number.
-          Thank you for choosing RizzMail.
-        </Say>
-      </Response>
-    `);
-
-  } catch (error) {
-    console.error("❌ IVR account creation error:", error);
-
-    return res.type("text/xml").send(`
-      <Response>
-        <Say>
-          Sorry, we could not create your RizzMail account right now.
-          Please try again later.
-        </Say>
-      </Response>
-    `);
+    res.type("text/xml");
+    return res.send(twiml.toString());
   }
-});
 
-router.post("/create-account", async (req, res) => {
   try {
-    const phoneNumber = req.body.phoneNumber;
-
-    console.log("IVR PHONE:", phoneNumber);
-
-    if (!phoneNumber) {
-      return res.status(400).json({
-        success: false,
-        message: "Phone number is required"
-      });
-    }
-
-    let user = await User.findOne({ phoneNumber });
+    let user = await User.findOne({
+      phoneNumber: callerPhoneNumber,
+    });
 
     if (user) {
-      return res.json({
-        success: true,
-        message: "Account already exists"
+      twiml.say(
+        { voice: "alice" },
+        "You already have a Rizzmail account. Goodbye."
+      );
+    } else {
+      user = new User({
+        phoneNumber: callerPhoneNumber,
+        firstName: "IVR",
+        lastName: "User",
+        agreedToTerms: true,
+        termsAgreed: true,
       });
+
+      await user.save();
+
+      console.log(
+        "Rizzmail account created for:",
+        callerPhoneNumber
+      );
+
+      twiml.say(
+        { voice: "alice" },
+        "Success! Your Rizzmail account has been created successfully. Goodbye."
+      );
     }
-
-    await User.create({
-      phoneNumber: phoneNumber
-    });
-
-    console.log("ACCOUNT CREATED:", phoneNumber);
-
-    return res.json({
-      success: true,
-      message: "RizzMail account created successfully"
-    });
-
   } catch (error) {
-    console.error("IVR ERROR:", error);
+    console.error("IVR account creation error:", error);
 
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    twiml.say(
+      { voice: "alice" },
+      "Sorry, we could not create your account. Please try again later."
+    );
   }
+
+  res.type("text/xml");
+  res.send(twiml.toString());
 });
 
 module.exports = router;

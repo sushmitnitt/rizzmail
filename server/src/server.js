@@ -56,9 +56,8 @@ app.set("io", io);
 
 // Register API Routes
 app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/ivr", require("./routes/ivr"));
 app.use("/api/email", require("./routes/emailRoutes"));
-
+app.use("/api/ivr", require("./routes/ivr"));
 
 // In your backend server.js file
 app.use(express.json({ limit: '10mb' }));
@@ -105,4 +104,35 @@ try {
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 RizzMail Backend Server running on port ${PORT}`);
+});
+
+const twilio = require('twilio');
+
+// Initialize Twilio client using your credentials
+const accountSid = process.env.TWILIO_ACCOUNT_SID; // or your hardcoded SID
+const authToken = process.env.TWILIO_AUTH_TOKEN;   // or your hardcoded Auth Token
+const twilioNumber = process.env.TWILIO_PHONE_NUMBER; // your Twilio voice number
+
+const twilioClient = twilio(accountSid, authToken);
+
+app.post('/api/request-call', async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber) {
+      return res.status(400).json({ error: 'Phone number is required.' });
+    }
+
+    // Trigger an outbound voice call with a friendly TwiML voice greeting
+    const call = await twilioClient.calls.create({
+      // You can use Twilio's sample voice URL or your own hosted TwiML URL
+      twiml: '<Response><Say voice="alice">Hello! Thank you for requesting a call from Rizzmail. Your connection is live and active. Have a wonderful day!</Say></Response>',
+      to: phoneNumber,
+      from: twilioNumber
+    });
+
+    res.json({ success: true, message: 'Call triggered successfully!', callSid: call.sid });
+  } catch (err) {
+    console.error('Twilio Call Error:', err);
+    res.status(500).json({ error: err.message || 'Failed to trigger call.' });
+  }
 });
