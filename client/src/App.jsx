@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, PhoneCall, Video, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera, ShieldAlert, Globe, MessageSquareReply } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera, ShieldAlert, Globe, MessageSquareReply } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -224,7 +224,6 @@ function App() {
   const [traditionalEmailReader, setTraditionalEmailReader] = useState(null);
 
   const [attachmentPreview, setAttachmentPreview] = useState(null);
-  const [activeCall, setActiveCall] = useState(null);
   const [showSnippets, setShowSnippets] = useState(false);
 
   const [touchStartX, setTouchStartX] = useState(0);
@@ -1493,7 +1492,7 @@ function App() {
                   {activeThread ? (
                     <>
                       <div style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => setShowChatInfo(true)}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', cursor: 'pointer', minWidth: 0 }} onClick={() => setShowChatInfo(true)}>
                           <button 
                             onClick={(e) => { e.stopPropagation(); setActiveChatSender(null); }}
                             className="whatsapp-back-btn"
@@ -1508,7 +1507,7 @@ function App() {
                               activeThread.name.charAt(0).toUpperCase()
                             )}
                           </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ minWidth: 0 }}>
                             <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeThread.name}</h3>
                             <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span> online node
@@ -1517,20 +1516,6 @@ function App() {
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <button 
-                            onClick={() => setActiveCall({ type: 'Voice Call', name: activeThread.name })}
-                            title="Voice Call"
-                            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            <PhoneCall size={16} />
-                          </button>
-                          <button 
-                            onClick={() => setActiveCall({ type: 'Video Call', name: activeThread.name })}
-                            title="Video Call"
-                            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            <Video size={16} />
-                          </button>
                           <button 
                             onClick={() => handleDeleteChatThread(activeThread.canonicalKey)}
                             title="Delete Chat Thread"
@@ -1901,19 +1886,6 @@ function App() {
                   setShowTraditionalModal(true);
                 }} className="primary-btn" style={{ width: 'auto' }}>Reply in Traditional View ➔</button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {activeCall && (
-          <div className="modal-overlay" onClick={() => setActiveCall(null)}>
-            <div className="modal-content" style={{ maxWidth: '340px', textAlign: 'center', padding: '2.5rem 1.5rem', background: 'var(--card-bg)' }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#6366f1', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '2rem', fontWeight: 'bold', animation: 'pulse 1.5s infinite', boxShadow: '0 0 30px rgba(99,102,241,0.6)' }}>
-                {activeCall.name.charAt(0).toUpperCase()}
-              </div>
-              <h3 style={{ fontSize: '1.3rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{activeCall.name}</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '2rem', fontFamily: 'JetBrains Mono, monospace' }}>Establishing {activeCall.type}...</p>
-              <button onClick={() => setActiveCall(null)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem 2rem', borderRadius: '2rem', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 16px rgba(239, 68, 68, 0.5)' }}>End Transmission</button>
             </div>
           </div>
         )}
