@@ -901,6 +901,39 @@ function App() {
         
         {/* RIGHT HEADER ACTIONS */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, marginLeft: 'auto' }}>
+          
+          {/* COMPOSE BUTTON IN HEADER (LEFT OF SYSTEM ONLINE) */}
+          {user && step === 6 && !isLoggingOut && (
+            <button
+              onClick={() => {
+                setTraditionalTo(activeChatSender || '');
+                setTraditionalCc('');
+                setTraditionalSubject('');
+                setTraditionalBody('');
+                setIsTraditionalLocked(false);
+                setShowTraditionalModal(true);
+              }}
+              title="Compose New Email"
+              style={{
+                background: 'var(--accent-gradient)',
+                color: '#fff',
+                border: 'none',
+                padding: '0.45rem 0.9rem',
+                borderRadius: '0.75rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Edit3 size={15} /> Compose
+            </button>
+          )}
+
           <div className="status-pill" style={{ display: 'flex', alignItems: 'center' }}>
             <span className="pulse-dot"></span> {t.systemOnline}
           </div>
@@ -1381,38 +1414,41 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* SIDEBAR WITH CLEAN FILTER CHIPS */}
+                {/* SIDEBAR WITH CLEAN SINGLE-LINE FIT FILTER CHIPS */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
-                  <div style={{ padding: '1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                      <div className="hide-scrollbar" style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px', flex: 1, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                        {['all', 'unread', 'attachments', 'favorites'].map((chip) => (
-                          <button 
-                            key={chip}
-                            onClick={() => setChatFilter(chip)} 
-                            style={{ 
-                              background: chatFilter === chip ? '#6366f1' : 'var(--input-bg)', 
-                              color: chatFilter === chip ? '#fff' : 'var(--text-muted)', 
-                              border: '1px solid var(--input-border)', 
-                              padding: '0.3rem 0.65rem', 
-                              borderRadius: '1rem', 
-                              fontSize: '0.75rem', 
-                              fontWeight: '600', 
-                              cursor: 'pointer',
-                              textTransform: 'capitalize',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            {chip}
-                          </button>
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
-                        <button onClick={handleRefreshInbox} className="refresh-btn" title="Refresh inbox">
-                          <RefreshCw size={14} style={{ transform: isRefreshing ? 'rotate(360deg)' : 'none', transition: 'transform 0.8s ease' }} />
+                  <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.35rem', flexShrink: 0 }}>
+                    <div className="hide-scrollbar" style={{ display: 'flex', gap: '0.25rem', overflowX: 'auto', flex: 1, scrollbarWidth: 'none', msOverflowStyle: 'none', alignItems: 'center' }}>
+                      {[
+                        { key: 'all', label: 'All' },
+                        { key: 'unread', label: 'Unread' },
+                        { key: 'attachments', label: 'Attachments' },
+                        { key: 'favorites', label: 'Fav' }
+                      ].map((chip) => (
+                        <button 
+                          key={chip.key}
+                          onClick={() => setChatFilter(chip.key)} 
+                          style={{ 
+                            background: chatFilter === chip.key ? '#6366f1' : 'var(--input-bg)', 
+                            color: chatFilter === chip.key ? '#fff' : 'var(--text-muted)', 
+                            border: '1px solid var(--input-border)', 
+                            padding: '0.25rem 0.5rem', 
+                            borderRadius: '1rem', 
+                            fontSize: '0.7rem', 
+                            fontWeight: '600', 
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}
+                        >
+                          {chip.label}
                         </button>
-                      </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', flexShrink: 0, marginLeft: '0.25rem' }}>
+                      <button onClick={handleRefreshInbox} className="refresh-btn" title="Refresh inbox" style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <RefreshCw size={13} style={{ transform: isRefreshing ? 'rotate(360deg)' : 'none', transition: 'transform 0.8s ease' }} />
+                      </button>
                     </div>
                   </div>
 
@@ -1476,43 +1512,44 @@ function App() {
                   {activeThread ? (
                     <>
                       <div style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', cursor: 'pointer', minWidth: 0 }} onClick={() => setShowChatInfo(true)}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                          {/* BACK BUTTON TO RETURN TO DASHBOARD */}
                           <button 
-                            onClick={(e) => { e.stopPropagation(); setActiveChatSender(null); }}
-                            className="whatsapp-back-btn"
-                            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'none' }}
+                            onClick={() => setActiveChatSender(null)}
+                            title="Back to Dashboard / Inbox"
+                            style={{ 
+                              background: 'var(--input-bg)', 
+                              border: '1px solid var(--input-border)', 
+                              color: 'var(--text-primary)', 
+                              cursor: 'pointer', 
+                              width: '36px', 
+                              height: '36px', 
+                              borderRadius: '50%', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center', 
+                              flexShrink: 0,
+                              transition: 'background 0.2s'
+                            }}
                           >
-                            <ArrowLeft size={20} />
+                            <ArrowLeft size={18} />
                           </button>
-                          <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: '0', color: '#fff', fontWeight: 'bold' }}>
-                            {activeThread.avatar ? (
-                              <img src={activeThread.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                              activeThread.name.charAt(0).toUpperCase()
-                            )}
-                          </div>
-                          <div style={{ minWidth: 0 }}>
-                            <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeThread.name}</h3>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', minWidth: 0 }} onClick={() => setShowChatInfo(true)}>
+                            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: '0', color: '#fff', fontWeight: 'bold' }}>
+                              {activeThread.avatar ? (
+                                <img src={activeThread.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                activeThread.name.charAt(0).toUpperCase()
+                              )}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeThread.name}</h3>
+                            </div>
                           </div>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          {/* COMPOSE BUTTON MOVED TO TOP HEADER BAR WHEN CHAT IS OPEN */}
-                          <button
-                            onClick={() => {
-                              setTraditionalTo(activeChatSender || '');
-                              setTraditionalCc('');
-                              setTraditionalSubject('');
-                              setTraditionalBody('');
-                              setIsTraditionalLocked(false);
-                              setShowTraditionalModal(true);
-                            }}
-                            title="Compose New Email"
-                            style={{ background: 'var(--accent-gradient)', color: '#fff', border: 'none', padding: '0.4rem 0.75rem', borderRadius: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: '600', boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)' }}
-                          >
-                            <Edit3 size={14} /> Compose
-                          </button>
-
                           <button 
                             onClick={() => handleDeleteChatThread(activeThread.canonicalKey)}
                             title="Delete Chat Thread"
