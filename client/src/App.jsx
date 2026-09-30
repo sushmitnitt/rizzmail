@@ -1772,7 +1772,7 @@ function App() {
                               setIsTraditionalLocked(true);
                               setShowTraditionalModal(true);
                             }}
-                            title="Compose in Traditional Mail mode"
+                            title="Compose Email"
                             style={{ background: 'transparent', border: 'none', color: '#6366f1', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <Camera size={20} />
@@ -1877,7 +1877,7 @@ function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Mail size={20} style={{ color: '#6366f1' }} />
-                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>Traditional Email View</h3>
+                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>Compose Email</h3>
                 </div>
                 <button onClick={() => setShowTraditionalModal(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
               </div>
@@ -1920,13 +1920,13 @@ function App() {
                   <textarea 
                     value={traditionalBody} 
                     onChange={(e) => setTraditionalBody(e.target.value)}
-                    placeholder="Write your email in traditional format..."
+                    placeholder="Write your email message..."
                     rows={6}
                     required
                     style={{ width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none', resize: 'vertical' }}
                   />
                 </div>
-                <button type="submit" className="primary-btn">Send Traditional Email ➔</button>
+                <button type="submit" className="primary-btn">Send Email ➔</button>
               </form>
             </div>
           </div>
@@ -1937,7 +1937,7 @@ function App() {
             <div className="modal-content" style={{ maxWidth: '560px', textAlign: 'left', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--input-border)', paddingBottom: '0.75rem' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>{traditionalEmailReader.subject || 'Traditional Email View'}</h3>
+                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>{traditionalEmailReader.subject || 'Email Details'}</h3>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>From: {traditionalEmailReader.sender}</span>
                 </div>
                 <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
@@ -1970,7 +1970,7 @@ function App() {
                   setTraditionalBody('');
                   setIsTraditionalLocked(true);
                   setShowTraditionalModal(true);
-                }} className="primary-btn" style={{ width: 'auto' }}>Reply in Traditional View ➔</button>
+                }} className="primary-btn" style={{ width: 'auto' }}>Reply ➔</button>
               </div>
             </div>
           </div>
