@@ -29,8 +29,7 @@ const languagesList = [
   { code: 'bn', label: 'Bengali (বাংলা)' }
 ];
 
-const dynamicWelcomes = [
-  "Welcome to RizzMail",
+const rotatingWelcomes = [
   "आपका स्वागत है",       // Hindi
   "உங்களை வரவேற்கிறோம்", // Tamil
   "మీకు స్వాగతం",         // Telugu
@@ -132,7 +131,7 @@ function App() {
     const interval = setInterval(() => {
       setFadeAnim(false);
       setTimeout(() => {
-        setWelcomeIndex((prev) => (prev + 1) % dynamicWelcomes.length);
+        setWelcomeIndex((prev) => (prev + 1) % rotatingWelcomes.length);
         setFadeAnim(true);
       }, 350);
     }, 3200);
@@ -998,7 +997,7 @@ function App() {
           </div>
         )}
 
-        {/* STEP 1: FRONT PAGE LOGIN WITH ROTATING WELCOMES INCLUDING "Welcome to RizzMail" */}
+        {/* STEP 1: FRONT PAGE LOGIN WITH STATIC "Welcome to RizzMail" & ROTATING LANGUAGES BELOW */}
         {!isLoggingOut && step === 1 && (
           <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
             
@@ -1021,23 +1020,36 @@ function App() {
             <form onSubmit={handleSendOTP} className="card" style={{ width: '100%', backdropFilter: 'blur(20px)', border: '1px solid var(--input-border)', boxShadow: '0 20px 50px rgba(0,0,0,0.4)' }}>
               <div className="badge-pill"><Shield size={12} /> {t.secure}</div>
               
-              {/* DYNAMIC BOLD BIGGER WELCOME HEADING */}
-              <div style={{ height: '54px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', margin: '0.5rem 0 0.25rem 0' }}>
-                <h2 
+              {/* STATIC "Welcome to RizzMail" HEADING */}
+              <h2 
+                style={{ 
+                  fontSize: '1.6rem', 
+                  fontWeight: '800', 
+                  color: 'var(--text-primary)', 
+                  margin: '0.5rem 0 0.25rem 0',
+                  textAlign: 'center',
+                  letterSpacing: '-0.01em'
+                }}
+              >
+                Welcome to RizzMail
+              </h2>
+
+              {/* ROTATING OTHER LANGUAGES BELOW */}
+              <div style={{ height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '0.25rem' }}>
+                <p 
                   style={{ 
-                    fontSize: '1.55rem', 
-                    fontWeight: '800', 
-                    color: 'var(--text-primary)', 
+                    fontSize: '1.05rem', 
+                    fontWeight: '600', 
+                    color: '#818cf8', 
                     margin: 0,
                     transition: 'all 0.4s ease',
                     opacity: fadeAnim ? 1 : 0,
-                    transform: fadeAnim ? 'translateY(0)' : 'translateY(-14px)',
-                    textAlign: 'center',
-                    letterSpacing: '-0.01em'
+                    transform: fadeAnim ? 'translateY(0)' : 'translateY(-10px)',
+                    textAlign: 'center'
                   }}
                 >
-                  {dynamicWelcomes[welcomeIndex]}
-                </h2>
+                  {rotatingWelcomes[welcomeIndex]}
+                </p>
               </div>
 
               <p className="subtitle" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>{t.tagline}</p>
