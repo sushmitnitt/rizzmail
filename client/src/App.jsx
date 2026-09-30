@@ -61,7 +61,7 @@ const frontPageTranslations = {
     tagline: "మీ ఫోన్ నంబర్ ద్వారా మీ వ్యక్తిగత ఇమెయిల్.",
     secure: "సురక్షిత ప్రమాణీకరణ",
     continueBtn: "OTP తో కొనసాగించండి ➔",
-    systemOnline: "సిస్టమ్ ఆన్‌‌‌‌లైన్‌లో ఉంది"
+    systemOnline: "సిస్టమ్ ఆన్‌‌లైన్‌లో ఉంది"
   },
   bn: {
     tagline: "আপনার ফোন নম্বরের মাধ্যমে আপনার ব্যক্তিগত ইমেল।",
@@ -1497,6 +1497,22 @@ function App() {
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {/* COMPOSE BUTTON MOVED TO TOP HEADER BAR WHEN CHAT IS OPEN */}
+                          <button
+                            onClick={() => {
+                              setTraditionalTo(activeChatSender || '');
+                              setTraditionalCc('');
+                              setTraditionalSubject('');
+                              setTraditionalBody('');
+                              setIsTraditionalLocked(false);
+                              setShowTraditionalModal(true);
+                            }}
+                            title="Compose New Email"
+                            style={{ background: 'var(--accent-gradient)', color: '#fff', border: 'none', padding: '0.4rem 0.75rem', borderRadius: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: '600', boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)' }}
+                          >
+                            <Edit3 size={14} /> Compose
+                          </button>
+
                           <button 
                             onClick={() => handleDeleteChatThread(activeThread.canonicalKey)}
                             title="Delete Chat Thread"
@@ -1731,39 +1747,57 @@ function App() {
           </div>
         )}
 
-        {/* HOME SCREEN COMPOSE FLOATING BUTTON */}
-        {user && step === 6 && !isEditingProfile && (
-          <button
-            onClick={() => {
-              setTraditionalTo('');
-              setTraditionalCc('');
-              setTraditionalSubject('');
-              setTraditionalBody('');
-              setIsTraditionalLocked(false);
-              setShowTraditionalModal(true);
-            }}
-            style={{
-              position: 'fixed',
-              bottom: '56px',
-              right: '28px',
-              background: 'var(--accent-gradient)',
-              color: '#fff',
-              border: 'none',
-              width: '58px',
-              height: '58px',
+        {/* HOME SCREEN COMPOSE FLOATING BUTTON WITH GRAPHIC PULSING CIRCLE HIGHLIGHT */}
+        {user && step === 6 && !isEditingProfile && !activeChatSender && (
+          <div style={{ position: 'fixed', bottom: '56px', right: '28px', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+            <div style={{
+              position: 'absolute',
+              width: '74px',
+              height: '74px',
               borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              boxShadow: '0 10px 30px rgba(99, 102, 241, 0.5)',
-              zIndex: 9999,
-              transition: 'transform 0.2s ease'
-            }}
-            title="Compose New Email"
-          >
-            <Edit3 size={22} />
-          </button>
+              border: '2px solid rgba(99, 102, 241, 0.7)',
+              animation: 'pulse 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite'
+            }}></div>
+            <div style={{
+              position: 'absolute',
+              width: '92px',
+              height: '92px',
+              borderRadius: '50%',
+              background: 'rgba(99, 102, 241, 0.18)',
+              animation: 'pulse 2s ease-in-out infinite alternate'
+            }}></div>
+
+            <button
+              onClick={() => {
+                setTraditionalTo('');
+                setTraditionalCc('');
+                setTraditionalSubject('');
+                setTraditionalBody('');
+                setIsTraditionalLocked(false);
+                setShowTraditionalModal(true);
+              }}
+              style={{
+                background: 'var(--accent-gradient)',
+                color: '#fff',
+                border: 'none',
+                width: '58px',
+                height: '58px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 10px 30px rgba(99, 102, 241, 0.6)',
+                pointerEvents: 'auto',
+                position: 'relative',
+                zIndex: 2,
+                transition: 'transform 0.2s ease'
+              }}
+              title="Compose New Email"
+            >
+              <Edit3 size={22} />
+            </button>
+          </div>
         )}
 
         {showTraditionalModal && (
