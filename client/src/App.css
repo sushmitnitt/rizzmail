@@ -59,27 +59,26 @@ html, body, * {
 
 html, body, #root {
   width: 100%;
-  min-height: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
   background-color: var(--bg-color);
   font-family: 'Inter', sans-serif;
   color: var(--text-primary);
-  overflow-x: hidden;
-  overflow-y: auto; /* Allows natural scrolling when zoomed in without clipping */
+  overflow: hidden;
 }
 
 /* Fluid App Container */
 .app-container {
   position: relative;
-  min-height: 100vh;
-  width: 100%;
+  height: 100vh;
+  width: 100vw;
   display: flex;
   flex-direction: column;
   background-color: var(--bg-color);
   background-image: var(--bg-grid);
   background-size: 28px 28px;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 /* Dynamic Floating Animated Glow Orbs */
@@ -235,8 +234,10 @@ html, body, #root {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2.5rem 1rem;
+  padding: 0;
   width: 100%;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* Fluid Glowing Border Card */
@@ -1148,4 +1149,200 @@ html, body, #root {
     border-radius: 0 !important;
     border: none !important;
   }
+}
+
+:root {
+  --bg-main: #030712;
+  --card-bg: #111827;
+  --input-bg: #1f2937;
+  --input-border: #374151;
+  --text-primary: #f9fafb;
+  --text-muted: #9ca3af;
+}
+
+[data-theme='light'] {
+  --bg-main: #f3f4f6;
+  --card-bg: #ffffff;
+  --input-bg: #f9fafb;
+  --input-border: #d1d5db;
+  --text-primary: #111827;
+  --text-muted: #6b7280;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Edge-to-edge fixed container */
+.app-container {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Fixed Top Banner */
+.app-header {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 1.25rem;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--input-border);
+}
+
+.header-right {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Main Content takes remaining space without page scrolling and prevents vertical clipping */
+.main-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* WhatsApp Edge-to-Edge Layout */
+.whatsapp-layout {
+  height: 100% !important;
+  width: 100% !important;
+  border-radius: 0 !important;
+  border: none !important;
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Modal Stacking & Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: var(--card-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  width: 100%;
+  max-width: 500px;
+  z-index: 100000;
+}
+
+.theme-toggle-btn {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-primary);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.theme-toggle-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: #6366f1;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #fff;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: opacity 0.2s;
+}
+
+.primary-btn:hover {
+  opacity: 0.9;
+}
+
+.error-banner {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* App Header Alignment Fix */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background: var(--card-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--input-border);
+  z-index: 100;
+  gap: 1.5rem;
+}
+
+/* Expanded Search Bar */
+.search-bar-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100% !important;
+}
+
+.search-input {
+  width: 100% !important;
+  padding: 0.85rem 1rem 0.85rem 2.6rem;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 1rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s ease;
 }
