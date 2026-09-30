@@ -182,10 +182,10 @@ function App() {
 
   const [setupStage, setSetupStage] = useState(0);
   const setupStepsList = [
-    "Allocating secure @rizzmail.me node...",
-    "Generating cryptographic session tokens...",
-    "Binding real-time WebSocket listeners...",
-    "Opening secure inbox portal..."
+    "Setting up your account...",
+    "Configuring session...",
+    "Connecting inbox...",
+    "Opening inbox..."
   ];
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -947,7 +947,7 @@ function App() {
   return (
     <div className="app-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       
-      {/* DYNAMIC BACKGROUND GLOW ANIMATIONS */}
+      {/* BACKGROUND GLOW ANIMATIONS */}
       {step === 1 && (
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: '15%', left: '20%', width: '380px', height: '380px', background: 'rgba(99, 102, 241, 0.12)', borderRadius: '50%', filter: 'blur(70px)', animation: 'pulse 6s ease-in-out infinite' }}></div>
@@ -1187,7 +1187,7 @@ function App() {
               </div>
 
               <button type="submit" className="primary-btn" disabled={loading} style={{ transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer' }}>
-                {loading ? 'Dispatching Code...' : t.continueBtn}
+                {loading ? 'Sending Code...' : t.continueBtn}
               </button>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid rgba(99, 102, 241, 0.25)', paddingTop: '1.2rem' }}>
@@ -1288,7 +1288,7 @@ function App() {
           <div style={{ margin: 'auto', width: '100%', maxWidth: '520px', display: 'flex', justifyContent: 'center', padding: '1rem' }}>
             <div className="card" style={{ textAlign: 'left', width: '100%' }}>
               <h2>Terms of Service</h2>
-              <p className="subtitle">Please agree to continue to your burner inbox.</p>
+              <p className="subtitle">Please agree to continue to your inbox.</p>
               <button type="button" onClick={handleAgreeToTerms} className="primary-btn" disabled={loading}>I Agree & Initialize ➔</button>
             </div>
           </div>
@@ -1677,9 +1677,9 @@ function App() {
                       <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem', background: 'radial-gradient(circle at center, rgba(99,102,241,0.04) 0%, rgba(3,7,18,0.7) 100%)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         {activeThread.messages.length === 0 ? (
                           <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
-                            <Mail size={52} style={{ marginBottom: '0.75rem', opacity: 0.3, filter: 'drop-shadow(0 0 10px rgba(99,102,241,0.3))' }} />
-                            <p style={{ fontWeight: '600', letterSpacing: '0.02em' }}>Secure Channel Initialized</p>
-                            <small>Send your first transmission below.</small>
+                            <Mail size={52} style={{ marginBottom: '0.75rem', opacity: 0.3 }} />
+                            <p style={{ fontWeight: '600' }}>No messages yet</p>
+                            <small>Send your first message below.</small>
                           </div>
                         ) : (
                           activeThread.messages.map((msg, idx) => {
@@ -1727,7 +1727,7 @@ function App() {
                                     cursor: 'pointer',
                                     transition: 'transform 0.2s ease, box-shadow 0.2s ease'
                                   }}
-                                  title="Click anywhere to inspect payload"
+                                  title="Click to view message"
                                 >
                                   {msg.subject && (
                                     <div style={{ fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', opacity: 0.9, marginBottom: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.18)', paddingBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '5px', textAlign: 'left' }}>
@@ -1763,7 +1763,7 @@ function App() {
                                           e.stopPropagation(); 
                                           setQuotedMessage({ id: msgId, sender: msg.sender, body: cleanBodyText || '[Attachment]' }); 
                                         }}
-                                        title="Quote payload"
+                                        title="Quote message"
                                         style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: '700', marginRight: 'auto' }}
                                       >
                                         <MessageSquareReply size={13} /> Reply
@@ -1774,7 +1774,7 @@ function App() {
                                     {msg._id && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); handleDeleteSingleMessage(msg._id); }}
-                                        title="Purge message"
+                                        title="Delete message"
                                         style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.6, padding: '0 2px' }}
                                       >
                                         <Trash2 size={11} />
@@ -1793,14 +1793,14 @@ function App() {
                           <div style={{ width: '40px', height: '40px', borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid var(--input-border)' }}>
                             <img src={attachmentPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', flex: 1, fontFamily: 'JetBrains Mono, monospace' }}>Encrypted attachment ready (max 5MB)</span>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', flex: 1, fontFamily: 'JetBrains Mono, monospace' }}>Attachment ready (max 5MB)</span>
                           <button onClick={() => setAttachmentPreview(null)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}><X size={16} /></button>
                         </div>
                       )}
 
                       {showSnippets && (
                         <div className="hide-scrollbar" style={{ padding: '0.6rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flexShrink: 0, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'JetBrains Mono, monospace' }}><Sparkles size={12} /> Neural Presets:</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'JetBrains Mono, monospace' }}><Sparkles size={12} /> Quick Replies:</span>
                           {quickSnippetsList.map((snip, i) => (
                             <button
                               key={i}
@@ -1819,7 +1819,7 @@ function App() {
                         {quotedMessage && (
                           <div style={{ background: 'rgba(99, 102, 241, 0.15)', borderLeft: '3px solid #6366f1', padding: '0.5rem 0.85rem', borderRadius: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backdropFilter: 'blur(10px)' }}>
                             <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              <span style={{ fontWeight: '700', color: '#818cf8', display: 'block', fontSize: '0.72rem', letterSpacing: '0.03em', fontFamily: 'JetBrains Mono, monospace' }}>QUOTED PAYLOAD FROM {extractEmail(quotedMessage.sender).split('@')[0].toUpperCase()}</span>
+                              <span style={{ fontWeight: '700', color: '#818cf8', display: 'block', fontSize: '0.72rem', letterSpacing: '0.03em', fontFamily: 'JetBrains Mono, monospace' }}>REPLYING TO {extractEmail(quotedMessage.sender).split('@')[0].toUpperCase()}</span>
                               <span>{quotedMessage.body}</span>
                             </div>
                             <button type="button" onClick={() => setQuotedMessage(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}><X size={16} /></button>
@@ -1831,7 +1831,7 @@ function App() {
                             <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', width: '65px', fontFamily: 'JetBrains Mono, monospace' }}>SUBJECT</span>
                             <input 
                               type="text"
-                              placeholder="Add secure transmission subject..."
+                              placeholder="Subject..."
                               value={chatSubject}
                               onChange={(e) => setChatSubject(e.target.value)}
                               style={{ flex: 1, padding: '0.5rem 0.85rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}
@@ -1840,7 +1840,7 @@ function App() {
                         )}
 
                         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                          <label title="Attach secure file (max 5MB)" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}>
+                          <label title="Attach file (max 5MB)" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}>
                             <Paperclip size={20} />
                             <input type="file" accept="image/*" onChange={handleAttachmentUpload} style={{ display: 'none' }} />
                           </label>
@@ -1864,7 +1864,7 @@ function App() {
                           <button 
                             type="button" 
                             onClick={() => setShowSnippets(!showSnippets)}
-                            title="Neural templates"
+                            title="Quick replies"
                             style={{ background: 'transparent', border: 'none', color: showSnippets ? '#6366f1' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <Sparkles size={20} />
@@ -1872,7 +1872,7 @@ function App() {
 
                           <input 
                             type="text"
-                            placeholder="Type secure transmission..."
+                            placeholder="Type a message..."
                             value={chatMessageBody}
                             onChange={(e) => setChatMessageBody(e.target.value)}
                             style={{ flex: 1, padding: '0.75rem 1.15rem', borderRadius: '1.25rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.92rem' }}
@@ -2098,8 +2098,8 @@ function App() {
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all', marginBottom: '1.5rem' }}>{activeThread.sender}</p>
               
               <div style={{ background: 'var(--input-bg)', padding: '1rem', borderRadius: '0.875rem', textAlign: 'left', marginBottom: '1.5rem', fontSize: '0.85rem', border: '1px solid var(--input-border)' }}>
-                <div style={{ color: 'var(--text-muted)', marginBottom: '0.2rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem' }}>SECURITY PROTOCOL</div>
-                <div style={{ color: 'var(--text-primary)', fontWeight: '600' }}>End-to-End Encrypted @rizzmail.me Node</div>
+                <div style={{ color: 'var(--text-muted)', marginBottom: '0.2rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem' }}>ACCOUNT TYPE</div>
+                <div style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Secure @rizzmail.me Account</div>
               </div>
 
               <button onClick={() => setShowChatInfo(false)} className="primary-btn">Close Info</button>
