@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { sendOTP, verifyOTP, updateProfileAPI, fetchMessages, sendEmailAPI, deleteAccountAPI, deleteMessageAPI } from './services/api';
-import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera, ShieldAlert, Globe, MessageSquareReply } from 'lucide-react';
+import { Phone, Lock, Mail, RefreshCw, LogOut, Send, Edit3, Plus, Copy, Check, X, CornerUpLeft, Search, User, Shield, ArrowLeft, Loader2, Trash2, AlertTriangle, Cpu, Sun, Moon, Zap, Archive, Menu, Trash, Paperclip, Smile, Sparkles, Star, Folder, AlertOctagon, Camera, ShieldAlert, Globe, MessageSquareReply, PhoneCall } from 'lucide-react';
 import './App.css';
 
 const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
@@ -175,6 +175,12 @@ function App() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  const [callCountryCode, setCallCountryCode] = useState('91');
+  const [callPhoneNumber, setCallPhoneNumber] = useState('');
+  const [callLoading, setCallLoading] = useState(false);
+  const [callMessage, setCallMessage] = useState('');
+  const [callError, setCallError] = useState('');
   
   const [step, setStep] = useState(() => (user ? 6 : 1));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -407,6 +413,37 @@ function App() {
       setError(err.response?.data?.error || err.response?.data?.message || 'Failed to send OTP');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRequestCall = async (e) => {
+    e.preventDefault();
+    setCallError('');
+    setCallMessage('');
+    if (!callPhoneNumber.trim()) {
+      setCallError('Please enter a valid phone number.');
+      return;
+    }
+
+    setCallLoading(true);
+    try {
+      const rawDigits = callPhoneNumber.trim().replace(/^\+\d{1,3}/, '').replace(/^0+/, '');
+      const fullNumber = `+${callCountryCode}${rawDigits}`;
+
+      const response = await fetch(`${SOCKET_URL}/api/request-call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: fullNumber })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to trigger call.');
+
+      setCallMessage('Call triggered successfully! Your phone should ring shortly.');
+      setCallPhoneNumber('');
+    } catch (err) {
+      setCallError(err.message || 'Failed to trigger call. Please check backend server.');
+    } finally {
+      setCallLoading(false);
     }
   };
 
@@ -850,13 +887,15 @@ function App() {
 
       const cleanEmail = extractEmail(rawCounterparty);
       const canonicalKey = normalizeContactIdentifier(cleanEmail);
-      const displayName = extractName(rawCounterparty, msg.counterpartyName);
+      
+      const candidateName = !isFromMe ? (msg.senderName || msg.counterpartyName) : (msg.counterpartyName || msg.senderName);
+      const displayName = extractName(rawCounterparty, candidateName);
 
       if (!threadsMap[canonicalKey]) {
         threadsMap[canonicalKey] = {
           canonicalKey: canonicalKey,
           sender: cleanEmail,
-          name: displayName && !displayName.includes('@') ? displayName : cleanEmail.split('@')[0],
+          name: displayName && !displayName.includes('@') ? displayName : (candidateName || cleanEmail.split('@')[0]),
           avatar: '',
           messages: [],
           isFavorite: !!favoritesMap[canonicalKey]
@@ -869,8 +908,8 @@ function App() {
         threadsMap[canonicalKey].avatar = avatarCache[canonicalKey];
       }
 
-      if (displayName && !displayName.includes('@')) {
-        threadsMap[canonicalKey].name = displayName;
+      if ((candidateName || (displayName && !displayName.includes('@'))) && (threadsMap[canonicalKey].name === cleanEmail.split('@')[0] || threadsMap[canonicalKey].name.match(/^[0-9+]+$/))) {
+        threadsMap[canonicalKey].name = candidateName || displayName;
       }
 
       threadsMap[canonicalKey].messages.push(msg);
@@ -1134,10 +1173,10 @@ function App() {
           </div>
         )}
 
-        {/* STEP 1: FRONT PAGE LOGIN */}
+        {/* STEP 1: FRONT PAGE LOGIN & GET A CALL WIDGET */}
         {!isLoggingOut && step === 1 && (
-          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-            <div style={{ width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+          <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem', gap: '1rem' }}>
+            <div style={{ width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'flex-end', marginBottom: '-0.25rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', background: 'var(--card-bg)', border: '1px solid var(--input-border)', borderRadius: '1rem', padding: '0.35rem 0.85rem', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
                 <Globe size={15} style={{ color: '#818cf8', marginRight: '6px' }} />
                 <select
@@ -1213,6 +1252,39 @@ function App() {
                 </div>
               </div>
             </form>
+
+            <div className="card" style={{ width: '100%', backdropFilter: 'blur(20px)', border: '1px solid var(--input-border)', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <PhoneCall size={18} style={{ color: '#6366f1' }} />
+                <h3 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>Want a quick call from us?</h3>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Enter your number to receive an instant verification voice call right now.</p>
+              
+              {callMessage && <div style={{ fontSize: '0.8rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '0.5rem', borderRadius: '0.5rem', marginBottom: '0.75rem' }}>{callMessage}</div>}
+              {callError && <div style={{ fontSize: '0.8rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.5rem', borderRadius: '0.5rem', marginBottom: '0.75rem' }}>{callError}</div>}
+
+              <form onSubmit={handleRequestCall} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div className="phone-input-container">
+                  <div className="input-icon-left"><Phone size={16} /></div>
+                  <select className="country-select-clean" value={callCountryCode} onChange={(e) => setCallCountryCode(e.target.value)}>
+                    {countriesList.map((c) => (<option key={'call-' + c.name + c.code} value={c.code}>{c.label}</option>))}
+                  </select>
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    className="phone-number-input"
+                    placeholder="9876543210"
+                    value={callPhoneNumber}
+                    onChange={(e) => setCallPhoneNumber(e.target.value)}
+                    required
+                  />
+                </div>
+                <button type="submit" disabled={callLoading} style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', padding: '0.65rem', borderRadius: '0.75rem', fontWeight: '600', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  {callLoading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <PhoneCall size={15} style={{ color: '#6366f1' }} />}
+                  {callLoading ? 'Triggering Call...' : 'Call Me Now'}
+                </button>
+              </form>
+            </div>
           </div>
         )}
 
