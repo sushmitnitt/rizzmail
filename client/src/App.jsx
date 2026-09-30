@@ -902,8 +902,8 @@ function App() {
         {/* RIGHT HEADER ACTIONS */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, marginLeft: 'auto' }}>
           
-          {/* COMPOSE BUTTON IN HEADER (LEFT OF SYSTEM ONLINE) */}
-          {user && step === 6 && !isLoggingOut && (
+          {/* HEADER COMPOSE BUTTON (ONLY SHOWN WHEN A CHAT IS OPEN, GLOWING & DIFFERENT) */}
+          {user && step === 6 && !isLoggingOut && activeChatSender && (
             <button
               onClick={() => {
                 setTraditionalTo(activeChatSender || '');
@@ -915,22 +915,23 @@ function App() {
               }}
               title="Compose New Email"
               style={{
-                background: 'var(--accent-gradient)',
+                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
                 color: '#fff',
-                border: 'none',
-                padding: '0.45rem 0.9rem',
-                borderRadius: '0.75rem',
+                border: '1px solid rgba(255,255,255,0.3)',
+                padding: '0.45rem 1.1rem',
+                borderRadius: '2rem',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.4rem',
                 fontSize: '0.82rem',
-                fontWeight: '600',
-                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)',
+                fontWeight: '700',
+                boxShadow: '0 0 20px rgba(99, 102, 241, 0.7), inset 0 0 10px rgba(255,255,255,0.4)',
+                animation: 'pulse 2s infinite',
                 whiteSpace: 'nowrap'
               }}
             >
-              <Edit3 size={15} /> Compose
+              <Edit3 size={15} /> Compose ✨
             </button>
           )}
 
@@ -1414,7 +1415,7 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* SIDEBAR WITH CLEAN SINGLE-LINE FIT FILTER CHIPS */}
+                {/* SIDEBAR WITH CLEAN SINGLE-LINE FIT FILTER CHIPS & REFRESH ICON */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
                   <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.35rem', flexShrink: 0 }}>
@@ -1432,9 +1433,9 @@ function App() {
                             background: chatFilter === chip.key ? '#6366f1' : 'var(--input-bg)', 
                             color: chatFilter === chip.key ? '#fff' : 'var(--text-muted)', 
                             border: '1px solid var(--input-border)', 
-                            padding: '0.25rem 0.5rem', 
+                            padding: '0.3rem 0.6rem', 
                             borderRadius: '1rem', 
-                            fontSize: '0.7rem', 
+                            fontSize: '0.72rem', 
                             fontWeight: '600', 
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
@@ -1446,7 +1447,7 @@ function App() {
                       ))}
                     </div>
                     <div style={{ display: 'flex', flexShrink: 0, marginLeft: '0.25rem' }}>
-                      <button onClick={handleRefreshInbox} className="refresh-btn" title="Refresh inbox" style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <button onClick={handleRefreshInbox} className="refresh-btn" title="Refresh inbox" style={{ width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: '50%', color: 'var(--text-primary)', cursor: 'pointer' }}>
                         <RefreshCw size={13} style={{ transform: isRefreshing ? 'rotate(360deg)' : 'none', transition: 'transform 0.8s ease' }} />
                       </button>
                     </div>
@@ -1784,7 +1785,7 @@ function App() {
           </div>
         )}
 
-        {/* HOME SCREEN COMPOSE FLOATING BUTTON WITH GRAPHIC PULSING CIRCLE HIGHLIGHT */}
+        {/* HOME SCREEN COMPOSE FLOATING BUTTON WITH GRAPHIC PULSING CIRCLE HIGHLIGHT (ONLY ON HOME SCREEN) */}
         {user && step === 6 && !isEditingProfile && !activeChatSender && (
           <div style={{ position: 'fixed', bottom: '56px', right: '28px', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
             <div style={{
