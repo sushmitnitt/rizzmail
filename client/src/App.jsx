@@ -841,7 +841,7 @@ function App() {
   const isReplying = activeThread && activeThread.messages && activeThread.messages.length > 0;
 
   return (
-    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative', overflowX: 'hidden' }}>
+    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       
       {/* DYNAMIC BACKGROUND GLOW ANIMATIONS */}
       {step === 1 && (
@@ -985,7 +985,7 @@ function App() {
         </div>
       </header>
 
-      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', zIndex: 5, padding: '1.5rem 0' }}>
+      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 5, minHeight: 0 }}>
         {error && <div className="error-banner" style={{ width: '100%', maxWidth: '440px', margin: '1rem auto' }}>{error}</div>}
 
         {isLoggingOut && (
@@ -1194,7 +1194,7 @@ function App() {
 
         {/* STEP 6: MAIN DASHBOARD */}
         {!isLoggingOut && step === 6 && user && (
-          <div style={{ width: '100%', height: '100%', display: 'flex', overflow: 'hidden', position: 'relative', flex: 1 }}>
+          <div style={{ width: '100%', height: '100%', display: 'flex', overflow: 'hidden', position: 'relative', flex: 1, minHeight: 0 }}>
             
             {/* TOP-LEFT MENU DRAWER / MODAL */}
             {mobileMenuOpen && (
@@ -1489,7 +1489,7 @@ function App() {
                 </div>
 
                 {/* ACTIVE CHAT WINDOW PANE */}
-                <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', height: '100%', overflow: 'hidden' }}>
+                <div className={`whatsapp-chat-window ${!activeChatSender ? 'mobile-hidden' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', height: '100%', overflow: 'hidden', minHeight: 0 }}>
                   {activeThread ? (
                     <>
                       <div style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -1975,12 +1975,14 @@ function App() {
           </div>
         )}
 
-        {/* CLEAN COMPACT INLINE SECTION: MADE WITH LOVE IN INDIA */}
-        <div style={{ textAlign: 'center', padding: '1.5rem 1rem 0.5rem 1rem', marginTop: 'auto', flexShrink: 0 }}>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-            Made with <span style={{ color: '#ef4444' }}>❤️</span> in India
-          </p>
-        </div>
+        {/* CLEAN COMPACT INLINE SECTION: MADE WITH LOVE IN INDIA (Hidden after login) */}
+        {step !== 6 && (
+          <div style={{ textAlign: 'center', padding: '1.5rem 1rem 0.5rem 1rem', marginTop: 'auto', flexShrink: 0 }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+              Made with <span style={{ color: '#ef4444' }}>❤️</span> in India
+            </p>
+          </div>
+        )}
       </main>
 
       {showLogoutConfirm && (
