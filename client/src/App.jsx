@@ -199,6 +199,7 @@ function App() {
 
   const [deleteOtp, setDeleteOtp] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [chatToDeleteKey, setChatToDeleteKey] = useState(null);
 
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -693,18 +694,21 @@ function App() {
     loadInbox(activePhone);
   };
 
-  const handleDeleteChatThread = async (canonicalKey) => {
+  const handleConfirmMoveToTrash = async () => {
+    if (!chatToDeleteKey) return;
     try {
-      const backendBase = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
-      await fetch(`${backendBase}/api/email/thread/${canonicalKey}`, { method: 'DELETE' });
-      setMessages((prev) => prev.filter(m => {
+      setMessages((prev) => prev.map(m => {
         const isOutbound = m.direction === 'outbound';
         const other = isOutbound ? m.recipient : m.sender;
-        return normalizeContactIdentifier(other) !== canonicalKey;
+        if (normalizeContactIdentifier(other) === chatToDeleteKey) {
+          return { ...m, folder: 'trash' };
+        }
+        return m;
       }));
       setActiveChatSender(null);
+      setChatToDeleteKey(null);
     } catch (e) {
-      setError('Failed to delete chat thread.');
+      setError('Failed to move conversation to trash.');
     }
   };
 
@@ -810,7 +814,7 @@ function App() {
 
     const filtered = threadsList.filter(thread => {
       if (currentFolder === 'home') {
-        // Home unifies Inbox and Sent
+        if (thread.messages.some(m => m.folder === 'trash')) return false;
       } else if (currentFolder === 'drafts') {
         if (!thread.messages.some(m => m.folder === 'drafts')) return false;
       } else if (currentFolder === 'spam') {
@@ -1032,11 +1036,9 @@ function App() {
           </div>
         )}
 
-        {/* STEP 1: FRONT PAGE LOGIN WITH STATIC "Welcome to RizzMail" & ROTATING LANGUAGES BELOW */}
+        {/* STEP 1: FRONT PAGE LOGIN */}
         {!isLoggingOut && step === 1 && (
           <div style={{ margin: 'auto', width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-            
-            {/* Front Page Language Selector Dropdown */}
             <div style={{ width: '100%', maxWidth: '440px', display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', background: 'var(--card-bg)', border: '1px solid var(--input-border)', borderRadius: '1rem', padding: '0.35rem 0.85rem', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
                 <Globe size={15} style={{ color: '#818cf8', marginRight: '6px' }} />
@@ -1055,34 +1057,12 @@ function App() {
             <form onSubmit={handleSendOTP} className="card" style={{ width: '100%', backdropFilter: 'blur(20px)', border: '1px solid var(--input-border)', boxShadow: '0 20px 50px rgba(0,0,0,0.4)' }}>
               <div className="badge-pill"><Shield size={12} /> {t.secure}</div>
               
-              {/* STATIC "Welcome to RizzMail" HEADING */}
-              <h2 
-                style={{ 
-                  fontSize: '1.6rem', 
-                  fontWeight: '800', 
-                  color: 'var(--text-primary)', 
-                  margin: '0.5rem 0 0.25rem 0',
-                  textAlign: 'center',
-                  letterSpacing: '-0.01em'
-                }}
-              >
+              <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--text-primary)', margin: '0.5rem 0 0.25rem 0', textAlign: 'center', letterSpacing: '-0.01em' }}>
                 Welcome to RizzMail
               </h2>
 
-              {/* ROTATING OTHER LANGUAGES BELOW */}
               <div style={{ height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '0.25rem' }}>
-                <p 
-                  style={{ 
-                    fontSize: '1.05rem', 
-                    fontWeight: '600', 
-                    color: '#818cf8', 
-                    margin: 0,
-                    transition: 'all 0.4s ease',
-                    opacity: fadeAnim ? 1 : 0,
-                    transform: fadeAnim ? 'translateY(0)' : 'translateY(-10px)',
-                    textAlign: 'center'
-                  }}
-                >
+                <p style={{ fontSize: '1.05rem', fontWeight: '600', color: '#818cf8', margin: 0, transition: 'all 0.4s ease', opacity: fadeAnim ? 1 : 0, transform: fadeAnim ? 'translateY(0)' : 'translateY(-10px)', textAlign: 'center' }}>
                   {rotatingWelcomes[welcomeIndex]}
                 </p>
               </div>
@@ -1112,7 +1092,6 @@ function App() {
                 {loading ? 'Dispatching Code...' : t.continueBtn}
               </button>
 
-              {/* SITE FEATURES DISPLAYED BELOW CONTINUE WITH OTP BUTTON IN BLUE THEME */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid rgba(99, 102, 241, 0.25)', paddingTop: '1.2rem' }}>
                 <div style={{ textAlign: 'center', padding: '0.5rem', background: 'rgba(99, 102, 241, 0.08)', borderRadius: '0.6rem', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
                   <div style={{ fontSize: '0.68rem', fontWeight: '700', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
@@ -1135,7 +1114,6 @@ function App() {
                   <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '2px' }}>Encrypted @rizzmail.me</div>
                 </div>
               </div>
-
             </form>
           </div>
         )}
@@ -1339,7 +1317,7 @@ function App() {
               </div>
             )}
 
-            {/* ACCOUNT SETTINGS & ALIAS MANAGEMENT VIEW */}
+            {/* ACCOUNT SETTINGS VIEW */}
             {isEditingProfile ? (
               <div style={{ margin: 'auto', width: '100%', maxWidth: '560px', display: 'flex', justifyContent: 'center', overflowY: 'auto', maxHeight: '100%', padding: '2rem' }} className="hide-scrollbar">
                 <div className="card" style={{ textAlign: 'left', width: '100%' }}>
@@ -1382,7 +1360,6 @@ function App() {
                     <div className="input-group-stack"><label>First Name</label><input type="text" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} required /></div>
                     <div className="input-group-stack"><label>Last Name</label><input type="text" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} required /></div>
                     
-                    {/* LANGUAGE PREFERENCE */}
                     <div className="input-group-stack">
                       <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Globe size={14} /> Language Preference
@@ -1398,7 +1375,6 @@ function App() {
                       </select>
                     </div>
 
-                    {/* ALIAS MANAGEMENT */}
                     <div style={{ background: 'var(--input-bg)', padding: '1rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)' }}>
                       <label style={{ fontWeight: '600', display: 'block', marginBottom: '0.5rem' }}>Manage Alias IDs</label>
                       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
@@ -1430,15 +1406,15 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* EXPANDED SIDEBAR (410px) WITH GUARANTEED VISIBLE REFRESH BUTTON & HORIZONTALLY SCROLLABLE CHIPS */}
+                {/* SIDEBAR WITH FIXED REFRESH BUTTON & SCROLLABLE CHIPS */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '410px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
-                  <div style={{ padding: '0.75rem 0.875rem', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexShrink: 0 }}>
-                    <div className="hide-scrollbar" style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flex: 1, minWidth: 0, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <div style={{ padding: '0.75rem 0.75rem', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem', flexShrink: 0 }}>
+                    <div className="hide-scrollbar" style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flex: 1, minWidth: 0, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                       {[
                         { key: 'all', label: 'All' },
                         { key: 'unread', label: 'Unread' },
-                        { key: 'attachments', label: 'Attachments' },
+                        { key: 'attachments', label: 'Attach' },
                         { key: 'favorites', label: 'Favourites' }
                       ].map((chip) => (
                         <button 
@@ -1448,9 +1424,9 @@ function App() {
                             background: chatFilter === chip.key ? '#6366f1' : 'var(--input-bg)', 
                             color: chatFilter === chip.key ? '#fff' : 'var(--text-muted)', 
                             border: '1px solid var(--input-border)', 
-                            padding: '0.3rem 0.55rem', 
+                            padding: '0.3rem 0.5rem', 
                             borderRadius: '1rem', 
-                            fontSize: '0.7rem', 
+                            fontSize: '0.68rem', 
                             fontWeight: '600', 
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
@@ -1461,14 +1437,14 @@ function App() {
                         </button>
                       ))}
                     </div>
-                    <div style={{ display: 'flex', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', flexShrink: 0, marginLeft: '4px' }}>
                       <button 
                         onClick={handleRefreshInbox} 
                         className="refresh-btn" 
                         title="Refresh inbox" 
                         style={{ 
-                          width: '30px', 
-                          height: '30px', 
+                          width: '32px', 
+                          height: '32px', 
                           display: 'flex', 
                           alignItems: 'center', 
                           justifyContent: 'center', 
@@ -1547,7 +1523,6 @@ function App() {
                     <>
                       <div style={{ padding: '0.75rem 1rem', background: 'var(--card-bg)', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
-                          {/* BACK BUTTON TO RETURN TO DASHBOARD */}
                           <button 
                             onClick={() => setActiveChatSender(null)}
                             title="Back to Dashboard / Inbox"
@@ -1585,8 +1560,8 @@ function App() {
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <button 
-                            onClick={() => handleDeleteChatThread(activeThread.canonicalKey)}
-                            title="Delete Chat Thread"
+                            onClick={() => setChatToDeleteKey(activeThread.canonicalKey)}
+                            title="Move Chat Thread to Trash"
                             style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.4rem 0.75rem', borderRadius: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: '600' }}
                           >
                             <Trash size={14} /> Delete
@@ -1818,7 +1793,7 @@ function App() {
           </div>
         )}
 
-        {/* HOME SCREEN COMPOSE FLOATING BUTTON WITH GRAPHIC PULSING CIRCLE HIGHLIGHT (ONLY ON HOME SCREEN) */}
+        {/* HOME SCREEN COMPOSE FLOATING BUTTON */}
         {user && step === 6 && !isEditingProfile && !activeChatSender && (
           <div style={{ position: 'fixed', bottom: '56px', right: '28px', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
             <div style={{
@@ -1868,6 +1843,25 @@ function App() {
             >
               <Edit3 size={22} />
             </button>
+          </div>
+        )}
+
+        {/* CHAT DELETE CONFIRMATION MODAL */}
+        {chatToDeleteKey && (
+          <div className="modal-overlay" onClick={() => setChatToDeleteKey(null)}>
+            <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'left', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', marginBottom: '0.75rem' }}>
+                <AlertTriangle size={22} />
+                <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text-primary)' }}>Move Chat to Trash?</h3>
+              </div>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                Are you sure you want to delete this conversation? It will be moved to your Trash folder.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button onClick={() => setChatToDeleteKey(null)} style={{ flex: 1, background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600' }}>Cancel</button>
+                <button onClick={handleConfirmMoveToTrash} style={{ flex: 1, background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600' }}>Move to Trash 🗑️</button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -2033,7 +2027,6 @@ function App() {
           </div>
         )}
 
-        {/* CLEAN COMPACT INLINE SECTION: MADE WITH LOVE IN INDIA (Hidden after login) */}
         {step !== 6 && (
           <div style={{ textAlign: 'center', padding: '1.5rem 1rem 0.5rem 1rem', marginTop: 'auto', flexShrink: 0 }}>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, letterSpacing: '0.02em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
