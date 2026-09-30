@@ -61,7 +61,7 @@ const frontPageTranslations = {
     tagline: "మీ ఫోన్ నంబర్ ద్వారా మీ వ్యక్తిగత ఇమెయిల్.",
     secure: "సురక్షిత ప్రమాణీకరణ",
     continueBtn: "OTP తో కొనసాగించండి ➔",
-    systemOnline: "సిస్టమ్ ఆన్‌‌లైన్‌లో ఉంది"
+    systemOnline: "సిస్టమ్ ఆన్‌‌‌‌లైన్‌లో ఉంది"
   },
   bn: {
     tagline: "আপনার ফোন নম্বরের মাধ্যমে আপনার ব্যক্তিগত ইমেল।",
@@ -202,6 +202,7 @@ function App() {
 
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -581,6 +582,12 @@ function App() {
     }
   };
 
+  const handleRefreshInbox = async () => {
+    setIsRefreshing(true);
+    await loadInbox(getUserPhone());
+    setTimeout(() => setIsRefreshing(false), 800);
+  };
+
   const handleSendReplySubmit = async (e) => {
     e.preventDefault();
     if ((!chatMessageBody.trim() && !attachmentPreview) || !activeChatSender) return;
@@ -669,26 +676,6 @@ function App() {
     setAttachmentPreview(null);
     setIsTraditionalLocked(false);
     loadInbox(activePhone);
-  };
-
-  const handleSimulateIncomingEmail = async () => {
-    try {
-      const activePhone = getEmailPhone(getUserPhone());
-      const backendBase = import.meta.env.VITE_BACKEND_URL || 'https://rizzmail-backend.onrender.com';
-      await fetch(`${backendBase}/api/email/simulate-incoming`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: activePhone,
-          sender: "evaluator@rizzmail.me",
-          subject: "Project Milestone Update",
-          body: "Hello! Reviewing the buildathon requirements and checking the chat integration."
-        })
-      });
-      loadInbox(getUserPhone());
-    } catch (e) {
-      console.error("Simulation failed", e);
-    }
   };
 
   const handleDeleteChatThread = async (canonicalKey) => {
@@ -1422,11 +1409,8 @@ function App() {
                         ))}
                       </div>
                       <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
-                        <button onClick={handleSimulateIncomingEmail} className="refresh-btn" title="Simulate incoming chat">
-                          <Zap size={14} />
-                        </button>
-                        <button onClick={() => loadInbox(getUserPhone())} className="refresh-btn" title="Refresh inbox">
-                          <RefreshCw size={14} />
+                        <button onClick={handleRefreshInbox} className="refresh-btn" title="Refresh inbox">
+                          <RefreshCw size={14} style={{ transform: isRefreshing ? 'rotate(360deg)' : 'none', transition: 'transform 0.8s ease' }} />
                         </button>
                       </div>
                     </div>
@@ -1509,9 +1493,6 @@ function App() {
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeThread.name}</h3>
-                            <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span> online node
-                            </span>
                           </div>
                         </div>
 
