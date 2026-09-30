@@ -1289,7 +1289,7 @@ function App() {
             <div className="card" style={{ textAlign: 'left', width: '100%' }}>
               <h2>Terms of Service</h2>
               <p className="subtitle">Please agree to continue to your inbox.</p>
-              <button type="button" onClick={handleAgreeToTerms} className="primary-btn" disabled={loading}>I Agree & Initialize ➔</button>
+              <button type="button" onClick={handleAgreeToTerms} className="primary-btn" disabled={loading}>I Agree & Continue ➔</button>
             </div>
           </div>
         )}
@@ -1599,12 +1599,12 @@ function App() {
                                 thread.name.charAt(0).toUpperCase()
                               )}
                             </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.2rem' }}>
-                                <span style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{thread.name}</span>
+                                <span style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>{thread.name}</span>
                                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{thread.lastMessage ? new Date(thread.lastMessage.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                               </div>
-                              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>
+                              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0, textAlign: 'left' }}>
                                 {thread.lastMessage ? (thread.lastMessage.attachment ? '📷 [Attachment]' : snippetText) : 'New conversation'}
                               </p>
                             </div>
@@ -1648,7 +1648,7 @@ function App() {
                             <ArrowLeft size={18} />
                           </button>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', minWidth: 0 }} onClick={() => setShowChatInfo(true)}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', minWidth: 0, textAlign: 'left' }} onClick={() => setShowChatInfo(true)}>
                             <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: '0', color: '#fff', fontWeight: 'bold' }}>
                               {activeThread.avatar ? (
                                 <img src={activeThread.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -1656,8 +1656,8 @@ function App() {
                                 activeThread.name.charAt(0).toUpperCase()
                               )}
                             </div>
-                            <div style={{ minWidth: 0 }}>
-                              <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeThread.name}</h3>
+                            <div style={{ minWidth: 0, textAlign: 'left' }}>
+                              <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>{activeThread.name}</h3>
                             </div>
                           </div>
                         </div>
@@ -1737,8 +1737,8 @@ function App() {
 
                                   {msg.quotedMessage && (
                                     <div style={{ background: 'rgba(0,0,0,0.3)', borderLeft: '3px solid #38bdf8', padding: '0.45rem 0.7rem', borderRadius: '0.5rem', marginBottom: '0.6rem', fontSize: '0.81rem', backdropFilter: 'blur(4px)', textAlign: 'left' }}>
-                                      <div style={{ fontWeight: '700', fontSize: '0.7rem', color: '#38bdf8', letterSpacing: '0.03em' }}>RE: {extractEmail(msg.quotedMessage.sender).split('@')[0].toUpperCase()}</div>
-                                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'rgba(255,255,255,0.9)' }}>{formatCleanBody(msg.quotedMessage.body)}</div>
+                                      <div style={{ fontWeight: '700', fontSize: '0.7rem', color: '#38bdf8', letterSpacing: '0.03em', textAlign: 'left' }}>RE: {extractEmail(msg.quotedMessage.sender).split('@')[0].toUpperCase()}</div>
+                                      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'rgba(255,255,255,0.9)', textAlign: 'left' }}>{formatCleanBody(msg.quotedMessage.body)}</div>
                                     </div>
                                   )}
 
@@ -1756,7 +1756,7 @@ function App() {
 
                                   <div style={{ fontSize: '0.68rem', opacity: 0.75, textAlign: 'right', marginTop: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', fontFamily: 'JetBrains Mono, monospace' }}>
                                     {hasBeenRepliedTo ? (
-                                      <span style={{ fontSize: '0.65rem', fontStyle: 'italic', marginRight: 'auto', color: isOutbound ? '#e0e7ff' : '#818cf8' }}>✓ Synchronized</span>
+                                      <span style={{ fontSize: '0.65rem', fontStyle: 'italic', marginRight: 'auto', color: isOutbound ? '#e0e7ff' : '#818cf8', textAlign: 'left' }}>✓ Sent</span>
                                     ) : (
                                       <button 
                                         onClick={(e) => { 
@@ -1770,7 +1770,7 @@ function App() {
                                       </button>
                                     )}
                                     {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    {isOutbound && (msg.isOptimistic ? ' ◌' : ' ⚡')}
+                                    {isOutbound && (msg.isOptimistic ? ' ◌' : ' ✓')}
                                     {msg._id && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); handleDeleteSingleMessage(msg._id); }}
@@ -1793,14 +1793,14 @@ function App() {
                           <div style={{ width: '40px', height: '40px', borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid var(--input-border)' }}>
                             <img src={attachmentPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           </div>
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', flex: 1, fontFamily: 'JetBrains Mono, monospace' }}>Attachment ready (max 5MB)</span>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', flex: 1, fontFamily: 'JetBrains Mono, monospace', textAlign: 'left' }}>Attachment ready (max 5MB)</span>
                           <button onClick={() => setAttachmentPreview(null)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}><X size={16} /></button>
                         </div>
                       )}
 
                       {showSnippets && (
                         <div className="hide-scrollbar" style={{ padding: '0.6rem 1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flexShrink: 0, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'JetBrains Mono, monospace' }}><Sparkles size={12} /> Quick Replies:</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'JetBrains Mono, monospace', textAlign: 'left' }}><Sparkles size={12} /> Quick Replies:</span>
                           {quickSnippetsList.map((snip, i) => (
                             <button
                               key={i}
@@ -1818,9 +1818,9 @@ function App() {
                       <form onSubmit={handleSendReplySubmit} style={{ padding: '1rem 1.25rem', background: 'var(--card-bg)', borderTop: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', gap: '0.6rem', flexShrink: 0, backdropFilter: 'blur(25px)' }}>
                         {quotedMessage && (
                           <div style={{ background: 'rgba(99, 102, 241, 0.15)', borderLeft: '3px solid #6366f1', padding: '0.5rem 0.85rem', borderRadius: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backdropFilter: 'blur(10px)' }}>
-                            <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              <span style={{ fontWeight: '700', color: '#818cf8', display: 'block', fontSize: '0.72rem', letterSpacing: '0.03em', fontFamily: 'JetBrains Mono, monospace' }}>REPLYING TO {extractEmail(quotedMessage.sender).split('@')[0].toUpperCase()}</span>
-                              <span>{quotedMessage.body}</span>
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
+                              <span style={{ fontWeight: '700', color: '#818cf8', display: 'block', fontSize: '0.72rem', letterSpacing: '0.03em', fontFamily: 'JetBrains Mono, monospace', textAlign: 'left' }}>REPLYING TO {extractEmail(quotedMessage.sender).split('@')[0].toUpperCase()}</span>
+                              <span style={{ textAlign: 'left' }}>{quotedMessage.body}</span>
                             </div>
                             <button type="button" onClick={() => setQuotedMessage(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}><X size={16} /></button>
                           </div>
@@ -1828,13 +1828,13 @@ function App() {
 
                         {!isReplying && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', width: '65px', fontFamily: 'JetBrains Mono, monospace' }}>SUBJECT</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', width: '65px', fontFamily: 'JetBrains Mono, monospace', textAlign: 'left' }}>SUBJECT</span>
                             <input 
                               type="text"
                               placeholder="Subject..."
                               value={chatSubject}
                               onChange={(e) => setChatSubject(e.target.value)}
-                              style={{ flex: 1, padding: '0.5rem 0.85rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}
+                              style={{ flex: 1, padding: '0.5rem 0.85rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none', textAlign: 'left' }}
                             />
                           </div>
                         )}
@@ -1875,7 +1875,7 @@ function App() {
                             placeholder="Type a message..."
                             value={chatMessageBody}
                             onChange={(e) => setChatMessageBody(e.target.value)}
-                            style={{ flex: 1, padding: '0.75rem 1.15rem', borderRadius: '1.25rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.92rem' }}
+                            style={{ flex: 1, padding: '0.75rem 1.15rem', borderRadius: '1.25rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.92rem', textAlign: 'left' }}
                           />
                           <button type="submit" disabled={loading} style={{ background: 'var(--accent-gradient)', color: '#fff', border: 'none', width: '44px', height: '44px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 20px rgba(99,102,241,0.5)', transition: 'transform 0.2s' }}>
                             <Send size={18} />
@@ -1888,8 +1888,8 @@ function App() {
                       <div style={{ width: '76px', height: '76px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem', color: '#6366f1', boxShadow: '0 0 30px rgba(99,102,241,0.15)' }}>
                         <Mail size={36} />
                       </div>
-                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '1.4rem', fontWeight: '700', letterSpacing: '-0.02em' }}>Welcome to your Inbox ✨</h3>
-                      <p style={{ maxWidth: '380px', fontSize: '0.95rem', lineHeight: '1.6', color: 'var(--text-muted)' }}>
+                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '1.4rem', fontWeight: '700', letterSpacing: '-0.02em', textAlign: 'center' }}>Welcome to your Inbox ✨</h3>
+                      <p style={{ maxWidth: '380px', fontSize: '0.95rem', lineHeight: '1.6', color: 'var(--text-muted)', textAlign: 'center' }}>
                         Select any conversation from the sidebar or look up any phone number in the search bar above to start messaging instantly.
                       </p>
                     </div>
@@ -1960,11 +1960,11 @@ function App() {
             <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'left', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', marginBottom: '0.75rem' }}>
                 <AlertTriangle size={22} />
-                <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text-primary)' }}>
+                <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text-primary)', textAlign: 'left' }}>
                   {currentFolder === 'trash' ? 'Delete Chat Forever?' : 'Move Chat to Trash?'}
                 </h3>
               </div>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: '1.5', textAlign: 'left' }}>
                 {currentFolder === 'trash' 
                   ? 'Are you sure you want to permanently delete this conversation? This action cannot be undone.'
                   : 'Are you sure you want to delete this conversation? It will be moved to your Trash folder.'}
@@ -1985,14 +1985,14 @@ function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Mail size={20} style={{ color: '#6366f1' }} />
-                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>Compose Email</h3>
+                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0, textAlign: 'left' }}>Compose Email</h3>
                 </div>
                 <button onClick={() => setShowTraditionalModal(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
               </div>
 
               <form onSubmit={handleSendTraditionalSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="input-group-stack">
-                  <label>To {isTraditionalLocked ? '(Locked in conversation)' : '(Multi-recipient supported, comma separated)'}</label>
+                  <label style={{ textAlign: 'left' }}>To {isTraditionalLocked ? '(Locked in conversation)' : '(Multi-recipient supported, comma separated)'}</label>
                   <input 
                     type="text" 
                     value={traditionalTo} 
@@ -2000,38 +2000,39 @@ function App() {
                     disabled={isTraditionalLocked}
                     placeholder="e.g. 9876543210@rizzmail.me"
                     required
-                    style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.85rem', opacity: isTraditionalLocked ? 0.7 : 1 }}
+                    style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.85rem', opacity: isTraditionalLocked ? 0.7 : 1, textAlign: 'left' }}
                   />
                 </div>
                 <div className="input-group-stack">
-                  <label>CC {isTraditionalLocked ? '(Locked in conversation)' : '(Optional, comma separated)'}</label>
+                  <label style={{ textAlign: 'left' }}>CC {isTraditionalLocked ? '(Locked in conversation)' : '(Optional, comma separated)'}</label>
                   <input 
                     type="text" 
                     value={traditionalCc} 
                     onChange={(e) => !isTraditionalLocked && setTraditionalCc(e.target.value)}
                     disabled={isTraditionalLocked}
                     placeholder="cc@rizzmail.me..."
-                    style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.85rem', opacity: isTraditionalLocked ? 0.7 : 1 }}
+                    style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.85rem', opacity: isTraditionalLocked ? 0.7 : 1, textAlign: 'left' }}
                   />
                 </div>
                 <div className="input-group-stack">
-                  <label>Subject</label>
+                  <label style={{ textAlign: 'left' }}>Subject</label>
                   <input 
                     type="text" 
                     value={traditionalSubject} 
                     onChange={(e) => setTraditionalSubject(e.target.value)}
                     placeholder="Email Subject..."
+                    style={{ textAlign: 'left' }}
                   />
                 </div>
                 <div className="input-group-stack">
-                  <label>Body</label>
+                  <label style={{ textAlign: 'left' }}>Body</label>
                   <textarea 
                     value={traditionalBody} 
                     onChange={(e) => setTraditionalBody(e.target.value)}
                     placeholder="Write your email message..."
                     rows={6}
                     required
-                    style={{ width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none', resize: 'vertical' }}
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid var(--input-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none', resize: 'vertical', textAlign: 'left' }}
                   />
                 </div>
                 <button type="submit" className="primary-btn">Send Email ➔</button>
@@ -2044,17 +2045,17 @@ function App() {
           <div className="modal-overlay" onClick={() => setTraditionalEmailReader(null)}>
             <div className="modal-content" style={{ maxWidth: '560px', textAlign: 'left', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--input-border)', paddingBottom: '0.75rem' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0 }}>{traditionalEmailReader.subject || 'Email Details'}</h3>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>From: {traditionalEmailReader.sender}</span>
+                <div style={{ textAlign: 'left' }}>
+                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', margin: 0, textAlign: 'left' }}>{traditionalEmailReader.subject || 'Email Details'}</h3>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'left' }}>From: {traditionalEmailReader.sender}</span>
                 </div>
                 <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}><X size={18} /></button>
               </div>
 
               {traditionalEmailReader.quotedMessage && (
-                <div style={{ background: 'var(--input-bg)', borderLeft: '3px solid #818cf8', padding: '0.5rem 0.75rem', borderRadius: '0.35rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
-                  <div style={{ fontWeight: '600', fontSize: '0.75rem', color: '#818cf8' }}>Replying to {extractEmail(traditionalEmailReader.quotedMessage.sender).split('@')[0]}</div>
-                  <div>{formatCleanBody(traditionalEmailReader.quotedMessage.body)}</div>
+                <div style={{ background: 'var(--input-bg)', borderLeft: '3px solid #818cf8', padding: '0.5rem 0.75rem', borderRadius: '0.35rem', marginBottom: '1rem', fontSize: '0.85rem', textAlign: 'left' }}>
+                  <div style={{ fontWeight: '600', fontSize: '0.75rem', color: '#818cf8', textAlign: 'left' }}>Replying to {extractEmail(traditionalEmailReader.quotedMessage.sender).split('@')[0]}</div>
+                  <div style={{ textAlign: 'left' }}>{formatCleanBody(traditionalEmailReader.quotedMessage.body)}</div>
                 </div>
               )}
 
@@ -2063,7 +2064,7 @@ function App() {
                   <img src={traditionalEmailReader.attachment} alt="Attachment" style={{ width: '100%', maxHeight: '280px', objectFit: 'cover', borderRadius: '0.5rem' }} />
                 </div>
               )}
-              <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+              <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: '1.5rem', maxHeight: '300px', overflowY: 'auto', textAlign: 'left' }}>
                 {formatCleanBody(traditionalEmailReader.body)}
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
@@ -2094,12 +2095,12 @@ function App() {
                   activeThread.name.charAt(0).toUpperCase()
                 )}
               </div>
-              <h2 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{activeThread.name}</h2>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all', marginBottom: '1.5rem' }}>{activeThread.sender}</p>
+              <h2 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.25rem', textAlign: 'center' }}>{activeThread.name}</h2>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all', marginBottom: '1.5rem', textAlign: 'center' }}>{activeThread.sender}</p>
               
               <div style={{ background: 'var(--input-bg)', padding: '1rem', borderRadius: '0.875rem', textAlign: 'left', marginBottom: '1.5rem', fontSize: '0.85rem', border: '1px solid var(--input-border)' }}>
-                <div style={{ color: 'var(--text-muted)', marginBottom: '0.2rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem' }}>ACCOUNT TYPE</div>
-                <div style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Secure @rizzmail.me Account</div>
+                <div style={{ color: 'var(--text-muted)', marginBottom: '0.2rem', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', textAlign: 'left' }}>ACCOUNT TYPE</div>
+                <div style={{ color: 'var(--text-primary)', fontWeight: '600', textAlign: 'left' }}>Rizzmail Account</div>
               </div>
 
               <button onClick={() => setShowChatInfo(false)} className="primary-btn">Close Info</button>
@@ -2113,9 +2114,9 @@ function App() {
               <div className="badge-pill" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
                 <AlertTriangle size={12} /> Warning: Account Deletion
               </div>
-              <h2 style={{ color: '#ef4444', fontSize: '1.4rem', marginBottom: '0.5rem' }}>Do you really want to delete your account?</h2>
-              <p className="subtitle" style={{ marginBottom: '1.5rem', lineHeight: '1.5' }}>
-                This action is permanent and cannot be undone. All your messages, profile settings, and your burner email endpoint will be permanently wiped out.
+              <h2 style={{ color: '#ef4444', fontSize: '1.4rem', marginBottom: '0.5rem', textAlign: 'left' }}>Do you really want to delete your account?</h2>
+              <p className="subtitle" style={{ marginBottom: '1.5rem', lineHeight: '1.5', textAlign: 'left' }}>
+                This action is permanent and cannot be undone. All your messages, profile settings, and your email endpoint will be permanently wiped out.
               </p>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button type="button" onClick={() => setStep(6)} style={{ flex: 1, background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.8rem', borderRadius: '0.875rem', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
@@ -2128,8 +2129,8 @@ function App() {
         {!isLoggingOut && step === 8 && (
           <div className="card-wrapper" style={{ maxWidth: '460px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }}>
             <form onSubmit={handleConfirmAccountDeletion} className="card" style={{ textAlign: 'left', width: '100%' }}>
-              <h2 style={{ color: '#ef4444', fontSize: '1.4rem' }}>Enter Deletion OTP</h2>
-              <p className="subtitle" style={{ marginBottom: '1.5rem' }}>Enter the 6-digit verification code sent to your phone.</p>
+              <h2 style={{ color: '#ef4444', fontSize: '1.4rem', textAlign: 'left' }}>Enter Deletion OTP</h2>
+              <p className="subtitle" style={{ marginBottom: '1.5rem', textAlign: 'left' }}>Enter the 6-digit verification code sent to your phone.</p>
               <div className="input-group-stack" style={{ marginBottom: '1.5rem' }}>
                 <input type="text" placeholder="0 0 0 0 0 0" value={deleteOtp} onChange={(e) => setDeleteOtp(e.target.value)} maxLength={6} required style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.4em', fontFamily: 'JetBrains Mono, monospace' }} />
               </div>
@@ -2154,8 +2155,8 @@ function App() {
         <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
           <div className="card-wrapper" style={{ maxWidth: '400px', margin: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
             <div className="card" style={{ textAlign: 'left', width: '100%' }}>
-              <h3>Sign Out Confirmation</h3>
-              <p className="subtitle" style={{ margin: '1rem 0' }}>Are you sure you want to sign out of your account?</p>
+              <h3 style={{ textAlign: 'left' }}>Sign Out Confirmation</h3>
+              <p className="subtitle" style={{ margin: '1rem 0', textAlign: 'left' }}>Are you sure you want to sign out of your account?</p>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button onClick={() => setShowLogoutConfirm(false)} style={{ flex: 1, background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer' }}>Cancel</button>
                 <button onClick={handleLogout} style={{ flex: 1, background: '#ef4444', color: '#fff', border: 'none', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600' }}>Sign Out</button>
