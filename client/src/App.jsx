@@ -1700,6 +1700,7 @@ function App() {
                                   onClick={() => setTraditionalEmailReader(msg)}
                                   style={{
                                     maxWidth: '72%',
+                                    textAlign: 'left',
                                     background: isOutbound 
                                       ? 'linear-gradient(135deg, rgba(99,102,241,0.95) 0%, rgba(168,85,247,0.9) 50%, rgba(236,72,153,0.9) 100%)' 
                                       : 'rgba(18, 24, 38, 0.85)',
@@ -1716,13 +1717,13 @@ function App() {
                                   title="Click anywhere to inspect payload"
                                 >
                                   {msg.subject && (
-                                    <div style={{ fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', opacity: 0.9, marginBottom: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.18)', paddingBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <div style={{ fontSize: '0.72rem', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase', opacity: 0.9, marginBottom: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.18)', paddingBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '5px', textAlign: 'left' }}>
                                       <Sparkles size={11} /> {msg.subject}
                                     </div>
                                   )}
 
                                   {msg.quotedMessage && (
-                                    <div style={{ background: 'rgba(0,0,0,0.3)', borderLeft: '3px solid #38bdf8', padding: '0.45rem 0.7rem', borderRadius: '0.5rem', marginBottom: '0.6rem', fontSize: '0.81rem', backdropFilter: 'blur(4px)' }}>
+                                    <div style={{ background: 'rgba(0,0,0,0.3)', borderLeft: '3px solid #38bdf8', padding: '0.45rem 0.7rem', borderRadius: '0.5rem', marginBottom: '0.6rem', fontSize: '0.81rem', backdropFilter: 'blur(4px)', textAlign: 'left' }}>
                                       <div style={{ fontWeight: '700', fontSize: '0.7rem', color: '#38bdf8', letterSpacing: '0.03em' }}>RE: {extractEmail(msg.quotedMessage.sender).split('@')[0].toUpperCase()}</div>
                                       <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'rgba(255,255,255,0.9)' }}>{formatCleanBody(msg.quotedMessage.body)}</div>
                                     </div>
@@ -1735,8 +1736,8 @@ function App() {
                                   )}
 
                                   {cleanBodyText && (
-                                    <div style={{ fontSize: '0.92rem', wordBreak: 'break-word', lineHeight: '1.5' }}>
-                                      {isLong ? `${cleanBodyText.substring(0, 180)}... (Tap to expand payload)` : cleanBodyText}
+                                    <div style={{ fontSize: '0.92rem', wordBreak: 'break-word', lineHeight: '1.5', textAlign: 'left' }}>
+                                      {isLong ? `${cleanBodyText.substring(0, 180)}... (Tap to expand)` : cleanBodyText}
                                     </div>
                                   )}
 
