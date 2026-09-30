@@ -295,6 +295,21 @@ function App() {
     socket.on('new_message', (incomingMsg) => {
       setMessages((prev) => {
         if (incomingMsg._id && prev.some(m => m._id === incomingMsg._id)) return prev;
+        if (incomingMsg.clientMessageId) {
+          const exists = prev.some(m => m.clientMessageId === incomingMsg.clientMessageId);
+          if (exists) {
+            return prev.map(m => m.clientMessageId === incomingMsg.clientMessageId ? incomingMsg : m);
+          }
+        }
+        const myEmail = `${normalizeContactIdentifier(getUserPhone())}@rizzmail.me`;
+        if (incomingMsg.sender === myEmail) {
+          const optIndex = prev.findIndex(m => m.isOptimistic && m.body === incomingMsg.body && m.recipient === incomingMsg.recipient);
+          if (optIndex !== -1) {
+            const updated = [...prev];
+            updated[optIndex] = incomingMsg;
+            return updated;
+          }
+        }
         return [incomingMsg, ...prev];
       });
       setToast(incomingMsg);
@@ -302,7 +317,7 @@ function App() {
     });
 
     return () => socket.off('new_message');
-  }, []);
+  }, [user]);
 
   const handleImageUpload = (e, isEdit = false) => {
     const file = e.target.files[0];
