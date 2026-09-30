@@ -122,7 +122,6 @@ function App() {
 
   const toggleTheme = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
 
-  // Use localStorage for global lang initialization
   const [lang, setLang] = useState(() => localStorage.getItem('rizzmail_lang') || 'en');
   const [welcomeIndex, setWelcomeIndex] = useState(0);
   const [fadeAnim, setFadeAnim] = useState(true);
@@ -518,7 +517,6 @@ function App() {
     }
 
     try {
-      // Actually apply the language globally
       localStorage.setItem('rizzmail_lang', selectedLanguage);
       setLang(selectedLanguage);
 
@@ -691,7 +689,7 @@ function App() {
         loadInbox(activePhone);
       }
     } catch (err) {
-      setError('Failed to send message.');
+      setError('Failed to send message: ' + (err.response?.data?.error || err.response?.data?.message || err.message));
       setMessages((prev) => prev.map(m => m.clientMessageId === tempClientMessageId ? { ...m, hasError: true } : m));
     }
   };
@@ -721,7 +719,7 @@ function App() {
           senderName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
         });
       } catch (err) {
-        console.error('Failed to send traditional email to', target);
+        setError('Failed to send email: ' + (err.response?.data?.error || err.message));
       }
     }
 
@@ -1382,7 +1380,7 @@ function App() {
               </div>
             )}
 
-            {/* SETTINGS VIEW (Redesigned & Structured) */}
+            {/* SETTINGS VIEW */}
             {isEditingProfile ? (
               <div className="hide-scrollbar" style={{ flex: 1, width: '100%', overflowY: 'auto' }}>
                 <div style={{ margin: '0 auto', width: '100%', maxWidth: '540px', padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column' }}>
