@@ -1415,11 +1415,11 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* SIDEBAR WITH CLEAN SINGLE-LINE FIT FILTER CHIPS & GRADIENT REFRESH ICON */}
-                <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '360px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
+                {/* EXPANDED SIDEBAR (410px) WITH CLEAN SINGLE-LINE FIT FILTER CHIPS & GRADIENT REFRESH ICON */}
+                <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '410px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
-                  <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexShrink: 0 }}>
-                    <div className="hide-scrollbar" style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', flex: 1, scrollbarWidth: 'none', msOverflowStyle: 'none', alignItems: 'center' }}>
+                  <div style={{ padding: '0.75rem 0.875rem', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flex: 1, minWidth: 0 }}>
                       {[
                         { key: 'all', label: 'All' },
                         { key: 'unread', label: 'Unread' },
@@ -1433,9 +1433,9 @@ function App() {
                             background: chatFilter === chip.key ? '#6366f1' : 'var(--input-bg)', 
                             color: chatFilter === chip.key ? '#fff' : 'var(--text-muted)', 
                             border: '1px solid var(--input-border)', 
-                            padding: '0.3rem 0.65rem', 
+                            padding: '0.3rem 0.55rem', 
                             borderRadius: '1rem', 
-                            fontSize: '0.72rem', 
+                            fontSize: '0.7rem', 
                             fontWeight: '600', 
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
@@ -1446,14 +1446,14 @@ function App() {
                         </button>
                       ))}
                     </div>
-                    <div style={{ display: 'flex', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', flexShrink: 0, marginLeft: '0.2rem' }}>
                       <button 
                         onClick={handleRefreshInbox} 
                         className="refresh-btn" 
                         title="Refresh inbox" 
                         style={{ 
-                          width: '32px', 
-                          height: '32px', 
+                          width: '30px', 
+                          height: '30px', 
                           display: 'flex', 
                           alignItems: 'center', 
                           justifyContent: 'center', 
@@ -1462,11 +1462,11 @@ function App() {
                           borderRadius: '50%', 
                           color: '#fff', 
                           cursor: 'pointer',
-                          boxShadow: '0 2px 10px rgba(99, 102, 241, 0.4)',
+                          boxShadow: '0 2px 8px rgba(99, 102, 241, 0.4)',
                           flexShrink: 0
                         }}
                       >
-                        <RefreshCw size={14} style={{ transform: isRefreshing ? 'rotate(360deg)' : 'none', transition: 'transform 0.8s ease' }} />
+                        <RefreshCw size={13} style={{ transform: isRefreshing ? 'rotate(360deg)' : 'none', transition: 'transform 0.8s ease' }} />
                       </button>
                     </div>
                   </div>
