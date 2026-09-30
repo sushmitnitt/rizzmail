@@ -71,15 +71,35 @@ const frontPageTranslations = {
   }
 };
 
+const extractEmail = (input) => {
+  if (!input) return '';
+  const str = input.toString().trim();
+  const match = str.match(/<([^>]+)>/);
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  return str;
+};
+
+const extractName = (input, fallback) => {
+  if (!input) return fallback || '';
+  const str = input.toString().trim();
+  const match = str.match(/^"?([^"<]+)"?\s*</);
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  return fallback || str.split('@')[0];
+};
+
 const normalizeContactIdentifier = (input) => {
   if (!input) return '';
-  const str = input.toString().toLowerCase().trim();
-  const localPart = str.split('@')[0];
+  const clean = extractEmail(input).toLowerCase();
+  const localPart = clean.split('@')[0];
   const pureDigits = localPart.replace(/[^0-9]/g, '');
   if (pureDigits.length >= 10) {
     return pureDigits.slice(-10);
   }
-  return localPart || str;
+  return localPart || clean;
 };
 
 const formatCleanBody = (bodyText) => {
@@ -299,7 +319,7 @@ function App() {
     
     if (senderNorm === myPhoneNorm) return;
 
-    const counterpartyRaw = msg.sender;
+    const counterpartyRaw = extractEmail(msg.sender);
     const photo = msg.senderPhoto || msg.counterpartyPhoto;
     if (counterpartyRaw && photo) {
       const canonical = normalizeContactIdentifier(counterpartyRaw);
@@ -324,8 +344,8 @@ function App() {
           }
         }
         const myEmail = `${normalizeContactIdentifier(getUserPhone())}@rizzmail.me`;
-        if (incomingMsg.sender === myEmail) {
-          const optIndex = prev.findIndex(m => m.isOptimistic && m.body === incomingMsg.body && m.recipient === incomingMsg.recipient);
+        if (extractEmail(incomingMsg.sender) === myEmail) {
+          const optIndex = prev.findIndex(m => m.isOptimistic && m.body === incomingMsg.body && extractEmail(m.recipient) === extractEmail(incomingMsg.recipient));
           if (optIndex !== -1) {
             const updated = [...prev];
             updated[optIndex] = incomingMsg;
@@ -643,7 +663,7 @@ function App() {
 
     const tempClientMessageId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
     const activePhone = getUserPhone();
-    const recipientTarget = activeChatSender;
+    const recipientTarget = extractEmail(activeChatSender);
     const finalBody = chatMessageBody.trim();
     const finalSubject = chatSubject.trim() || '';
 
@@ -667,6 +687,7 @@ function App() {
     setChatSubject('');
     setQuotedMessage(null);
     setAttachmentPreview(null);
+    setError('');
 
     try {
       const res = await sendEmailAPI({
@@ -700,9 +721,10 @@ function App() {
 
     const recipients = traditionalTo.split(',').map(r => r.trim()).filter(Boolean);
     const activePhone = getUserPhone();
+    setError('');
 
     for (const rec of recipients) {
-      let target = rec.toLowerCase();
+      let target = extractEmail(rec).toLowerCase();
       if (!target.includes('@')) {
         const pure = target.replace(/[^0-9]/g, '').slice(-10);
         target = `${pure}@rizzmail.me`;
@@ -816,16 +838,18 @@ function App() {
       const myPhoneNorm = normalizeContactIdentifier(getUserPhone());
       const senderNorm = normalizeContactIdentifier(msg.sender);
 
-      const counterpartyRaw = (senderNorm === myPhoneNorm) ? msg.recipient : msg.sender;
-      if (!counterpartyRaw) return;
+      const rawCounterparty = (senderNorm === myPhoneNorm) ? msg.recipient : msg.sender;
+      if (!rawCounterparty) return;
 
-      const canonicalKey = normalizeContactIdentifier(counterpartyRaw);
+      const cleanEmail = extractEmail(rawCounterparty);
+      const canonicalKey = normalizeContactIdentifier(cleanEmail);
+      const displayName = extractName(rawCounterparty, msg.counterpartyName);
 
       if (!threadsMap[canonicalKey]) {
         threadsMap[canonicalKey] = {
           canonicalKey: canonicalKey,
-          sender: counterpartyRaw,
-          name: msg.counterpartyName && !msg.counterpartyName.includes('@') ? msg.counterpartyName : counterpartyRaw.split('@')[0],
+          sender: cleanEmail,
+          name: displayName && !displayName.includes('@') ? displayName : cleanEmail.split('@')[0],
           avatar: '',
           messages: [],
           isFavorite: !!favoritesMap[canonicalKey]
@@ -839,20 +863,21 @@ function App() {
         threadsMap[canonicalKey].avatar = avatarCache[canonicalKey];
       }
 
-      if (msg.counterpartyName && !msg.counterpartyName.includes('@')) {
-        threadsMap[canonicalKey].name = msg.counterpartyName;
+      if (displayName && !displayName.includes('@')) {
+        threadsMap[canonicalKey].name = displayName;
       }
 
       threadsMap[canonicalKey].messages.push(msg);
     });
 
     if (activeChatSender) {
-      const activeCanonical = normalizeContactIdentifier(activeChatSender);
+      const activeClean = extractEmail(activeChatSender);
+      const activeCanonical = normalizeContactIdentifier(activeClean);
       if (!threadsMap[activeCanonical]) {
         threadsMap[activeCanonical] = {
           canonicalKey: activeCanonical,
-          sender: activeChatSender,
-          name: activeChatSender.split('@')[0],
+          sender: activeClean,
+          name: extractName(activeChatSender, activeClean.split('@')[0]),
           avatar: avatarCache[activeCanonical] || '',
           messages: [],
           isFavorite: !!favoritesMap[activeCanonical]
@@ -943,7 +968,7 @@ function App() {
           </div>
         </div>
 
-        {/* SEARCH BAR (Visible when logged in) */}
+        {/* SEARCH BAR */}
         {user && step === 6 && (
           <div style={{ flex: 1, maxWidth: '640px', display: 'flex', alignItems: 'center' }}>
             <div style={{ width: '100%', position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -988,7 +1013,7 @@ function App() {
           {user && step === 6 && !isLoggingOut && activeChatSender && (
             <button
               onClick={() => {
-                setTraditionalTo(activeChatSender || '');
+                setTraditionalTo(extractEmail(activeChatSender) || '');
                 setTraditionalCc('');
                 setTraditionalSubject('');
                 setTraditionalBody('');
@@ -1475,7 +1500,7 @@ function App() {
             ) : (
               <div className="whatsapp-layout" style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--card-bg)', overflow: 'hidden', position: 'relative' }}>
                 
-                {/* SIDEBAR WITH FIXED REFRESH BUTTON & SCROLLABLE CHIPS */}
+                {/* SIDEBAR */}
                 <div className={`whatsapp-sidebar ${activeChatSender ? 'mobile-hidden' : ''}`} style={{ width: '410px', borderRight: '1px solid var(--input-border)', display: 'flex', flexDirection: 'column', background: 'var(--card-bg)', flexShrink: 0, height: '100%', overflow: 'hidden' }}>
                   
                   <div style={{ padding: '0.75rem 0.75rem', borderBottom: '1px solid var(--input-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem', flexShrink: 0 }}>
@@ -1662,7 +1687,7 @@ function App() {
                                 onTouchEnd={(e) => {
                                   const touchEndX = e.changedTouches[0].clientX;
                                   if (touchEndX - touchStartX > 80) {
-                                    setTraditionalTo(activeChatSender);
+                                    setTraditionalTo(extractEmail(activeChatSender));
                                     setTraditionalCc('');
                                     setTraditionalSubject(msg.subject || '');
                                     setTraditionalBody('');
@@ -1698,7 +1723,7 @@ function App() {
 
                                   {msg.quotedMessage && (
                                     <div style={{ background: 'rgba(0,0,0,0.3)', borderLeft: '3px solid #38bdf8', padding: '0.45rem 0.7rem', borderRadius: '0.5rem', marginBottom: '0.6rem', fontSize: '0.81rem', backdropFilter: 'blur(4px)' }}>
-                                      <div style={{ fontWeight: '700', fontSize: '0.7rem', color: '#38bdf8', letterSpacing: '0.03em' }}>RE: {msg.quotedMessage.sender.split('@')[0].toUpperCase()}</div>
+                                      <div style={{ fontWeight: '700', fontSize: '0.7rem', color: '#38bdf8', letterSpacing: '0.03em' }}>RE: {extractEmail(msg.quotedMessage.sender).split('@')[0].toUpperCase()}</div>
                                       <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'rgba(255,255,255,0.9)' }}>{formatCleanBody(msg.quotedMessage.body)}</div>
                                     </div>
                                   )}
@@ -1780,7 +1805,7 @@ function App() {
                         {quotedMessage && (
                           <div style={{ background: 'rgba(99, 102, 241, 0.15)', borderLeft: '3px solid #6366f1', padding: '0.5rem 0.85rem', borderRadius: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backdropFilter: 'blur(10px)' }}>
                             <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              <span style={{ fontWeight: '700', color: '#818cf8', display: 'block', fontSize: '0.72rem', letterSpacing: '0.03em', fontFamily: 'JetBrains Mono, monospace' }}>QUOTED PAYLOAD FROM {quotedMessage.sender.split('@')[0].toUpperCase()}</span>
+                              <span style={{ fontWeight: '700', color: '#818cf8', display: 'block', fontSize: '0.72rem', letterSpacing: '0.03em', fontFamily: 'JetBrains Mono, monospace' }}>QUOTED PAYLOAD FROM {extractEmail(quotedMessage.sender).split('@')[0].toUpperCase()}</span>
                               <span>{quotedMessage.body}</span>
                             </div>
                             <button type="button" onClick={() => setQuotedMessage(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}><X size={16} /></button>
@@ -1809,7 +1834,7 @@ function App() {
                           <button 
                             type="button" 
                             onClick={() => {
-                              setTraditionalTo(activeChatSender);
+                              setTraditionalTo(extractEmail(activeChatSender));
                               setTraditionalCc('');
                               setTraditionalSubject(chatSubject);
                               setTraditionalBody(chatMessageBody);
@@ -2014,7 +2039,7 @@ function App() {
 
               {traditionalEmailReader.quotedMessage && (
                 <div style={{ background: 'var(--input-bg)', borderLeft: '3px solid #818cf8', padding: '0.5rem 0.75rem', borderRadius: '0.35rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
-                  <div style={{ fontWeight: '600', fontSize: '0.75rem', color: '#818cf8' }}>Replying to {traditionalEmailReader.quotedMessage.sender.split('@')[0]}</div>
+                  <div style={{ fontWeight: '600', fontSize: '0.75rem', color: '#818cf8' }}>Replying to {extractEmail(traditionalEmailReader.quotedMessage.sender).split('@')[0]}</div>
                   <div>{formatCleanBody(traditionalEmailReader.quotedMessage.body)}</div>
                 </div>
               )}
@@ -2030,7 +2055,7 @@ function App() {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
                 <button onClick={() => setTraditionalEmailReader(null)} style={{ background: 'transparent', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '0.6rem 1.25rem', borderRadius: '0.75rem', cursor: 'pointer' }}>Close</button>
                 <button onClick={() => {
-                  const sender = traditionalEmailReader.sender;
+                  const sender = extractEmail(traditionalEmailReader.sender);
                   const subj = traditionalEmailReader.subject;
                   setTraditionalEmailReader(null);
                   setTraditionalTo(sender);
